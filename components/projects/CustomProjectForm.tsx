@@ -89,10 +89,38 @@ export function CustomProjectForm({
   const [hasRestoredDraft, setHasRestoredDraft] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Restore draft from localStorage / sessionStorage on mount
+  // Restore draft from localStorage / sessionStorage on mount (supports Step 4 data feed)
   useEffect(() => {
     try {
-      const saved = localStorage.getItem(DRAFT_STORAGE_KEY) || sessionStorage.getItem(DRAFT_STORAGE_KEY);
+      let saved = localStorage.getItem(DRAFT_STORAGE_KEY) || sessionStorage.getItem(DRAFT_STORAGE_KEY);
+      if (!saved) {
+        const activeDraftStr = localStorage.getItem("dudos_active_draft");
+        const onboardingDraftStr = localStorage.getItem("dudos_onboarding_draft");
+        if (activeDraftStr) {
+          const ad = JSON.parse(activeDraftStr);
+          saved = JSON.stringify({
+            title: ad.title || (ad.organizationName ? ad.organizationName + " Digital Platform" : ""),
+            category: ad.businessDomain || "Information Technology (IT)",
+            referenceUrl: ad.siteUrl || "",
+            businessScope: ad.projectScope || "",
+            framework: ad.targetStack || "next_fastapi",
+            targetTimeline: ad.expectedTimeline || "4 weeks",
+            budgetRange: ad.budgetExpectation || "৳50,000 - ৳150,000",
+          });
+        } else if (onboardingDraftStr) {
+          const od = JSON.parse(onboardingDraftStr);
+          saved = JSON.stringify({
+            title: od.organizationName ? od.organizationName + " Digital Platform" : "Business Operating System",
+            category: od.businessDomain || "Information Technology (IT)",
+            referenceUrl: od.siteUrl || "",
+            businessScope: od.projectScope || "",
+            framework: od.targetStack || "next_fastapi",
+            targetTimeline: od.expectedTimeline || "4 weeks",
+            budgetRange: od.budgetRange || "৳50,000 - ৳150,000",
+          });
+        }
+      }
+
       if (saved) {
         const d = JSON.parse(saved);
         if (d.title) setTitle(d.title);
@@ -225,6 +253,26 @@ Submitted to System Administrator and Technical Team for framework analysis, man
       const existing = JSON.parse(localStorage.getItem("dudos_custom_projects") || "[]");
       localStorage.setItem("dudos_custom_projects", JSON.stringify([newProject, ...existing]));
       localStorage.removeItem(DRAFT_STORAGE_KEY);
+      sessionStorage.removeItem(DRAFT_STORAGE_KEY);
+
+      // Synchronize with dudos_active_draft (Step 4 & 5 of lifecycle flow)
+      const activeDraft = {
+        id: newProject.id,
+        title: newProject.title,
+        organizationName: user?.organizationName || newProject.title,
+        contactName: newProject.clientName,
+        email: newProject.clientEmail,
+        businessDomain: newProject.category,
+        projectScope: newProject.businessScope,
+        siteUrl: newProject.referenceUrl,
+        targetStack: newProject.framework,
+        budgetExpectation: newProject.budgetRange,
+        expectedTimeline: newProject.targetTimeline,
+        status: "submitted",
+        savedAt: newProject.createdAt,
+        updatedAt: newProject.updatedAt,
+      };
+      localStorage.setItem("dudos_active_draft", JSON.stringify(activeDraft));
     } catch {}
 
     setTimeout(() => {
