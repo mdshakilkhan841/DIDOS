@@ -49,6 +49,7 @@ export default async function Page({
     "academy",
     "tenant-admin",
     "platform-admin",
+    "projects",
   ];
 
   if (section[0] && !allowed.includes(section[0])) notFound();

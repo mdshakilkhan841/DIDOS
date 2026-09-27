@@ -36,25 +36,26 @@ export function LoginForm({ returnTo, onSwitchToRegister }: LoginFormProps) {
   const handleFillDemo = () => {
     const demos: Record<StakeholderRole, string> = {
       client: "client.lead@enterprise.com",
+      admin: "admin.tech@daffodil.family",
+      staff: "ops.technician@daffodil.family",
       merchant: "store.manager@daffodilgadgets.com",
       partner: "agency.partner@diuconnect.com",
       academy: "student.cse@daffodilvarsity.edu.bd",
-      staff: "ops.technician@daffodil.family",
       executive: "governance@daffodil.family",
     };
-    setEmail(demos[selectedRole]);
+    setEmail(demos[selectedRole] || "client.lead@enterprise.com");
     setPassword("DudosPass2026!");
     setErrorMsg("");
-    showToast.info(`Filled demo credentials for ${STAKEHOLDER_CONFIGS[selectedRole].title}`);
+    showToast.info(`Filled demo credentials for ${STAKEHOLDER_CONFIGS[selectedRole]?.title || selectedRole}`);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMsg("");
 
-    if (!email || !email.includes("@")) {
-      setErrorMsg("Please enter a valid email address.");
-      showToast.error("Invalid email address format.");
+    if (!email.trim()) {
+      setErrorMsg("Please enter your email address or username.");
+      showToast.error("Email or username is required.");
       return;
     }
 

@@ -1,5 +1,5 @@
 import React from "react";
-import { CheckCircle2, ShieldCheck, Sparkles, Building2, ShoppingBag, Handshake, GraduationCap, Wrench } from "lucide-react";
+import { CheckCircle2, ShieldCheck, Sparkles, Building2, ShoppingBag, Handshake, GraduationCap, Wrench, Terminal } from "lucide-react";
 import { StakeholderRole, STAKEHOLDER_CONFIGS } from "@/types/auth";
 
 interface AuthBrandPanelProps {
@@ -15,6 +15,7 @@ const HIGHLIGHTS = [
 
 const ROLE_ICONS: Record<StakeholderRole, React.ReactNode> = {
   client: <Building2 className="h-5 w-5 text-dudos-accent" />,
+  admin: <Terminal className="h-5 w-5 text-dudos-accent" />,
   merchant: <ShoppingBag className="h-5 w-5 text-dudos-accent" />,
   partner: <Handshake className="h-5 w-5 text-dudos-accent" />,
   academy: <GraduationCap className="h-5 w-5 text-dudos-accent" />,

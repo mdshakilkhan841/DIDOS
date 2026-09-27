@@ -1,5 +1,5 @@
 import React from "react";
-import { Building2, ShoppingBag, Handshake, GraduationCap, Wrench, ShieldCheck } from "lucide-react";
+import { Building2, ShoppingBag, Handshake, GraduationCap, Wrench, ShieldCheck, Terminal } from "lucide-react";
 import { StakeholderRole, STAKEHOLDER_CONFIGS } from "@/types/auth";
 import { cn } from "@/lib/utils";
 
@@ -11,19 +11,21 @@ interface StakeholderSelectorProps {
 
 const ROLE_ICONS: Record<StakeholderRole, React.ComponentType<{ className?: string }>> = {
   client: Building2,
+  admin: Terminal,
+  staff: Wrench,
   merchant: ShoppingBag,
   partner: Handshake,
   academy: GraduationCap,
-  staff: Wrench,
   executive: ShieldCheck,
 };
 
 const ORDERED_ROLES: StakeholderRole[] = [
   "client",
+  "admin",
+  "staff",
   "merchant",
   "partner",
   "academy",
-  "staff",
   "executive",
 ];
 

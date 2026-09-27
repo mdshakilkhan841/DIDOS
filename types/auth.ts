@@ -1,9 +1,10 @@
 export type StakeholderRole =
   | "client"
+  | "admin"
+  | "staff"
   | "merchant"
   | "partner"
   | "academy"
-  | "staff"
   | "executive";
 
 export interface StakeholderMeta {
@@ -20,13 +21,33 @@ export interface StakeholderMeta {
 export const STAKEHOLDER_CONFIGS: Record<StakeholderRole, StakeholderMeta> = {
   client: {
     role: "client",
-    title: "Client / Enterprise",
-    badge: "Enterprise",
-    shortDesc: "Transformation, custom projects & managed services",
-    description: "Access software project tracking, milestone reviews, service quotations, and IT consulting.",
+    title: "Customer / Client",
+    badge: "Client",
+    shortDesc: "Self-service AI builder, custom projects, credits & workspaces",
+    description: "Manage projects, generate websites, buy credit packages, submit custom project requests, and track invoices.",
     accentColor: "#087F79",
     recommendedRoute: "/app/records/project",
     sampleOrgPlaceholder: "e.g. Acme Corporation or Daffodil Health",
+  },
+  admin: {
+    role: "admin",
+    title: "System Administrator / Tech Team",
+    badge: "Tech Admin",
+    shortDesc: "Client requests, technical estimation, deployment & accounting",
+    description: "Conduct technical estimations, calculate man-hours/costs, dispatch quotations, oversee project lifecycles, and monitor ERP accounting.",
+    accentColor: "#112C3A",
+    recommendedRoute: "/app/tenant-admin",
+    sampleOrgPlaceholder: "e.g. Daffodil Web & E-Commerce Engineering Team",
+  },
+  staff: {
+    role: "staff",
+    title: "Technical Team / Operations",
+    badge: "Operations",
+    shortDesc: "Deployment support, domain mapping, code review & task queues",
+    description: "Assist with domain mapping, technical builds, managed deployment support, and operational workflows.",
+    accentColor: "#1B3B4B",
+    recommendedRoute: "/app/records/task",
+    sampleOrgPlaceholder: "e.g. Daffodil Operations & DevOps Team",
   },
   merchant: {
     role: "merchant",
@@ -58,19 +79,9 @@ export const STAKEHOLDER_CONFIGS: Record<StakeholderRole, StakeholderMeta> = {
     recommendedRoute: "/app/records/challenge",
     sampleOrgPlaceholder: "e.g. Daffodil International University (Dept of CSE)",
   },
-  staff: {
-    role: "staff",
-    title: "Staff / Operations",
-    badge: "Internal",
-    shortDesc: "Field visits, installation tasks & operational review",
-    description: "Execute assigned operational tasks, field visits, installation reports, and ticket routing.",
-    accentColor: "#112C3A",
-    recommendedRoute: "/app/records/task",
-    sampleOrgPlaceholder: "e.g. Daffodil Operations & Field Services",
-  },
   executive: {
     role: "executive",
-    title: "Executive / Admin",
+    title: "Executive / Governance",
     badge: "Governance",
     shortDesc: "Opportunity pipelines, audits & strategic decisions",
     description: "Review high-level corporate pipeline, sign release gates, evaluate market intelligence, and audit governance.",
@@ -80,11 +91,41 @@ export const STAKEHOLDER_CONFIGS: Record<StakeholderRole, StakeholderMeta> = {
   },
 };
 
+export type UserStatus =
+  | "pending_review"
+  | "in_scoping"
+  | "verified"
+  | "approved"
+  | "active"
+  | "on_hold";
+
+export interface ProjectIntakeData {
+  businessDomain: string;
+  projectScope: string;
+  targetStack: string;
+  referenceUrls?: string;
+  expectedTimeline?: string;
+  budgetRange?: string;
+  submittedAt: string;
+  estimationQuote?: {
+    manHours: number;
+    hourlyRate: number;
+    infraCost: number;
+    totalQuote: number;
+    currency: string;
+    approvedAt?: string;
+    adminNotes?: string;
+  };
+}
+
 export interface UserProfile {
   id: string;
   email: string;
+  username: string;
   displayName: string;
   role: StakeholderRole;
+  status: UserStatus;
+  credits: number;
   avatarUrl?: string;
   organizationName?: string;
   phone?: string;
@@ -92,6 +133,24 @@ export interface UserProfile {
   department?: string;
   isPlatformAdmin?: boolean;
   createdAt: string;
+  intake?: ProjectIntakeData;
+}
+
+export interface PreRegistrationDraft {
+  role: StakeholderRole;
+  username: string;
+  displayName: string;
+  email: string;
+  organizationName?: string;
+  identifier?: string;
+  department?: string;
+  businessDomain?: string;
+  projectScope?: string;
+  targetStack?: string;
+  referenceUrls?: string;
+  expectedTimeline?: string;
+  budgetRange?: string;
+  savedAt: string;
 }
 
 export interface AuthSession {
@@ -100,3 +159,4 @@ export interface AuthSession {
   activeRole: StakeholderRole;
   token?: string;
 }
+

@@ -6,6 +6,7 @@ import { ArrowRight, Menu, X, Shield, Sparkles, Building2, User } from "lucide-r
 import { useAuth } from "@/context/auth-context";
 import { Button } from "@/components/ui/button";
 import { STAKEHOLDER_CONFIGS } from "@/types/auth";
+import { CreditBadgeButton } from "@/components/billing/CreditWalletModal";
 
 export function Navbar() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -33,30 +34,40 @@ export function Navbar() {
           {/* Desktop Nav Links */}
           <nav className="hidden md:flex items-center gap-6 text-xs font-semibold text-dudos-text-secondary">
             <Link
-              href="/#stakeholders"
-              className="hover:text-dudos-primary transition-colors"
+              href="/onboarding"
+              className="text-dudos-primary font-bold hover:text-dudos-primary-hover transition-colors flex items-center gap-1"
             >
-              Stakeholders
+              <Sparkles className="h-3.5 w-3.5 text-teal-600" />
+              <span>Start Onboarding</span>
             </Link>
             <Link
-              href="/#modules"
+              href="/services"
               className="hover:text-dudos-primary transition-colors"
             >
-              Operations (30+)
+              Solutions & Services
             </Link>
             <Link
-              href="/#builder"
+              href="/#pricing"
               className="hover:text-dudos-primary transition-colors"
             >
-              Website Builder
+              Pricing & Credits
             </Link>
-            <Link
-              href="/#devscope"
-              className="hover:text-dudos-primary transition-colors flex items-center gap-1"
-            >
-              <Sparkles className="h-3 w-3 text-dudos-accent" />
-              <span>DevScope AI</span>
-            </Link>
+            {isAuthenticated && user?.role === "admin" && (
+              <Link
+                href="/app/tenant-admin"
+                className="hover:text-dudos-primary transition-colors text-amber-700 font-bold"
+              >
+                Admin Panel
+              </Link>
+            )}
+            {isAuthenticated && user?.role === "client" && (
+              <Link
+                href="/app"
+                className="hover:text-dudos-primary transition-colors"
+              >
+                User Workspace
+              </Link>
+            )}
           </nav>
         </div>
 
@@ -64,6 +75,7 @@ export function Navbar() {
         <div className="hidden sm:flex items-center gap-3">
           {isAuthenticated && user ? (
             <div className="flex items-center gap-3">
+              <CreditBadgeButton />
               <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-dudos-border bg-dudos-surface text-xs">
                 <span className="h-2 w-2 rounded-full bg-dudos-success animate-pulse" />
                 <span className="font-semibold text-dudos-text">{user.displayName}</span>
@@ -71,12 +83,28 @@ export function Navbar() {
                   {STAKEHOLDER_CONFIGS[activeRole].badge}
                 </span>
               </div>
-              <Link href="/login">
-                <Button variant="primary" size="sm">
-                  <span>Workspace</span>
-                  <ArrowRight className="h-3.5 w-3.5 ml-1" />
-                </Button>
-              </Link>
+              {user.role === "admin" ? (
+                <Link href="/en/app/tenant-admin">
+                  <Button variant="primary" size="sm" className="bg-[#112C3A] hover:bg-[#1a3f52] text-white">
+                    <Shield className="h-3.5 w-3.5 mr-1 text-teal-400" />
+                    <span>Admin Panel</span>
+                  </Button>
+                </Link>
+              ) : user.status === "pending_review" ? (
+                <Link href="/en/onboarding">
+                  <Button variant="primary" size="sm" className="bg-amber-600 hover:bg-amber-700 text-white">
+                    <span>Onboarding Status</span>
+                    <ArrowRight className="h-3.5 w-3.5 ml-1" />
+                  </Button>
+                </Link>
+              ) : (
+                <Link href="/en/app">
+                  <Button variant="primary" size="sm">
+                    <span>Workspace</span>
+                    <ArrowRight className="h-3.5 w-3.5 ml-1" />
+                  </Button>
+                </Link>
+              )}
               <Button variant="ghost" size="sm" onClick={logout}>
                 Sign Out
               </Button>
@@ -115,26 +143,36 @@ export function Navbar() {
         <div className="sm:hidden border-b border-dudos-border bg-white px-4 py-4 space-y-3 animate-in slide-in-from-top-2">
           <nav className="flex flex-col space-y-2 text-sm font-medium text-dudos-text">
             <Link
-              href="/#stakeholders"
+              href="/onboarding"
               onClick={() => setMobileMenuOpen(false)}
-              className="py-1.5 hover:text-dudos-primary"
+              className="py-1.5 text-dudos-primary font-bold hover:text-dudos-primary-hover flex items-center gap-1.5"
             >
-              Stakeholder Portals
+              <Sparkles className="h-4 w-4 text-teal-600" />
+              <span>Start Onboarding</span>
             </Link>
             <Link
-              href="/#modules"
+              href="/services"
               onClick={() => setMobileMenuOpen(false)}
               className="py-1.5 hover:text-dudos-primary"
             >
-              Operations & Modules (30+)
+              Solutions & Services
             </Link>
             <Link
-              href="/#builder"
+              href="/#pricing"
               onClick={() => setMobileMenuOpen(false)}
               className="py-1.5 hover:text-dudos-primary"
             >
-              Website Builder
+              Pricing & Credits
             </Link>
+            {isAuthenticated && (
+              <Link
+                href={user?.role === "admin" ? "/app/tenant-admin" : "/app"}
+                onClick={() => setMobileMenuOpen(false)}
+                className="py-1.5 font-bold text-teal-800"
+              >
+                {user?.role === "admin" ? "Admin Panel" : "User Workspace"}
+              </Link>
+            )}
           </nav>
           <div className="pt-3 border-t border-dudos-border flex flex-col gap-2">
             <Link href="/login" onClick={() => setMobileMenuOpen(false)}>
