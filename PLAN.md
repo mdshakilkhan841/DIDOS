@@ -12,13 +12,13 @@
 |:---:|---|---|:---:|:---:|:---:|
 | **0** | **Environment, Tokens & Design System** | Tailwind 4 tokens, Sonner, UI primitives, documentation | 🟢 Complete | 6 / 6 | 100% |
 | **1** | **Multi-Stakeholder Auth & Onboarding** | Split-screen login, role registration, auth context | 🟢 Complete | 6 / 6 | 100% |
-| **2** | **Public Portal & Landing Showcase** | Exact Home page (Hero, Goal panel, Strip, Solution grid, Talent, FAQ) | 🟡 In Progress | 4 / 6 | 66% |
+| **2** | **Public Portal & Landing Showcase** | Exact Home page & Catalog pages (/solutions, /packages, /services, etc.) | 🟡 In Progress | 5 / 6 | 83% |
 | **3** | **Operations Workbench Shell (`/app`)** | Topbar, sidebar (9 groups), workspace switcher, KPI stats | ⚪ Pending | 0 / 5 | 0% |
 | **4** | **Dynamic Records Engine (30+ Modules)** | Filterable tables, inspector drawer, dynamic forms, services | ⚪ Pending | 0 / 6 | 0% |
 | **5** | **In-Browser Website Builder (`/builder`)** | 5-step wizard, 480 matrix profiles, client ZIP packaging | ⚪ Pending | 0 / 6 | 0% |
 | **6** | **AI Planes: Prompt Studio & Sales Agent** | PS-001 - PS-016 DAG solver, bilingual sales discovery bot | ⚪ Pending | 0 / 5 | 0% |
 | **7** | **DevScope AI Integration & Final QA** | `devscope-ai-builder` bridge, milestone tracker, audit | ⚪ Pending | 0 / 4 | 0% |
-| **TOTAL**| **Entire DUDOS Migration & Build** | **Full System Architecture** | 🟡 **Active** | **16 / 44** | **36%** |
+| **TOTAL**| **Entire DUDOS Migration & Build** | **Full System Architecture** | 🟡 **Active** | **17 / 44** | **39%** |
 
 ---
 
@@ -120,9 +120,11 @@
   - **Zero Full Page Reloads**: [`components/dudos-link.tsx`](file:///Users/shakil/Desktop/DaffodilGroup/DUDOS/dudos/components/dudos-link.tsx) leverages Next.js `next/link` for seamless instant client-side routing.  
   - Target: [`components/home/TalentBand.tsx`](file:///Users/shakil/Desktop/DaffodilGroup/DUDOS/dudos/components/home/TalentBand.tsx), [`components/home/FaqSection.tsx`](file:///Users/shakil/Desktop/DaffodilGroup/DUDOS/dudos/components/home/FaqSection.tsx), [`components/home/SiteFooter.tsx`](file:///Users/shakil/Desktop/DaffodilGroup/DUDOS/dudos/components/home/SiteFooter.tsx), [`components/home/FloatingGuide.tsx`](file:///Users/shakil/Desktop/DaffodilGroup/DUDOS/dudos/components/home/FloatingGuide.tsx)
 
-- [ ] **P2-05: Inner Catalog & Detail Pages**  
+- [x] **P2-05: Inner Catalog & Detail Pages**  
   - Inner pages: `/solutions`, `/products`, `/services`, `/industries`, `/packages`, `/integrations`, `/marketplace`, `/partners`, `/support`.  
-  - Target: `app/[lang]/[[...slug]]/page.tsx`
+  - Modular components: [`PageHeading.tsx`](file:///Users/shakil/Desktop/DaffodilGroup/DUDOS/dudos/components/catalog/PageHeading.tsx), [`CatalogSearch.tsx`](file:///Users/shakil/Desktop/DaffodilGroup/DUDOS/dudos/components/catalog/CatalogSearch.tsx), [`CatalogCard.tsx`](file:///Users/shakil/Desktop/DaffodilGroup/DUDOS/dudos/components/catalog/CatalogCard.tsx), [`CatalogGrid.tsx`](file:///Users/shakil/Desktop/DaffodilGroup/DUDOS/dudos/components/catalog/CatalogGrid.tsx), [`PackageGrid.tsx`](file:///Users/shakil/Desktop/DaffodilGroup/DUDOS/dudos/components/catalog/PackageGrid.tsx), [`DetailView.tsx`](file:///Users/shakil/Desktop/DaffodilGroup/DUDOS/dudos/components/catalog/DetailView.tsx), [`EditorialView.tsx`](file:///Users/shakil/Desktop/DaffodilGroup/DUDOS/dudos/components/catalog/EditorialView.tsx).  
+  - Dynamic catch-all router: [`app/[lang]/[[...slug]]/page.tsx`](file:///Users/shakil/Desktop/DaffodilGroup/DUDOS/dudos/app/%5Blang%5D/%5B%5B...slug%5D%5D/page.tsx) with metadata generation.  
+  - Target: [`components/catalog/PublicCatalogLayout.tsx`](file:///Users/shakil/Desktop/DaffodilGroup/DUDOS/dudos/components/catalog/PublicCatalogLayout.tsx)
 
 - [ ] **P2-06: Quick Intake & Assessment Wizard**  
   - Assessment flow and intake forms for partners, talent, and support tickets.  

@@ -65,6 +65,27 @@
   "faq": {
     "heading": "A few questions, answered."
   },
+  "catalog": {
+    "searchPlaceholder": "Search by name or capability…",
+    "chooseScope": "Choose your scope",
+    "noResults": "No matching results",
+    "tryAnotherSearch": "Try another search or category.",
+    "exploreScope": "Explore scope",
+    "proposed": "Proposed",
+    "possibilities": "YOUR POSSIBILITIES",
+    "defaultDescription": "Move from a defined need to clear ownership and useful outcomes.",
+    "shapeNeeds": "Shape this around your needs",
+    "nextStep": "Your next step",
+    "nextStepDesc": "Assess your current systems, permissions and intended outcomes. Confirm price and availability for your scope.",
+    "continue": "Continue",
+    "packageIntro": "Choose the capabilities you need. Pricing follows a confirmed scope.",
+    "assessmentQuotes": "Assessment-based quotes",
+    "letScopeIt": "Let’s scope it",
+    "pricingSubtitle": "Setup + recurring + usage",
+    "chooseScopeBtn": "Choose this scope",
+    "packageNotice": "Taxes, third-party charges, support levels, limits and renewal terms must be confirmed in the offer. Payments are not enabled.",
+    "dolNotice": "Daffodil Online service profile. Availability, provider rights, location, capacity and prices require verification."
+  },
   "guide": {
     "launch": "Services & help",
     "salesAgent": "Open Service & Sales Agent",
