@@ -1,0 +1,35 @@
+/* DUDOS normalized theme tokens — derived from the current project palette. */
+:root {
+  --dudos-primary: #087f79;
+  --dudos-primary-hover: #076e68;
+  --dudos-primary-soft: #edf7f4;
+  --dudos-accent: #53d3bd;
+  --dudos-accent-soft: #71d4bb;
+
+  --dudos-navy-950: #101f2e;
+  --dudos-navy-900: #112c3a;
+  --dudos-navy-800: #183543;
+  --dudos-navy-700: #223b4b;
+  --dudos-navy-600: #39515d;
+
+  --dudos-text: #162c38;
+  --dudos-text-secondary: #5b6f7b;
+  --dudos-text-on-dark: #ffffff;
+  --dudos-text-on-dark-muted: #b1c6d0;
+
+  --dudos-bg: #ffffff;
+  --dudos-surface: #f4f7f8;
+  --dudos-surface-alt: #f2f8f7;
+  --dudos-surface-mint: #edf7f4;
+  --dudos-border: #dce5e9;
+
+  --dudos-success: #087f79;
+  --dudos-success-soft: #e8f5f1;
+  --dudos-warning: #b78615;
+  --dudos-warning-soft: #fff9da;
+  --dudos-error: #9e291e;
+  --dudos-error-soft: #fff4f4;
+  --dudos-info: #215465;
+  --dudos-info-soft: #eff5f8;
+  --dudos-focus: #21a699;
+}

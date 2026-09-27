@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>DUDOS Color System</title>
+<style>
+  *{box-sizing:border-box} body{margin:0;font-family:Arial,Helvetica,sans-serif;background:#f4f7f8;color:#162c38}
+  main{max-width:1180px;margin:auto;padding:56px 28px 80px} h1{font-size:42px;letter-spacing:-1.5px;margin:0 0 8px} p{color:#5b6f7b;line-height:1.65}
+  .eyebrow{font-size:12px;letter-spacing:.16em;text-transform:uppercase;color:#087f79;font-weight:700;margin-bottom:12px}
+  .hero{display:grid;grid-template-columns:1.25fr .75fr;gap:24px;align-items:stretch;margin-bottom:36px}
+  .intro,.dark{border-radius:16px;padding:32px}.intro{background:#fff;border:1px solid #dce5e9}.dark{background:#112c3a;color:#fff}.dark p{color:#b1c6d0}.accent{color:#53d3bd}
+  .grid{display:grid;grid-template-columns:repeat(4,1fr);gap:16px}.swatch{background:#fff;border:1px solid #dce5e9;border-radius:12px;overflow:hidden}.color{height:120px}.meta{padding:14px}.meta strong,.meta code{display:block}.meta code{margin-top:6px;color:#5b6f7b;font-size:13px}
+  h2{margin:42px 0 16px;font-size:26px}.semantic{display:grid;grid-template-columns:repeat(4,1fr);gap:16px}.state{border-radius:12px;padding:20px;border:1px solid #dce5e9;background:white}.dot{width:14px;height:14px;border-radius:50%;display:inline-block;margin-right:8px;vertical-align:-2px}
+  .sample{margin-top:42px;background:#fff;border:1px solid #dce5e9;border-radius:16px;padding:28px;display:flex;gap:12px;align-items:center;flex-wrap:wrap}.btn{border:0;border-radius:7px;padding:12px 18px;font-weight:700}.primary{background:#087f79;color:#fff}.secondary{background:#fff;border:1px solid #dce5e9;color:#162c38}.tag{background:#edf7f4;color:#087f79;border-radius:999px;padding:8px 12px;font-size:13px;font-weight:700}
+  @media(max-width:800px){.hero,.grid,.semantic{grid-template-columns:1fr 1fr}} @media(max-width:520px){.hero,.grid,.semantic{grid-template-columns:1fr}main{padding:30px 16px}}
+</style>
+</head>
+<body><main>
+  <div class="hero">
+    <section class="intro"><div class="eyebrow">DUDOS Design System</div><h1>Color Template</h1><p>Codebase-derived product palette: deep navy structure, teal actions, mint highlights, and cool neutral surfaces.</p></section>
+    <section class="dark"><div class="eyebrow accent">Core identity</div><h2 style="margin:0 0 10px">Navy + Teal</h2><p>Use navy for authority and structure; teal for action, progress, active states, and brand emphasis.</p></section>
+  </div>
+
+  <h2>Core palette</h2>
+  <div class="grid">
+    <div class="swatch"><div class="color" style="background:#087f79"></div><div class="meta"><strong>Primary Teal</strong><code>#087F79</code></div></div>
+    <div class="swatch"><div class="color" style="background:#53d3bd"></div><div class="meta"><strong>Accent Mint</strong><code>#53D3BD</code></div></div>
+    <div class="swatch"><div class="color" style="background:#112c3a"></div><div class="meta"><strong>Deep Navy</strong><code>#112C3A</code></div></div>
+    <div class="swatch"><div class="color" style="background:#101f2e"></div><div class="meta"><strong>Sidebar Navy</strong><code>#101F2E</code></div></div>
+    <div class="swatch"><div class="color" style="background:#162c38"></div><div class="meta"><strong>Primary Ink</strong><code>#162C38</code></div></div>
+    <div class="swatch"><div class="color" style="background:#5b6f7b"></div><div class="meta"><strong>Muted Text</strong><code>#5B6F7B</code></div></div>
+    <div class="swatch"><div class="color" style="background:#dce5e9"></div><div class="meta"><strong>Border</strong><code>#DCE5E9</code></div></div>
+    <div class="swatch"><div class="color" style="background:#edf7f4"></div><div class="meta"><strong>Mint Surface</strong><code>#EDF7F4</code></div></div>
+  </div>
+
+  <h2>Semantic colors</h2>
+  <div class="semantic">
+    <div class="state"><strong><span class="dot" style="background:#087f79"></span>Success</strong><p>#087F79 · soft #E8F5F1</p></div>
+    <div class="state"><strong><span class="dot" style="background:#b78615"></span>Warning</strong><p>#B78615 · soft #FFF9DA</p></div>
+    <div class="state"><strong><span class="dot" style="background:#9e291e"></span>Error</strong><p>#9E291E · soft #FFF4F4</p></div>
+    <div class="state"><strong><span class="dot" style="background:#215465"></span>Information</strong><p>#215465 · soft #EFF5F8</p></div>
+  </div>
+
+  <div class="sample"><button class="btn primary">Primary action</button><button class="btn secondary">Secondary action</button><span class="tag">Active status</span><span style="color:#5b6f7b">Use teal sparingly; keep most screens neutral.</span></div>
+</main></body></html>

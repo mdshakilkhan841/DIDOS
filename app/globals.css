@@ -1,26 +1,95 @@
 @import "tailwindcss";
 
+@theme {
+  --color-dudos-primary: #087f79;
+  --color-dudos-primary-hover: #076e68;
+  --color-dudos-primary-soft: #edf7f4;
+  --color-dudos-accent: #53d3bd;
+  --color-dudos-accent-soft: #71d4bb;
+
+  --color-dudos-navy-950: #101f2e;
+  --color-dudos-navy-900: #112c3a;
+  --color-dudos-navy-800: #183543;
+  --color-dudos-navy-700: #223b4b;
+  --color-dudos-navy-600: #39515d;
+
+  --color-dudos-text: #162c38;
+  --color-dudos-text-secondary: #5b6f7b;
+  --color-dudos-text-on-dark: #ffffff;
+  --color-dudos-text-on-dark-muted: #b1c6d0;
+
+  --color-dudos-bg: #ffffff;
+  --color-dudos-surface: #f4f7f8;
+  --color-dudos-surface-alt: #f2f8f7;
+  --color-dudos-surface-mint: #edf7f4;
+  --color-dudos-border: #dce5e9;
+
+  --color-dudos-success: #087f79;
+  --color-dudos-success-soft: #e8f5f1;
+  --color-dudos-warning: #b78615;
+  --color-dudos-warning-soft: #fff9da;
+  --color-dudos-error: #9e291e;
+  --color-dudos-error-soft: #fff4f4;
+  --color-dudos-info: #215465;
+  --color-dudos-info-soft: #eff5f8;
+  --color-dudos-focus: #21a699;
+}
+
 :root {
+  /* DUDOS core palette variables */
+  --dudos-primary: #087f79;
+  --dudos-primary-hover: #076e68;
+  --dudos-primary-soft: #edf7f4;
+  --dudos-accent: #53d3bd;
+  --dudos-accent-soft: #71d4bb;
+
+  --dudos-navy-950: #101f2e;
+  --dudos-navy-900: #112c3a;
+  --dudos-navy-800: #183543;
+  --dudos-navy-700: #223b4b;
+  --dudos-navy-600: #39515d;
+
+  --dudos-text: #162c38;
+  --dudos-text-secondary: #5b6f7b;
+  --dudos-text-on-dark: #ffffff;
+  --dudos-text-on-dark-muted: #b1c6d0;
+
+  --dudos-bg: #ffffff;
+  --dudos-surface: #f4f7f8;
+  --dudos-surface-alt: #f2f8f7;
+  --dudos-surface-mint: #edf7f4;
+  --dudos-border: #dce5e9;
+
+  /* Standard theme mapping */
   --background: #ffffff;
-  --foreground: #171717;
-}
-
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+  --foreground: #162c38;
+  --primary: #087f79;
+  --primary-foreground: #ffffff;
+  --muted: #f4f7f8;
+  --muted-foreground: #5b6f7b;
+  --border: #dce5e9;
+  --input: #dce5e9;
+  --ring: #21a699;
 }
 
 body {
-  background: var(--background);
+  background-color: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-feature-settings: "rlig" 1, "calt" 1;
+}
+
+/* Custom scrollbars matching DUDOS palette */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: #dce5e9;
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #a7bfc5;
 }
