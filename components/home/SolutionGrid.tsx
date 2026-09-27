@@ -12,7 +12,7 @@ import {
   Code2,
 } from "lucide-react";
 import { useContent } from "@/components/dudos-content-context";
-import { t } from "@/components/dudos-ui";
+import { t } from "@/lib/i18n";
 
 const icons = [Globe2, ShoppingBag, Workflow, BarChart3, GraduationCap, Code2];
 
@@ -23,25 +23,17 @@ export function SolutionGrid({ lang = "en" }: { lang?: string }) {
     <section className="section-wrap">
       <div className="section-heading">
         <div>
-          <p className="eyebrow">
-            {lang === "bn"
-              ? "আপনার ব্যবসার জন্য"
-              : "BUILT AROUND YOUR BUSINESS"}
-          </p>
-          <h2>
-            {lang === "bn"
-              ? "একটি লক্ষ্য থেকে অসংখ্য সম্ভাবনা।"
-              : "Start with one goal. Connect the possibilities."}
-          </h2>
+          <p className="eyebrow">{t("solutions.eyebrow", lang)}</p>
+          <h2>{t("solutions.heading", lang)}</h2>
         </div>
         <Link className="text-link" href={`/${lang}/solutions`}>
-          {lang === "bn" ? "সব সমাধান" : "All solutions"}
+          {t("solutions.allSolutions", lang)}
           <ArrowUpRight size={17} />
         </Link>
       </div>
 
       <div className="solution-grid">
-        {content.home_outcomes.map((item: any, i: number) => {
+        {(content.home_outcomes || []).map((item: any, i: number) => {
           const Icon = icons[i % icons.length];
           return (
             <Link
@@ -55,7 +47,7 @@ export function SolutionGrid({ lang = "en" }: { lang?: string }) {
               <h3>{t(item.title, lang)}</h3>
               <p>{t(item.description, lang)}</p>
               <span className="card-link">
-                {lang === "bn" ? "আরও জানুন" : "Explore this path"}
+                {t("solutions.explorePath", lang)}
                 <ArrowUpRight size={17} />
               </span>
             </Link>

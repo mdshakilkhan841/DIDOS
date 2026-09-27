@@ -103,7 +103,7 @@
 *Status: 🟡 In Progress (Home Page 1:1 Complete)*
 
 - [x] **P2-01: Public Header & Navigation Component**  
-  - Brand mark `D`, `DUDOS.`, main navigation, language toggle (`EN`/`বাংলা`), `Workspace` link, `Website builder` button, and mobile sheet.  
+  - Brand mark `D`, `DUDOS.`, main navigation, language toggle (`EN`/`বাংলা` with `inline-flex` non-breaking layout), `Workspace` link, `Website builder` button, and mobile sheet.  
   - Target: [`components/home/SiteHeader.tsx`](file:///Users/shakil/Desktop/DaffodilGroup/DUDOS/dudos/components/home/SiteHeader.tsx)
 
 - [x] **P2-02: Home Hero & Interactive Goal Panel**  
@@ -116,6 +116,8 @@
 
 - [x] **P2-04: Talent Band, FAQ Accordion, Site Footer & Floating Guide**  
   - `"FROM IDEAS TO IMPACT"` talent tracks, collapsible FAQ accordion, 4-column site footer, and floating service/sales guide popup.  
+  - **Industry-Standard i18n Architecture**: Standalone translation dictionaries [`locales/en.json`](file:///Users/shakil/Desktop/DaffodilGroup/DUDOS/dudos/locales/en.json) & [`locales/bn.json`](file:///Users/shakil/Desktop/DaffodilGroup/DUDOS/dudos/locales/bn.json) via [`lib/i18n.ts`](file:///Users/shakil/Desktop/DaffodilGroup/DUDOS/dudos/lib/i18n.ts) (no messy inline ternaries).  
+  - **Zero Full Page Reloads**: [`components/dudos-link.tsx`](file:///Users/shakil/Desktop/DaffodilGroup/DUDOS/dudos/components/dudos-link.tsx) leverages Next.js `next/link` for seamless instant client-side routing.  
   - Target: [`components/home/TalentBand.tsx`](file:///Users/shakil/Desktop/DaffodilGroup/DUDOS/dudos/components/home/TalentBand.tsx), [`components/home/FaqSection.tsx`](file:///Users/shakil/Desktop/DaffodilGroup/DUDOS/dudos/components/home/FaqSection.tsx), [`components/home/SiteFooter.tsx`](file:///Users/shakil/Desktop/DaffodilGroup/DUDOS/dudos/components/home/SiteFooter.tsx), [`components/home/FloatingGuide.tsx`](file:///Users/shakil/Desktop/DaffodilGroup/DUDOS/dudos/components/home/FloatingGuide.tsx)
 
 - [ ] **P2-05: Inner Catalog & Detail Pages**  

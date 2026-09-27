@@ -11,17 +11,8 @@ import {
 } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 
-export const t = (value: any, lang = "en"): string =>
-  typeof value === "string"
-    ? value
-    : typeof value?.[lang] === "string" && value[lang]
-    ? value[lang]
-    : typeof value?.en === "string"
-    ? value.en
-    : "";
-
-export const human = (v: string) =>
-  v.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+import { t, human } from "@/lib/i18n";
+export { t, human };
 
 export function Choose({
   value,

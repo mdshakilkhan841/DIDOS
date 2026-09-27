@@ -1,0 +1,78 @@
+{
+  "common": {
+    "skipToContent": "Skip to content",
+    "language": "EN",
+    "switchLanguageLabel": "বাংলা",
+    "explore": "Explore",
+    "learnAndContribute": "Learn & contribute",
+    "helpAndTrust": "Help & trust",
+    "footerNotice": "Service proposals · Scope confirmed through assessment",
+    "taglineSub": "Digital transformation & operations"
+  },
+  "nav": {
+    "workspace": "Workspace",
+    "websiteBuilder": "Website builder",
+    "transformation": "Transformation",
+    "openNavigation": "Open navigation"
+  },
+  "hero": {
+    "eyebrow": "YOUR NEXT DIGITAL CHAPTER",
+    "startAssessment": "Start your assessment",
+    "exploreSolutions": "Explore solutions",
+    "note": "For a new beginning or the systems you already use"
+  },
+  "goalPanel": {
+    "microLabel": "SOLUTION BUILDER",
+    "title": "What’s your next move?",
+    "subtitle": "Choose a goal. Shape the right solution around it.",
+    "businessType": "Your business",
+    "businessSector": "Business sector",
+    "planSolution": "Plan my solution",
+    "panelFoot": "From a focused assessment to a clear next step",
+    "goals": {
+      "website": "Better website",
+      "commerce": "Sell online",
+      "operations": "Connect operations",
+      "ai": "Work with AI"
+    }
+  },
+  "connectionStrip": {
+    "eyebrow": "ONE CONNECTED EXPERIENCE",
+    "steps": {
+      "discover": "Discover",
+      "build": "Build",
+      "operate": "Operate",
+      "improve": "Improve"
+    }
+  },
+  "solutions": {
+    "eyebrow": "BUILT AROUND YOUR BUSINESS",
+    "heading": "Start with one goal. Connect the possibilities.",
+    "allSolutions": "All solutions",
+    "explorePath": "Explore this path"
+  },
+  "talent": {
+    "eyebrow": "FROM IDEAS TO IMPACT",
+    "heading": "Bring great talent to real problems.",
+    "description": "A shared path for student projects, research, industry challenges and solutions worth building.",
+    "exploreCta": "Explore talent & research",
+    "tracks": {
+      "01": "Industry challenges",
+      "02": "Student & alumni projects",
+      "03": "Research to products"
+    }
+  },
+  "faq": {
+    "heading": "A few questions, answered."
+  },
+  "guide": {
+    "launch": "Services & help",
+    "salesAgent": "Open Service & Sales Agent",
+    "howCanWeHelp": "How can we help?",
+    "publicKnowledge": "Public knowledge",
+    "description": "Search the published guide. This is a scripted knowledge assistant.",
+    "placeholder": "Ask about DUDOS…",
+    "askButton": "Ask",
+    "unavailable": "The guide is unavailable. Please try again."
+  }
+}

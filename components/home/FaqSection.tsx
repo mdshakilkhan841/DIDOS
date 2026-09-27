@@ -8,7 +8,7 @@ import {
   AccordionContent,
 } from "@/components/ui/accordion";
 import { useContent } from "@/components/dudos-content-context";
-import { t } from "@/components/dudos-ui";
+import { t } from "@/lib/i18n";
 
 export function FaqSection({ lang = "en" }: { lang?: string }) {
   const content = useContent();
@@ -16,12 +16,10 @@ export function FaqSection({ lang = "en" }: { lang?: string }) {
   return (
     <section className="section-wrap">
       <div className="section-heading">
-        <h2>
-          {lang === "bn" ? "প্রশ্ন থেকে শুরু হোক।" : "A few questions, answered."}
-        </h2>
+        <h2>{t("faq.heading", lang)}</h2>
       </div>
       <Accordion type="single" collapsible className="faq">
-        {content.faq.map((f: any, i: number) => (
+        {(content.faq || []).map((f: any, i: number) => (
           <AccordionItem key={i} value={String(i)}>
             <AccordionTrigger>{t(f.question, lang)}</AccordionTrigger>
             <AccordionContent>{t(f.answer, lang)}</AccordionContent>
