@@ -61,8 +61,8 @@ flowchart TD
 |---|---|---|---|---|
 | **Phase 1** | **27 Sep 2026** | **Steps 1–4**: Customer Onboarding Form ➔ LocalStorage Save ➔ Auto-Registration ➔ Feed to Actual Form as Draft | 🟢 **Completed & Committed** | `04ded6b` |
 | **Phase 2** | **28 Sep 2026** | **Steps 5–7**: Dedicated Customer User Panel (`/app`) ➔ Interactive AI-Guided QA Final ➔ Confirm Specifications ➔ SRS Generator | 🟢 **Completed & Committed** | `db0db62` |
-| **Phase 3** | **29 Sep 2026** | **Step 8**: Billing & Pricing Gate ➔ Credit Wallet (1,000 packs) ➔ Custom Tech Estimation & Quotation Dispatch ➔ Payment Acceptance | 🟢 **Completed (Ready to Commit)** | *Pending User Commit* |
-| **Phase 4** | **30 Sep 2026** | **Steps 9–10**: Build & Staging ➔ Managed Deployment Ticket ➔ End-to-End Flow Verification ➔ FastAPI Backend Bridge | ⚪ **Next Phase** | *Scheduled* |
+| **Phase 3** | **29 Sep 2026** | **Step 8**: Billing & Pricing Gate ➔ Credit Wallet (1,000 packs) ➔ Custom Tech Estimation & Quotation Dispatch ➔ Payment Acceptance | 🟢 **Completed & Committed** | `a6a1198` |
+| **Phase 4** | **30 Sep 2026** | **Steps 9–10**: Build & Staging ➔ Managed Deployment Ticket ➔ End-to-End Flow Verification ➔ FastAPI Backend Bridge | 🟢 **Completed & Committed** | `245dc58` |
 
 ---
 
@@ -135,6 +135,9 @@ flowchart TD
 - **FastAPI Backend Integration Bridge** (`lib/api-client.ts`):
   - Unified dual-mode client layer switching dynamically between localStorage and FastAPI backend (`http://localhost:8000/api/v1`) via `NEXT_PUBLIC_USE_BACKEND_API`.
   - Typed endpoints for auth, onboarding drafts, projects, AI QA, billing invoices, and deployments.
+- **Custom Project Form Dual-Feed Integration** (`components/projects/CustomProjectForm.tsx`):
+  - Step 4 integration: Auto-restores and feeds values from `dudos_active_draft` or `dudos_onboarding_draft` if custom draft is empty.
+  - Bidirectional sync: On submission, writes to `dudos_custom_projects` and synchronizes `dudos_active_draft` to feed directly into the AI QA module and Admin estimation queue.
 - **Full End-to-End Walkthrough**:
   - Complete verification across all 7 steps: Customer -> Onboarding Form -> localstorage save > registration auto > localstore data feed to actual form to save as draft > ai guided QA final -> confirm > billing or pricing if not exist > build -> deploy.
 
@@ -156,6 +159,10 @@ flowchart TD
 | **T-10** | Quotation Review & Payment Modal (bKash/Nagad, Card, Credits, Bank Wire) | Step 7 | Shakil Khan | 🟢 Completed |
 | **T-11** | Managed Deployment Ticket Modal (`ManagedDeploymentModal.tsx`) & Staging | Steps 8–9 | Shakil Khan | 🟢 Completed |
 | **T-12** | FastAPI Backend Bridge Contract Verification & Final QA by 30th Sep 2026 | Full Flow | Shakil Khan | 🟢 Completed |
+| **T-13** | Custom Project Form Auto-Feed & Active Draft Sync (`CustomProjectForm.tsx`) | Step 4 | Shakil Khan | 🟢 Completed |
+| **T-14** | End-to-End 7-Step Browser Verification Walkthrough & QA Audit | Full Flow | Shakil Khan | ⚪ Next Task |
+| **T-15** | Python FastAPI Backend Server Scaffold & Service Endpoints (`api/`) | Backend Bridge | Shakil Khan | ⚪ Scheduled |
+| **T-16** | Docker & VPS Production Deployment Package | Production Release | Shakil Khan | ⚪ Scheduled |
 
 ---
 
@@ -163,4 +170,6 @@ flowchart TD
 - **Phase 1 (Day 1)**: Committed (`04ded6b`)
 - **Phase 2 (Day 2)**: Committed (`db0db62`)
 - **Phase 3 (Day 3)**: Committed (`a6a1198`)
-- **Phase 4 (Day 4)**: 🟢 Completed & Ready to Commit!
+- **Phase 4 (Day 4)**: Committed (`245dc58`)
+- **Step 4 CustomProjectForm Integration (T-13)**: 🟢 Completed
+- **Next Milestone**: End-to-End Browser Flow Verification & Audit (T-14)
