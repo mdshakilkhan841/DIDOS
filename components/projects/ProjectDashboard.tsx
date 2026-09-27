@@ -205,12 +205,47 @@ export function ProjectDashboard({ lang = "en" }: { lang?: string }) {
   useEffect(() => {
     try {
       const savedProjects = localStorage.getItem("dudos_custom_projects");
+      let projectList: CustomProjectData[] = [];
       if (savedProjects) {
-        setProjects(JSON.parse(savedProjects));
+        projectList = JSON.parse(savedProjects);
       } else {
         localStorage.setItem("dudos_custom_projects", JSON.stringify(INITIAL_PROJECTS));
-        setProjects(INITIAL_PROJECTS);
+        projectList = INITIAL_PROJECTS;
       }
+
+      // Auto-merge active onboarding draft if present
+      const activeDraftStr = localStorage.getItem("dudos_active_draft");
+      if (activeDraftStr) {
+        try {
+          const draft = JSON.parse(activeDraftStr);
+          if (!projectList.some((p) => p.id === draft.id)) {
+            const draftProject: CustomProjectData = {
+              id: draft.id,
+              title: draft.title,
+              clientName: draft.contactName || "Customer",
+              clientEmail: draft.email || "customer@domain.com",
+              category: draft.businessDomain || "Enterprise Software",
+              referenceUrl: draft.siteUrl || "https://daffodil.family",
+              businessScope: draft.projectScope || "Standard digital transformation project.",
+              selectedFeatures: [
+                "Multi-Role Authentication & Access Control",
+                "Online Payment Gateway (bKash, Nagad, Stripe)",
+                draft.qaAnswers?.multiTenant === "yes" ? "Multi-Tenancy Workspace Architecture" : "Single Tenant Instance",
+              ],
+              framework: draft.targetStack || "Next.js 16 + FastAPI + PostgreSQL",
+              targetTimeline: draft.expectedTimeline || "4 weeks",
+              budgetRange: draft.budgetExpectation || "৳100,000 - ৳200,000",
+              srsContent: `# SRS: ${draft.organizationName || "Project Architecture"}\n\n${draft.projectScope || ""}`,
+              status: draft.status || "draft",
+              createdAt: draft.savedAt || new Date().toISOString(),
+              updatedAt: draft.updatedAt || new Date().toISOString(),
+            };
+            projectList = [draftProject, ...projectList];
+            localStorage.setItem("dudos_custom_projects", JSON.stringify(projectList));
+          }
+        } catch {}
+      }
+      setProjects(projectList);
 
       const savedInvoices = localStorage.getItem("dudos_quotation_invoices");
       if (savedInvoices) {

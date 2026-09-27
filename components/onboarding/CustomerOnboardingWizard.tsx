@@ -204,13 +204,14 @@ export function CustomerOnboardingWizard({ lang = "en" }: { lang?: string }) {
     }
   };
 
-  const feedDataToActualDraft = () => {
+  const feedDataToActualDraft = (confirmedStatus?: "draft" | "submitted") => {
+    const statusVal = confirmedStatus || "draft";
     const draftRecord = {
       id: "draft_" + Date.now().toString(36),
-      title: `${organizationName} — ${businessDomain}`,
-      organizationName,
-      contactName,
-      email,
+      title: `${organizationName || "Custom Project"} — ${businessDomain}`,
+      organizationName: organizationName || "Client Organization",
+      contactName: contactName || "Customer",
+      email: email || user?.email || "customer@domain.com",
       businessDomain,
       projectScope,
       siteUrl,
@@ -218,7 +219,7 @@ export function CustomerOnboardingWizard({ lang = "en" }: { lang?: string }) {
       budgetExpectation,
       expectedTimeline,
       qaAnswers,
-      status: "draft",
+      status: statusVal,
       savedAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };
@@ -231,19 +232,50 @@ export function CustomerOnboardingWizard({ lang = "en" }: { lang?: string }) {
       const list = existing ? JSON.parse(existing) : [];
       const updatedList = [draftRecord, ...list.filter((item: any) => item.id !== draftRecord.id)];
       localStorage.setItem(PROJECT_RECORDS_KEY, JSON.stringify(updatedList));
+
+      // Also append to dudos_custom_projects for ERP and Admin visibility
+      const customExisting = JSON.parse(localStorage.getItem("dudos_custom_projects") || "[]");
+      const customProjectItem = {
+        id: draftRecord.id,
+        title: draftRecord.title,
+        clientName: draftRecord.contactName,
+        clientEmail: draftRecord.email,
+        category: businessDomain,
+        referenceUrl: siteUrl || "https://daffodil.family",
+        businessScope: projectScope,
+        selectedFeatures: [
+          "Multi-Role Authentication & Access Control",
+          "Online Payment Gateway (bKash, Nagad, Stripe)",
+          qaAnswers.multiTenant === "yes" ? "Multi-Tenancy Workspace Architecture" : "Single-Tenant Instance",
+          `Database: ${qaAnswers.databaseChoice || "PostgreSQL 16"}`,
+        ],
+        framework: targetStack,
+        targetTimeline: expectedTimeline,
+        budgetRange: budgetExpectation,
+        srsContent: `# SRS & Architecture: ${organizationName || "Project"}\n\n## 1. Scope\n${projectScope}\n\n## 2. Architecture\n- Stack: ${targetStack}\n- Multi-Tenancy: ${qaAnswers.multiTenant === "yes" ? "Enabled (Tenant Isolation)" : "Single-Tenant"}\n- Payment: ${qaAnswers.paymentGateway}\n- Concurrency Scale: ${qaAnswers.userScale}\n\n## 3. Commercial\n- Timeline: ${expectedTimeline}\n- Budget: ${budgetExpectation}`,
+        status: statusVal,
+        createdAt: draftRecord.savedAt,
+        updatedAt: draftRecord.updatedAt,
+      };
+      const updatedCustom = [
+        customProjectItem,
+        ...customExisting.filter((item: any) => item.id !== draftRecord.id),
+      ];
+      localStorage.setItem("dudos_custom_projects", JSON.stringify(updatedCustom));
     } catch {}
   };
 
   const handleConfirmDraft = () => {
+    feedDataToActualDraft("draft");
     setStep("qa_final");
   };
 
   const handleFinalSpecificationConfirm = () => {
-    feedDataToActualDraft();
+    feedDataToActualDraft("submitted");
     showToast.success("Project specifications confirmed!", {
       description: "Dispatched to tech estimation & workspace provisioning.",
     });
-    router.push("/app/records/project");
+    router.push(`/${lang}/app`);
   };
 
   return (

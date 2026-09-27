@@ -57,7 +57,7 @@ export interface CustomProjectData {
   targetTimeline: string;
   budgetRange: string;
   srsContent: string;
-  status: "submitted" | "in_estimation" | "quoted" | "approved" | "in_development" | "completed";
+  status: "draft" | "submitted" | "in_estimation" | "quoted" | "approved" | "in_development" | "completed";
   createdAt: string;
   updatedAt: string;
 }
