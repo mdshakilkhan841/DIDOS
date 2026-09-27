@@ -27,6 +27,9 @@ import {
   CreditCard,
   Rocket,
   Edit3,
+  Server,
+  Zap,
+  Phone,
 } from "lucide-react";
 import { useAuth } from "@/context/auth-context";
 import { Button } from "@/components/ui/button";
@@ -41,6 +44,8 @@ import {
   DialogTitle,
   DialogDescription,
 } from "@/components/ui/dialog";
+import { CreditWalletModal } from "@/components/billing/CreditWalletModal";
+import { ManagedDeploymentModal } from "@/components/projects/ManagedDeploymentModal";
 import { showToast } from "@/lib/toast";
 
 const STORAGE_KEY = "dudos_onboarding_draft";
@@ -80,7 +85,7 @@ export function CustomerUserPanel({
   lang?: string;
 }) {
   const router = useRouter();
-  const { user, creditTransactions } = useAuth();
+  const { user, creditTransactions, deductCredits, addCredits } = useAuth();
 
   const [activeDraft, setActiveDraft] = useState<ActiveProjectDraft | null>(null);
   const [invoices, setInvoices] = useState<any[]>([]);
@@ -89,8 +94,12 @@ export function CustomerUserPanel({
   // Modals state
   const [showQaModal, setShowQaModal] = useState(false);
   const [showSrsModal, setShowSrsModal] = useState(false);
-  const [showQuotationModal, setShowQuotationModal] = useState(false);
-  const [selectedInvoice, setSelectedInvoice] = useState<any | null>(null);
+  const [showCreditModal, setShowCreditModal] = useState(false);
+  const [showDeploymentModal, setShowDeploymentModal] = useState(false);
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [isProcessingPayment, setIsProcessingPayment] = useState(false);
+  const [paymentMethod, setPaymentMethod] = useState<"bkash" | "card" | "credits" | "bank">("bkash");
+  const [mfsPhone, setMfsPhone] = useState("01711000000");
 
   // Editable QA Answers state
   const [editableQa, setEditableQa] = useState({
@@ -237,37 +246,142 @@ export function CustomerUserPanel({
     });
   };
 
-  const handleAcceptQuotation = (inv: any) => {
+  // Phase 3: Standard Credit Package Build Activation
+  const handleActivateViaCredits = () => {
+    if (!activeDraft) return;
+    const currentCredits = user?.credits ?? 0;
+    if (currentCredits < 1000) {
+      showToast.error("Insufficient Credits", {
+        description: "You need 1,000 credits to activate autonomous build staging. Please top up your wallet.",
+      });
+      setShowCreditModal(true);
+      return;
+    }
+
+    const deducted = deductCredits(1000, `Autonomous Build Staging for "${activeDraft.title}"`);
+    if (!deducted) return;
+
+    const approvedDraft: ActiveProjectDraft = {
+      ...activeDraft,
+      status: "approved",
+      updatedAt: new Date().toISOString(),
+    };
+    setActiveDraft(approvedDraft);
+
+    try {
+      localStorage.setItem(ACTIVE_DRAFT_KEY, JSON.stringify(approvedDraft));
+
+      const existingCustom = JSON.parse(localStorage.getItem(CUSTOM_PROJECTS_KEY) || "[]");
+      const updatedCustom = existingCustom.map((p: any) =>
+        p.id === activeDraft.id ? { ...p, status: "approved" } : p
+      );
+      localStorage.setItem(CUSTOM_PROJECTS_KEY, JSON.stringify(updatedCustom));
+    } catch {}
+
+    showToast.success("Build Phase Activated via Credits!", {
+      description: "1,000 credits deducted. Project approved for repository and VPS staging.",
+    });
+  };
+
+  // Phase 3: Simulate Admin Quotation Dispatch (for testing the 'Pricing if not exist' workflow)
+  const handleSimulateAdminQuotation = () => {
+    if (!activeDraft) return;
+
+    const simulatedInvoice = {
+      id: "inv_" + Date.now().toString(36),
+      projectId: activeDraft.id,
+      projectTitle: activeDraft.title,
+      clientEmail: activeDraft.email || user?.email || "customer@domain.com",
+      framework: activeDraft.targetStack,
+      manHours: {
+        frontend: 40,
+        backend: 56,
+        qa: 20,
+        devops: 14,
+      },
+      totalHours: 130,
+      hourlyRate: 1200,
+      laborCost: 156000,
+      infrastructureCost: 14000,
+      profitMarginPercent: 20,
+      totalQuotationBDT: 204000,
+      status: "dispatched",
+      dispatchedAt: new Date().toISOString(),
+    };
+
     try {
       const existing = JSON.parse(localStorage.getItem(INVOICES_KEY) || "[]");
-      const updated = existing.map((i: any) =>
-        i.id === inv.id ? { ...i, status: "paid" } : i
-      );
+      const updated = [simulatedInvoice, ...existing.filter((i: any) => i.id !== simulatedInvoice.id)];
       localStorage.setItem(INVOICES_KEY, JSON.stringify(updated));
       setInvoices(updated);
 
-      if (activeDraft && activeDraft.id === inv.projectId) {
-        const nextDraft: ActiveProjectDraft = {
-          ...activeDraft,
-          status: "approved",
-          updatedAt: new Date().toISOString(),
-        };
-        setActiveDraft(nextDraft);
-        localStorage.setItem(ACTIVE_DRAFT_KEY, JSON.stringify(nextDraft));
-      }
+      const quotedDraft: ActiveProjectDraft = {
+        ...activeDraft,
+        status: "quoted",
+        updatedAt: new Date().toISOString(),
+      };
+      setActiveDraft(quotedDraft);
+      localStorage.setItem(ACTIVE_DRAFT_KEY, JSON.stringify(quotedDraft));
 
-      // Also update in CUSTOM_PROJECTS_KEY
       const customExisting = JSON.parse(localStorage.getItem(CUSTOM_PROJECTS_KEY) || "[]");
       const customUpdated = customExisting.map((p: any) =>
-        p.id === inv.projectId ? { ...p, status: "approved" } : p
+        p.id === activeDraft.id ? { ...p, status: "quoted" } : p
       );
       localStorage.setItem(CUSTOM_PROJECTS_KEY, JSON.stringify(customUpdated));
 
-      setShowQuotationModal(false);
-      showToast.success("Quotation Accepted!", {
-        description: "Milestone registered as paid. Project is now approved for build staging.",
+      showToast.success("Formal Technical Quotation Dispatched!", {
+        description: `Tech Team dispatched Invoice ${simulatedInvoice.id} for ৳204,000 (130 man-hours).`,
       });
     } catch {}
+  };
+
+  // Phase 3: Confirm Payment for Formal Quotation
+  const handleConfirmQuotationPayment = () => {
+    if (!relevantInvoice) return;
+    setIsProcessingPayment(true);
+
+    setTimeout(() => {
+      try {
+        if (paymentMethod === "credits") {
+          const deducted = deductCredits(1000, `Quotation Milestone Payment for "${relevantInvoice.projectTitle}"`);
+          if (!deducted) {
+            setIsProcessingPayment(false);
+            return;
+          }
+        }
+
+        const existing = JSON.parse(localStorage.getItem(INVOICES_KEY) || "[]");
+        const updated = existing.map((i: any) =>
+          i.id === relevantInvoice.id ? { ...i, status: "paid" } : i
+        );
+        localStorage.setItem(INVOICES_KEY, JSON.stringify(updated));
+        setInvoices(updated);
+
+        if (activeDraft) {
+          const nextDraft: ActiveProjectDraft = {
+            ...activeDraft,
+            status: "approved",
+            updatedAt: new Date().toISOString(),
+          };
+          setActiveDraft(nextDraft);
+          localStorage.setItem(ACTIVE_DRAFT_KEY, JSON.stringify(nextDraft));
+        }
+
+        const customExisting = JSON.parse(localStorage.getItem(CUSTOM_PROJECTS_KEY) || "[]");
+        const customUpdated = customExisting.map((p: any) =>
+          p.id === relevantInvoice.projectId ? { ...p, status: "approved" } : p
+        );
+        localStorage.setItem(CUSTOM_PROJECTS_KEY, JSON.stringify(customUpdated));
+
+        setShowPaymentModal(false);
+        setIsProcessingPayment(false);
+        showToast.success("Quotation Milestone Paid & Verified!", {
+          description: `Payment recorded via ${paymentMethod.toUpperCase()}. Project moved to Build & Deploy staging.`,
+        });
+      } catch {
+        setIsProcessingPayment(false);
+      }
+    }, 600);
   };
 
   const generateSrsMarkdown = (draft: ActiveProjectDraft) => {
@@ -328,11 +442,19 @@ ${draft.projectScope}
         </div>
 
         <div className="flex items-center gap-3">
-          <div className="bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 flex items-center gap-2 text-xs">
-            <Coins className="h-4 w-4 text-amber-500" />
-            <span className="text-dudos-text-secondary">Credits:</span>
+          {/* Clickable Credit Wallet Button */}
+          <button
+            onClick={() => setShowCreditModal(true)}
+            className="bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-xl px-3 py-2 flex items-center gap-2 text-xs transition-colors cursor-pointer group"
+            title="Click to view Credit Wallet & Packages"
+          >
+            <Coins className="h-4 w-4 text-amber-500 group-hover:scale-110 transition-transform" />
+            <span className="text-dudos-text-secondary">Wallet:</span>
             <span className="font-bold text-dudos-text">{user?.credits?.toLocaleString() || 1000}</span>
-          </div>
+            <span className="text-[10px] text-teal-700 font-semibold bg-teal-50 px-1.5 py-0.5 rounded border border-teal-200 ml-1">
+              + Top Up
+            </span>
+          </button>
 
           <Link href="/onboarding">
             <Button size="sm" variant="outline" className="text-xs flex items-center gap-1.5">
@@ -383,8 +505,8 @@ ${draft.projectScope}
             },
             {
               step: "7",
-              title: "Tech Estimation",
-              desc: "Quotation & Build",
+              title: "Billing & Pricing",
+              desc: "Quotation / Credits",
               done: activeDraft?.status === "approved",
               active: activeDraft?.status === "submitted" || activeDraft?.status === "quoted",
             },
@@ -435,7 +557,7 @@ ${draft.projectScope}
                   }
                 >
                   {activeDraft.status === "approved"
-                    ? "Approved & Paid"
+                    ? "Approved & Staged"
                     : activeDraft.status === "quoted"
                     ? "Quotation Dispatched"
                     : activeDraft.status === "submitted"
@@ -449,7 +571,7 @@ ${draft.projectScope}
               </p>
             </div>
 
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
               <Button
                 variant="outline"
                 size="sm"
@@ -478,6 +600,17 @@ ${draft.projectScope}
                 >
                   <Check className="h-3.5 w-3.5" />
                   <span>Confirm Specifications</span>
+                </Button>
+              )}
+
+              {activeDraft.status === "approved" && (
+                <Button
+                  size="sm"
+                  onClick={() => setShowDeploymentModal(true)}
+                  className="bg-teal-700 hover:bg-teal-800 text-white text-xs font-semibold flex items-center gap-1.5 shadow-xs"
+                >
+                  <Rocket className="h-3.5 w-3.5" />
+                  <span>Request Live Deployment</span>
                 </Button>
               )}
             </div>
@@ -566,6 +699,82 @@ ${draft.projectScope}
               <span>Modify Q&A Responses</span>
             </Button>
           </div>
+
+          {/* Phase 3: Commercial Gate (Pricing Exists vs Does Not Exist) */}
+          {activeDraft.status === "submitted" && !relevantInvoice && (
+            <div className="p-5 rounded-xl border border-amber-300 bg-amber-50/60 space-y-3">
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <h4 className="text-sm font-bold text-amber-950 flex items-center gap-2">
+                    <Clock className="h-4 w-4 text-amber-700" />
+                    <span>Commercial Phase: Pricing & Technical Estimation Gate</span>
+                  </h4>
+                  <p className="text-xs text-amber-800 mt-1">
+                    Your specifications are locked. Choose whether to activate standard build staging via 
+                    <strong> 1,000 Credits</strong>, or await formal custom technical estimation from the Tech Team.
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 pt-2">
+                <Button
+                  size="sm"
+                  onClick={handleActivateViaCredits}
+                  className="bg-dudos-primary hover:bg-dudos-primary-hover text-white text-xs font-semibold flex items-center gap-1.5 shadow-xs"
+                >
+                  <Coins className="h-3.5 w-3.5" />
+                  <span>Activate Build via 1,000 Credits</span>
+                </Button>
+
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={handleSimulateAdminQuotation}
+                  className="text-xs bg-white border-amber-300 text-amber-900 hover:bg-amber-100/80 flex items-center gap-1.5"
+                >
+                  <Zap className="h-3.5 w-3.5 text-amber-600" />
+                  <span>Dispatch Technical Quotation (Mock Tech Team)</span>
+                </Button>
+
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => setShowCreditModal(true)}
+                  className="text-xs text-amber-900"
+                >
+                  <span>Purchase Credits / View Packages →</span>
+                </Button>
+              </div>
+            </div>
+          )}
+
+          {/* Phase 3: Approved & Staged Banner */}
+          {activeDraft.status === "approved" && (
+            <div className="p-5 rounded-xl border border-emerald-300 bg-emerald-50/60 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+              <div className="flex items-center gap-3">
+                <span className="p-2.5 rounded-xl bg-emerald-600 text-white">
+                  <CheckCircle2 className="h-5 w-5" />
+                </span>
+                <div>
+                  <h4 className="text-sm font-bold text-emerald-950">
+                    Project Approved · Build Repository Staged
+                  </h4>
+                  <p className="text-xs text-emerald-800 mt-0.5">
+                    Commercial milestone paid and verified. Your project architecture is approved and ready for managed deployment.
+                  </p>
+                </div>
+              </div>
+
+              <Button
+                size="sm"
+                onClick={() => setShowDeploymentModal(true)}
+                className="bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-semibold flex items-center gap-1.5 shadow-xs"
+              >
+                <Server className="h-3.5 w-3.5" />
+                <span>Launch Managed Deployment Ticket</span>
+              </Button>
+            </div>
+          )}
         </div>
       ) : (
         <div className="bg-white rounded-2xl p-8 border border-dudos-border shadow-xs text-center space-y-4">
@@ -664,23 +873,122 @@ ${draft.projectScope}
             {relevantInvoice.status !== "paid" ? (
               <Button
                 size="sm"
-                onClick={() => handleAcceptQuotation(relevantInvoice)}
-                className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold flex items-center gap-1.5"
+                onClick={() => setShowPaymentModal(true)}
+                className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold flex items-center gap-1.5 shadow-xs"
               >
                 <Check className="h-3.5 w-3.5" />
-                <span>Accept Quotation & Activate Build</span>
+                <span>Review & Pay Quotation (৳{relevantInvoice.totalQuotationBDT.toLocaleString()})</span>
               </Button>
             ) : (
               <Badge className="bg-emerald-100 text-emerald-800 border-emerald-300 py-1 px-3">
                 <CheckCircle2 className="h-3.5 w-3.5 mr-1" />
-                <span>Development Milestone Active</span>
+                <span>Development Milestone Active & Paid</span>
               </Badge>
             )}
           </div>
         </div>
       )}
 
-      {/* 5. SRS Modal Dialog */}
+      {/* 5. Phase 3: Quotation Payment Modal Dialog */}
+      <Dialog open={showPaymentModal} onOpenChange={setShowPaymentModal}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-base font-bold flex items-center gap-2">
+              <CreditCard className="h-4 w-4 text-emerald-600" />
+              <span>Commercial Payment: Quotation {relevantInvoice?.id}</span>
+            </DialogTitle>
+            <DialogDescription className="text-xs">
+              Select payment method to pay the approved commercial milestone for {relevantInvoice?.projectTitle}.
+            </DialogDescription>
+          </DialogHeader>
+
+          {relevantInvoice && (
+            <div className="space-y-4 py-2 text-xs">
+              <div className="p-3 bg-emerald-50 rounded-xl border border-emerald-200 flex items-center justify-between">
+                <div>
+                  <span className="text-[11px] text-emerald-800 block">Total Payable:</span>
+                  <span className="text-lg font-bold text-emerald-900 font-mono">
+                    ৳{relevantInvoice.totalQuotationBDT.toLocaleString()}
+                  </span>
+                </div>
+                <Badge variant="outline" className="bg-white text-emerald-800 border-emerald-300">
+                  {relevantInvoice.totalHours} Estimated Hours
+                </Badge>
+              </div>
+
+              <div className="space-y-2">
+                <Label className="font-semibold text-dudos-text">Select Payment Gateway / Method:</Label>
+                <div className="grid grid-cols-2 gap-2">
+                  {[
+                    { id: "bkash", label: "bKash / Nagad MFS", desc: "Local Instant Gateway" },
+                    { id: "card", label: "Debit / Credit Card", desc: "Visa / Mastercard" },
+                    { id: "credits", label: "Wallet Credits", desc: "Deduct 1,000 credits" },
+                    { id: "bank", label: "Corporate Bank Wire", desc: "Invoice / PO Net-30" },
+                  ].map((m) => (
+                    <button
+                      key={m.id}
+                      type="button"
+                      onClick={() => setPaymentMethod(m.id as any)}
+                      className={`p-3 rounded-xl border text-left transition-all ${
+                        paymentMethod === m.id
+                          ? "border-emerald-500 bg-emerald-50/50 text-emerald-900 ring-2 ring-emerald-300/40"
+                          : "border-dudos-border bg-white text-dudos-text hover:bg-slate-50"
+                      }`}
+                    >
+                      <span className="font-bold block">{m.label}</span>
+                      <span className="text-[10px] text-dudos-text-secondary">{m.desc}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {paymentMethod === "bkash" && (
+                <div className="space-y-1.5 p-3 rounded-xl bg-pink-50/50 border border-pink-200">
+                  <Label className="text-[11px] font-semibold text-pink-950 flex items-center gap-1">
+                    <Phone className="h-3 w-3 text-pink-600" />
+                    <span>bKash / Nagad Wallet Number:</span>
+                  </Label>
+                  <Input
+                    value={mfsPhone}
+                    onChange={(e) => setMfsPhone(e.target.value)}
+                    placeholder="017XXXXXXXX"
+                    className="h-8 text-xs bg-white"
+                  />
+                  <span className="text-[10px] text-pink-800 block">
+                    Instant sandbox simulation: Confirms immediately without OTP.
+                  </span>
+                </div>
+              )}
+
+              <div className="flex justify-end gap-2 pt-3 border-t border-dudos-border">
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => setShowPaymentModal(false)}
+                  className="text-xs"
+                >
+                  Cancel
+                </Button>
+                <Button
+                  size="sm"
+                  disabled={isProcessingPayment}
+                  onClick={handleConfirmQuotationPayment}
+                  className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold flex items-center gap-1.5"
+                >
+                  <Check className="h-3.5 w-3.5" />
+                  <span>
+                    {isProcessingPayment
+                      ? "Verifying Payment…"
+                      : `Confirm & Pay ৳${relevantInvoice.totalQuotationBDT.toLocaleString()}`}
+                  </span>
+                </Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* 6. SRS Modal Dialog */}
       <Dialog open={showSrsModal} onOpenChange={setShowSrsModal}>
         <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
           <DialogHeader>
@@ -724,7 +1032,7 @@ ${draft.projectScope}
         </DialogContent>
       </Dialog>
 
-      {/* 6. AI Q&A Refinement Modal Dialog */}
+      {/* 7. AI Q&A Refinement Modal Dialog */}
       <Dialog open={showQaModal} onOpenChange={setShowQaModal}>
         <DialogContent className="max-w-lg">
           <DialogHeader>
@@ -813,6 +1121,21 @@ ${draft.projectScope}
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* 8. Credit Wallet Modal Integration */}
+      <CreditWalletModal
+        open={showCreditModal}
+        onOpenChange={setShowCreditModal}
+        lang={lang}
+      />
+
+      {/* 9. Managed Deployment Modal Integration */}
+      <ManagedDeploymentModal
+        project={activeDraft}
+        open={showDeploymentModal}
+        onOpenChange={setShowDeploymentModal}
+        lang={lang}
+      />
     </div>
   );
 }

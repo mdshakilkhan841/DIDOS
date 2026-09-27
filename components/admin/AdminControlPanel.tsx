@@ -729,8 +729,35 @@ export function AdminControlPanel({ lang = "en" }: { lang?: string }) {
               approvedAt: new Date().toISOString(),
               adminNotes: `Estimated for ${invoice.framework}. Margin: ${invoice.profitMarginPercent}%`,
             });
+
+            // Synchronize with dudos_quotation_invoices for Customer User Panel & ERP records
+            try {
+              const existing = JSON.parse(localStorage.getItem("dudos_quotation_invoices") || "[]");
+              const updated = [invoice, ...existing.filter((i: any) => i.id !== invoice.id)];
+              localStorage.setItem("dudos_quotation_invoices", JSON.stringify(updated));
+
+              // Update project status to 'quoted' in dudos_custom_projects
+              const projects = JSON.parse(localStorage.getItem("dudos_custom_projects") || "[]");
+              const updatedProjects = projects.map((p: any) =>
+                p.clientEmail === invoice.clientEmail || p.id === invoice.projectId || p.id === estimatingUser.id
+                  ? { ...p, status: "quoted" }
+                  : p
+              );
+              localStorage.setItem("dudos_custom_projects", JSON.stringify(updatedProjects));
+
+              // Update dudos_active_draft if it matches
+              const activeDraftStr = localStorage.getItem("dudos_active_draft");
+              if (activeDraftStr) {
+                const draft = JSON.parse(activeDraftStr);
+                if (draft.email === invoice.clientEmail || draft.id === invoice.projectId || draft.id === estimatingUser.id) {
+                  draft.status = "quoted";
+                  localStorage.setItem("dudos_active_draft", JSON.stringify(draft));
+                }
+              }
+            } catch {}
+
             setEstimatingUser(null);
-            showToast.success("Estimation quote dispatched to client!");
+            showToast.success("Formal technical quotation dispatched to client!");
           }}
           lang={lang}
         />

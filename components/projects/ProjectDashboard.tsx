@@ -350,6 +350,16 @@ export function ProjectDashboard({ lang = "en" }: { lang?: string }) {
       setProjects(updatedProj);
       try {
         localStorage.setItem("dudos_custom_projects", JSON.stringify(updatedProj));
+
+        // Also update dudos_active_draft if it matches
+        const activeDraftStr = localStorage.getItem("dudos_active_draft");
+        if (activeDraftStr) {
+          const draft = JSON.parse(activeDraftStr);
+          if (draft.id === inv.projectId) {
+            draft.status = "approved";
+            localStorage.setItem("dudos_active_draft", JSON.stringify(draft));
+          }
+        }
       } catch {}
     }
 
