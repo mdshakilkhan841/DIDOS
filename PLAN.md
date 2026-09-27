@@ -12,20 +12,20 @@
 |:---:|---|---|:---:|:---:|:---:|
 | **0** | **Environment, Tokens & Design System** | Tailwind 4 tokens, Sonner, UI primitives, documentation | 🟢 Complete | 6 / 6 | 100% |
 | **1** | **Multi-Stakeholder Auth & Onboarding** | Split-screen login, role registration, auth context | 🟢 Complete | 6 / 6 | 100% |
-| **2** | **Public Portal & Landing Showcase** | Bilingual header, hero, catalog, offerings, footer | ⚪ Pending | 0 / 6 | 0% |
+| **2** | **Public Portal & Landing Showcase** | Exact Home page (Hero, Goal panel, Strip, Solution grid, Talent, FAQ) | 🟡 In Progress | 4 / 6 | 66% |
 | **3** | **Operations Workbench Shell (`/app`)** | Topbar, sidebar (9 groups), workspace switcher, KPI stats | ⚪ Pending | 0 / 5 | 0% |
 | **4** | **Dynamic Records Engine (30+ Modules)** | Filterable tables, inspector drawer, dynamic forms, services | ⚪ Pending | 0 / 6 | 0% |
 | **5** | **In-Browser Website Builder (`/builder`)** | 5-step wizard, 480 matrix profiles, client ZIP packaging | ⚪ Pending | 0 / 6 | 0% |
 | **6** | **AI Planes: Prompt Studio & Sales Agent** | PS-001 - PS-016 DAG solver, bilingual sales discovery bot | ⚪ Pending | 0 / 5 | 0% |
 | **7** | **DevScope AI Integration & Final QA** | `devscope-ai-builder` bridge, milestone tracker, audit | ⚪ Pending | 0 / 4 | 0% |
-| **TOTAL**| **Entire DUDOS Migration & Build** | **Full System Architecture** | 🟡 **Active** | **12 / 44** | **27%** |
+| **TOTAL**| **Entire DUDOS Migration & Build** | **Full System Architecture** | 🟡 **Active** | **16 / 44** | **36%** |
 
 ---
 
 ## 🎯 Current Active Focus
 
-> **Current Milestone**: Awaiting User Direction to Begin **Phase 2 (Public Portal & Landing Showcase)** or adjust **Phase 1 (Auth Review)**.  
-> **Next Action**: Review the task lists below, confirm order of operations, and proceed step-by-step.
+> **Current Milestone**: Home Page has been copied 1:1 pixel-by-pixel with clean modular components. Ready for your visual review on `http://localhost:3000` (or `http://localhost:3000/en`, `http://localhost:3000/bn`).  
+> **Next Action**: Review the Home Page in your browser and tell me which page to copy next.
 
 ---
 
@@ -100,31 +100,31 @@
 ---
 
 ### Phase 2: Public Portal & Landing Showcase (Bilingual `en` / `bn`)
-*Status: ⚪ Pending User Review & Approval to Begin*
+*Status: 🟡 In Progress (Home Page 1:1 Complete)*
 
-- [ ] **P2-01: Public Header & Navigation Component**  
-  - Brand mark, solutions dropdown mega-menu, language toggle (`en` / `bn`), and authentication action buttons.  
-  - Target: `components/public/Header.tsx` (reference: `DUDOS Original/components/dudos-public.tsx:L1-L150`)
+- [x] **P2-01: Public Header & Navigation Component**  
+  - Brand mark `D`, `DUDOS.`, main navigation, language toggle (`EN`/`বাংলা`), `Workspace` link, `Website builder` button, and mobile sheet.  
+  - Target: [`components/home/SiteHeader.tsx`](file:///Users/shakil/Desktop/DaffodilGroup/DUDOS/dudos/components/home/SiteHeader.tsx)
 
-- [ ] **P2-02: Hero Showcase Section**  
-  - Deep Navy hero panel with ambient lighting, high-contrast headline, primary CTAs, and key metric chips.  
-  - Target: `components/public/HeroSection.tsx`
+- [x] **P2-02: Home Hero & Interactive Goal Panel**  
+  - Exact `home-hero` layout: Eyebrow `"YOUR NEXT DIGITAL CHAPTER"`, dynamic headline, start assessment CTA button, and interactive `goal-panel` with 4 goal buttons (`website`, `commerce`, `operations`, `ai`), business sector picker, and `"Plan my solution"` button.  
+  - Target: [`components/home/HomeHero.tsx`](file:///Users/shakil/Desktop/DaffodilGroup/DUDOS/dudos/components/home/HomeHero.tsx)
 
-- [ ] **P2-03: Solutions & Ecosystem Catalog**  
-  - Service grid showcasing cloud hosting, data center, VPS, software engineering, and ERP solutions.  
-  - Target: `components/public/SolutionsCatalog.tsx`
+- [x] **P2-03: Connection Strip & Solution Grid**  
+  - `"ONE CONNECTED EXPERIENCE"` (01 Discover → 02 Build → 03 Operate → 04 Improve) and `"BUILT AROUND YOUR BUSINESS"` solution cards.  
+  - Target: [`components/home/ConnectionStrip.tsx`](file:///Users/shakil/Desktop/DaffodilGroup/DUDOS/dudos/components/home/ConnectionStrip.tsx) & [`components/home/SolutionGrid.tsx`](file:///Users/shakil/Desktop/DaffodilGroup/DUDOS/dudos/components/home/SolutionGrid.tsx)
 
-- [ ] **P2-04: 6-Stakeholder Interactive Preview Cards**  
-  - Interactive portal explorer allowing visitors to preview each stakeholder's personalized capabilities.  
-  - Target: `components/public/StakeholderShowcase.tsx`
+- [x] **P2-04: Talent Band, FAQ Accordion, Site Footer & Floating Guide**  
+  - `"FROM IDEAS TO IMPACT"` talent tracks, collapsible FAQ accordion, 4-column site footer, and floating service/sales guide popup.  
+  - Target: [`components/home/TalentBand.tsx`](file:///Users/shakil/Desktop/DaffodilGroup/DUDOS/dudos/components/home/TalentBand.tsx), [`components/home/FaqSection.tsx`](file:///Users/shakil/Desktop/DaffodilGroup/DUDOS/dudos/components/home/FaqSection.tsx), [`components/home/SiteFooter.tsx`](file:///Users/shakil/Desktop/DaffodilGroup/DUDOS/dudos/components/home/SiteFooter.tsx), [`components/home/FloatingGuide.tsx`](file:///Users/shakil/Desktop/DaffodilGroup/DUDOS/dudos/components/home/FloatingGuide.tsx)
 
-- [ ] **P2-05: Public Content Data Store**  
-  - Extract and structure clean JSON content for bilingual text, service descriptions, and marketing copy.  
-  - Target: `lib/content/public-content.json` & `lib/services/cms-service.ts`
+- [ ] **P2-05: Inner Catalog & Detail Pages**  
+  - Inner pages: `/solutions`, `/products`, `/services`, `/industries`, `/packages`, `/integrations`, `/marketplace`, `/partners`, `/support`.  
+  - Target: `app/[lang]/[[...slug]]/page.tsx`
 
-- [ ] **P2-06: Bilingual Route Shell (`/[lang]/...`)**  
-  - Implement localized routing supporting `/en` and `/bn` paths with proper SEO metadata generation.  
-  - Target: `app/[lang]/page.tsx` & `app/[lang]/layout.tsx`
+- [ ] **P2-06: Quick Intake & Assessment Wizard**  
+  - Assessment flow and intake forms for partners, talent, and support tickets.  
+  - Target: `components/public/QuickIntake.tsx` & `AssessmentWizard.tsx`
 
 ---
 
