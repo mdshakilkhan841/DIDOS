@@ -20,11 +20,13 @@ export function ManagedDeploymentModal({
   project,
   open,
   onOpenChange,
+  onSubmitted,
   lang = "en",
 }: {
   project?: any;
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  onSubmitted?: (ticket: any) => void;
   lang?: string;
 }) {
   const { user, deductCredits } = useAuth();
@@ -62,6 +64,30 @@ export function ManagedDeploymentModal({
     try {
       const existing = JSON.parse(localStorage.getItem("dudos_deployment_tickets") || "[]");
       localStorage.setItem("dudos_deployment_tickets", JSON.stringify([ticket, ...existing]));
+
+      // Synchronize with dudos_active_draft
+      const activeDraftStr = localStorage.getItem("dudos_active_draft");
+      if (activeDraftStr) {
+        const activeDraft = JSON.parse(activeDraftStr);
+        activeDraft.status = "deploying";
+        activeDraft.deploymentTicket = ticket;
+        activeDraft.domainName = domainName;
+        activeDraft.updatedAt = new Date().toISOString();
+        localStorage.setItem("dudos_active_draft", JSON.stringify(activeDraft));
+      }
+
+      // Synchronize with dudos_custom_projects
+      const customProjectsStr = localStorage.getItem("dudos_custom_projects");
+      if (customProjectsStr) {
+        const customProjects = JSON.parse(customProjectsStr);
+        const targetProjId = project?.id || (activeDraftStr ? JSON.parse(activeDraftStr).id : "proj_self");
+        const updated = customProjects.map((p: any) =>
+          p.id === targetProjId
+            ? { ...p, status: "deploying", deploymentTicketId: ticket.id, domainName, updatedAt: new Date().toISOString() }
+            : p
+        );
+        localStorage.setItem("dudos_custom_projects", JSON.stringify(updated));
+      }
     } catch {}
 
     setTimeout(() => {
@@ -69,6 +95,7 @@ export function ManagedDeploymentModal({
       showToast.success("Deployment Assistance Ticket Created!", {
         description: "Our Tech Team has been notified for domain mapping and production setup.",
       });
+      onSubmitted?.(ticket);
       onOpenChange(false);
     }, 600);
   };

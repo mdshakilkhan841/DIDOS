@@ -104,14 +104,28 @@ export function AdminEstimationModal({
     // Save to localStorage invoices
     try {
       const existingInvoices = JSON.parse(localStorage.getItem("dudos_invoices") || "[]");
-      localStorage.setItem("dudos_invoices", JSON.stringify([invoice, ...existingInvoices]));
+      const nextInvoices = [invoice, ...existingInvoices];
+      localStorage.setItem("dudos_invoices", JSON.stringify(nextInvoices));
+      localStorage.setItem("dudos_quotation_invoices", JSON.stringify(nextInvoices));
 
-      // Update project status to quoted
+      // Update project status to quoted in dudos_custom_projects
       const projects = JSON.parse(localStorage.getItem("dudos_custom_projects") || "[]");
       const updated = projects.map((p: any) =>
         p.id === project?.id ? { ...p, status: "quoted", quotationBDT: grandTotalBDT } : p
       );
       localStorage.setItem("dudos_custom_projects", JSON.stringify(updated));
+
+      // Update dudos_active_draft if it matches
+      const activeDraftStr = localStorage.getItem("dudos_active_draft");
+      if (activeDraftStr) {
+        const activeDraft = JSON.parse(activeDraftStr);
+        if (activeDraft.id === project?.id || activeDraft.email === project?.clientEmail) {
+          activeDraft.status = "quoted";
+          activeDraft.quotationInvoice = invoice;
+          activeDraft.updatedAt = new Date().toISOString();
+          localStorage.setItem("dudos_active_draft", JSON.stringify(activeDraft));
+        }
+      }
     } catch {}
 
     setTimeout(() => {

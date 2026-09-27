@@ -30,6 +30,8 @@ import {
   Server,
   Zap,
   Phone,
+  Globe,
+  ShieldCheck,
 } from "lucide-react";
 import { useAuth } from "@/context/auth-context";
 import { Button } from "@/components/ui/button";
@@ -72,7 +74,13 @@ export interface ActiveProjectDraft {
     userScale?: string;
     databaseChoice?: string;
   };
-  status: "draft" | "submitted" | "in_estimation" | "quoted" | "approved" | "in_development" | "completed";
+  status: "draft" | "submitted" | "in_estimation" | "quoted" | "approved" | "in_development" | "deploying" | "completed" | "live";
+  domainName?: string;
+  liveUrl?: string;
+  vpsIp?: string;
+  deployedAt?: string;
+  deploymentTicket?: any;
+  quotationInvoice?: any;
   savedAt: string;
   updatedAt: string;
 }
@@ -90,6 +98,7 @@ export function CustomerUserPanel({
   const [activeDraft, setActiveDraft] = useState<ActiveProjectDraft | null>(null);
   const [invoices, setInvoices] = useState<any[]>([]);
   const [allProjects, setAllProjects] = useState<any[]>([]);
+  const [deploymentTickets, setDeploymentTickets] = useState<any[]>([]);
 
   // Modals state
   const [showQaModal, setShowQaModal] = useState(false);
@@ -140,8 +149,8 @@ export function CustomerUserPanel({
         }
       }
 
-      // 2. Load quotation invoices
-      const invStr = localStorage.getItem(INVOICES_KEY);
+      // 2. Load quotation invoices (supports both dudos_quotation_invoices and dudos_invoices)
+      const invStr = localStorage.getItem(INVOICES_KEY) || localStorage.getItem("dudos_invoices");
       if (invStr) {
         const list = JSON.parse(invStr);
         setInvoices(list);
@@ -152,7 +161,65 @@ export function CustomerUserPanel({
       if (projStr) {
         setAllProjects(JSON.parse(projStr));
       }
+
+      // 4. Load deployment tickets
+      const depStr = localStorage.getItem("dudos_deployment_tickets");
+      if (depStr) {
+        setDeploymentTickets(JSON.parse(depStr));
+      }
     } catch {}
+  };
+
+  const handleSimulateDeployLive = () => {
+    if (!activeDraft) return;
+    const domain = activeDraft.domainName || "portal.daffodil.family";
+    const vpsIp = activeDraft.vpsIp || "103.145.118.42";
+    const liveUrl = `https://${domain}`;
+    const now = new Date().toISOString();
+
+    const completedDraft: ActiveProjectDraft = {
+      ...activeDraft,
+      status: "completed",
+      domainName: domain,
+      liveUrl,
+      vpsIp,
+      deployedAt: now,
+      updatedAt: now,
+    };
+    setActiveDraft(completedDraft);
+
+    try {
+      localStorage.setItem(ACTIVE_DRAFT_KEY, JSON.stringify(completedDraft));
+
+      // Update deployment tickets
+      const depStr = localStorage.getItem("dudos_deployment_tickets");
+      if (depStr) {
+        const tickets = JSON.parse(depStr);
+        const updatedTickets = tickets.map((t: any) =>
+          t.projectId === activeDraft.id || t.domainName === domain
+            ? { ...t, status: "live", dnsStatus: "verified", liveUrl, assignedIp: vpsIp, deployedAt: now }
+            : t
+        );
+        localStorage.setItem("dudos_deployment_tickets", JSON.stringify(updatedTickets));
+        setDeploymentTickets(updatedTickets);
+      }
+
+      // Update custom projects
+      const projStr = localStorage.getItem(CUSTOM_PROJECTS_KEY);
+      if (projStr) {
+        const projs = JSON.parse(projStr);
+        const updated = projs.map((p: any) =>
+          p.id === activeDraft.id
+            ? { ...p, status: "completed", liveUrl, vpsIp, deployedAt: now, updatedAt: now }
+            : p
+        );
+        localStorage.setItem(CUSTOM_PROJECTS_KEY, JSON.stringify(updated));
+      }
+    } catch {}
+
+    showToast.success("Production Deployment Verified & Live! 🚀", {
+      description: `${domain} is now live with 256-bit SSL on Daffodil Cloud Linux VPS (${vpsIp}).`,
+    });
   };
 
   const handleUpdateQaAnswers = () => {
@@ -465,7 +532,7 @@ ${draft.projectScope}
         </div>
       </div>
 
-      {/* 2. Visual 7-Step Lifecycle Pipeline */}
+      {/* 2. Visual 8-Step Lifecycle Pipeline */}
       <div className="bg-white rounded-2xl p-5 border border-dudos-border shadow-xs">
         <div className="flex items-center justify-between mb-4">
           <span className="text-xs font-bold text-dudos-text uppercase tracking-wider flex items-center gap-2">
@@ -473,7 +540,11 @@ ${draft.projectScope}
             <span>Customer Project Lifecycle Pipeline</span>
           </span>
           <span className="text-[11px] text-teal-700 font-mono bg-teal-50 px-2 py-0.5 rounded border border-teal-200">
-            {activeDraft?.status === "approved"
+            {activeDraft?.status === "completed" || activeDraft?.status === "live"
+              ? "Phase 4: Live in Production 🚀"
+              : activeDraft?.status === "deploying"
+              ? "Phase 4: Managed Deployment In Progress"
+              : activeDraft?.status === "approved"
               ? "Phase 3: Approved & Build Staged"
               : activeDraft?.status === "quoted"
               ? "Phase 2: Formal Quotation Dispatched"
@@ -483,10 +554,10 @@ ${draft.projectScope}
           </span>
         </div>
 
-        <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-2">
+        <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-2">
           {[
             { step: "1", title: "Onboarding Form", desc: "Data Collection", done: true },
-            { step: "2", title: "LocalStorage Save", desc: "Auto-Saved", done: true },
+            { step: "2", title: "LocalStorage", desc: "Auto-Saved", done: true },
             { step: "3", title: "Registration", desc: "Client Account", done: true },
             { step: "4", title: "Draft Fed", desc: "Workspace Draft", done: true },
             {
@@ -507,8 +578,20 @@ ${draft.projectScope}
               step: "7",
               title: "Billing & Pricing",
               desc: "Quotation / Credits",
-              done: activeDraft?.status === "approved",
+              done: activeDraft?.status === "approved" || activeDraft?.status === "deploying" || activeDraft?.status === "completed" || activeDraft?.status === "live",
               active: activeDraft?.status === "submitted" || activeDraft?.status === "quoted",
+            },
+            {
+              step: "8",
+              title: "Build & Deploy",
+              desc:
+                activeDraft?.status === "completed" || activeDraft?.status === "live"
+                  ? "Live in Production"
+                  : activeDraft?.status === "deploying"
+                  ? "VPS Provisioning"
+                  : "Staging Ready",
+              done: activeDraft?.status === "completed" || activeDraft?.status === "live",
+              active: activeDraft?.status === "approved" || activeDraft?.status === "deploying",
             },
           ].map((item, idx) => (
             <div
@@ -547,7 +630,11 @@ ${draft.projectScope}
                 <h2 className="text-base font-bold text-dudos-text">{activeDraft.title}</h2>
                 <Badge
                   className={
-                    activeDraft.status === "approved"
+                    activeDraft.status === "completed" || activeDraft.status === "live"
+                      ? "bg-emerald-100 text-emerald-800 border-emerald-300"
+                      : activeDraft.status === "deploying"
+                      ? "bg-teal-100 text-teal-800 border-teal-300"
+                      : activeDraft.status === "approved"
                       ? "bg-emerald-100 text-emerald-800 border-emerald-300"
                       : activeDraft.status === "quoted"
                       ? "bg-purple-100 text-purple-800 border-purple-300"
@@ -556,7 +643,11 @@ ${draft.projectScope}
                       : "bg-amber-100 text-amber-800 border-amber-300"
                   }
                 >
-                  {activeDraft.status === "approved"
+                  {activeDraft.status === "completed" || activeDraft.status === "live"
+                    ? "Live in Production 🚀"
+                    : activeDraft.status === "deploying"
+                    ? "Deploying to VPS"
+                    : activeDraft.status === "approved"
                     ? "Approved & Staged"
                     : activeDraft.status === "quoted"
                     ? "Quotation Dispatched"
@@ -773,6 +864,157 @@ ${draft.projectScope}
                 <Server className="h-3.5 w-3.5" />
                 <span>Launch Managed Deployment Ticket</span>
               </Button>
+            </div>
+          )}
+
+          {/* Phase 4: Deploying to VPS Banner */}
+          {activeDraft.status === "deploying" && (
+            <div className="p-5 rounded-2xl border border-teal-300 bg-teal-50/70 space-y-4">
+              <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+                <div className="flex items-center gap-3">
+                  <span className="p-2.5 rounded-xl bg-teal-600 text-white">
+                    <Server className="h-5 w-5 animate-pulse" />
+                  </span>
+                  <div>
+                    <h4 className="text-sm font-bold text-teal-950">
+                      Managed Deployment in Progress · Tech Team Provisioning
+                    </h4>
+                    <p className="text-xs text-teal-800 mt-0.5">
+                      Target Domain: <strong>{activeDraft.domainName || "Custom Domain"}</strong> · Infrastructure: <strong>Daffodil Cloud Linux VPS</strong>
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <Button
+                    size="sm"
+                    onClick={handleSimulateDeployLive}
+                    className="bg-teal-700 hover:bg-teal-800 text-white text-xs font-semibold flex items-center gap-1.5 shadow-xs"
+                  >
+                    <CheckCircle2 className="h-3.5 w-3.5" />
+                    <span>Simulate Tech Team Deployment (Mark Live)</span>
+                  </Button>
+                </div>
+              </div>
+
+              <div className="p-3.5 bg-white/90 rounded-xl border border-teal-200 text-xs text-teal-900 grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div>
+                  <span className="text-[10px] text-teal-700 uppercase font-semibold block mb-0.5">DNS CNAME / A Target</span>
+                  <span className="font-mono font-bold text-slate-800">{activeDraft.domainName || "domain.com"} ➔ 103.145.118.42</span>
+                </div>
+                <div>
+                  <span className="text-[10px] text-teal-700 uppercase font-semibold block mb-0.5">DNS Verification Status</span>
+                  <span className="font-semibold text-amber-700 flex items-center gap-1">
+                    <Clock className="h-3 w-3" />
+                    <span>Awaiting Tech Verification / Propagation</span>
+                  </span>
+                </div>
+                <div>
+                  <span className="text-[10px] text-teal-700 uppercase font-semibold block mb-0.5">Security / SSL</span>
+                  <span className="font-semibold text-teal-800 flex items-center gap-1">
+                    <ShieldCheck className="h-3 w-3 text-teal-600" />
+                    <span>Auto-Provisioning 256-bit TLS</span>
+                  </span>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Phase 4: Live in Production Banner */}
+          {(activeDraft.status === "completed" || activeDraft.status === "live") && (
+            <div className="p-6 rounded-2xl border border-emerald-300 bg-emerald-50/80 space-y-4">
+              <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+                <div className="flex items-center gap-3">
+                  <span className="p-3 rounded-2xl bg-emerald-600 text-white shadow-xs">
+                    <Globe className="h-6 w-6" />
+                  </span>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <h4 className="text-base font-extrabold text-emerald-950">
+                        Project Live in Production 🚀
+                      </h4>
+                      <Badge className="bg-emerald-100 text-emerald-800 border-emerald-300 text-xs">
+                        Production Ready
+                      </Badge>
+                    </div>
+                    <p className="text-xs text-emerald-800 mt-1">
+                      Your website application is successfully deployed and running on high-availability Daffodil Cloud Linux infrastructure.
+                    </p>
+                  </div>
+                </div>
+
+                <a
+                  href={activeDraft.liveUrl || (activeDraft.domainName ? `https://${activeDraft.domainName}` : "#")}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-bold shadow-xs transition-colors"
+                >
+                  <span>Visit Production Site</span>
+                  <ExternalLink className="h-3.5 w-3.5" />
+                </a>
+              </div>
+
+              {/* Infrastructure & SSL Specs */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs pt-1">
+                <div className="p-3 bg-white rounded-xl border border-emerald-200 shadow-2xs">
+                  <span className="text-[10px] uppercase font-semibold text-slate-500 block mb-0.5">
+                    Live Domain
+                  </span>
+                  <span className="font-bold text-slate-900 font-mono truncate block">
+                    {activeDraft.domainName || "portal.daffodil.family"}
+                  </span>
+                  <span className="text-[10px] text-emerald-700 mt-0.5 block">HTTPS / TLS 1.3</span>
+                </div>
+
+                <div className="p-3 bg-white rounded-xl border border-emerald-200 shadow-2xs">
+                  <span className="text-[10px] uppercase font-semibold text-slate-500 block mb-0.5">
+                    Server Target & IP
+                  </span>
+                  <span className="font-bold text-slate-900 font-mono block">
+                    {activeDraft.vpsIp || "103.145.118.42"}
+                  </span>
+                  <span className="text-[10px] text-slate-500 mt-0.5 block">Daffodil Cloud Linux VPS</span>
+                </div>
+
+                <div className="p-3 bg-white rounded-xl border border-emerald-200 shadow-2xs">
+                  <span className="text-[10px] uppercase font-semibold text-slate-500 block mb-0.5">
+                    SSL Certificate
+                  </span>
+                  <span className="font-bold text-emerald-800 flex items-center gap-1">
+                    <ShieldCheck className="h-3.5 w-3.5 text-emerald-600" />
+                    <span>Active (256-bit)</span>
+                  </span>
+                  <span className="text-[10px] text-slate-500 mt-0.5 block">Auto-Renewed TLS</span>
+                </div>
+
+                <div className="p-3 bg-white rounded-xl border border-emerald-200 shadow-2xs">
+                  <span className="text-[10px] uppercase font-semibold text-slate-500 block mb-0.5">
+                    System Health
+                  </span>
+                  <span className="font-bold text-emerald-800 block">
+                    200 OK · 99.98%
+                  </span>
+                  <span className="text-[10px] text-emerald-700 mt-0.5 block">Response: 38ms</span>
+                </div>
+              </div>
+
+              {/* Handover & SRS quick actions */}
+              <div className="flex flex-wrap items-center justify-between gap-3 pt-2 text-xs border-t border-emerald-200/80">
+                <span className="text-[11px] text-emerald-900 font-medium">
+                  Deployed on: {activeDraft.deployedAt ? new Date(activeDraft.deployedAt).toLocaleString() : new Date().toLocaleString()}
+                </span>
+                <div className="flex items-center gap-2">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => setShowSrsModal(true)}
+                    className="text-xs bg-white text-emerald-950 border-emerald-300 hover:bg-emerald-100/50"
+                  >
+                    <FileText className="h-3 w-3 mr-1" />
+                    View Handover Documentation & SRS
+                  </Button>
+                </div>
+              </div>
             </div>
           )}
         </div>
@@ -1134,6 +1376,7 @@ ${draft.projectScope}
         project={activeDraft}
         open={showDeploymentModal}
         onOpenChange={setShowDeploymentModal}
+        onSubmitted={() => loadWorkspaceData()}
         lang={lang}
       />
     </div>
