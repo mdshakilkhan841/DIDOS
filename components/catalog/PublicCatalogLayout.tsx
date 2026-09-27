@@ -12,6 +12,8 @@ import { CatalogGrid } from "./CatalogGrid";
 import { PackageGrid } from "./PackageGrid";
 import { DetailView } from "./DetailView";
 import { EditorialView } from "./EditorialView";
+import { AssessmentWizard, QuickIntake } from "@/components/dudos-records";
+import { FAQ } from "@/components/dudos-ui";
 import { t, human } from "@/lib/i18n";
 
 export function PublicCatalogLayout({
@@ -114,7 +116,15 @@ export function PublicCatalogLayout({
         />
 
         <section className="section-wrap page-body">
-          {details ? (
+          {root === "transform" ? (
+            <AssessmentWizard lang={lang} />
+          ) : root === "support" && path === "support/knowledge-base" ? (
+            <FAQ lang={lang} />
+          ) : root === "partners" && path.endsWith("/apply") ? (
+            <QuickIntake kind="partner" lang={lang} />
+          ) : ["talent", "competitions", "research"].includes(root) && path.endsWith("/apply") ? (
+            <QuickIntake kind="application" lang={lang} />
+          ) : details ? (
             <DetailView details={details} lang={lang} />
           ) : root === "packages" ? (
             <PackageGrid

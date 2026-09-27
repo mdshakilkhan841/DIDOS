@@ -165,3 +165,26 @@ export function Empty({
     </div>
   );
 }
+
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
+import { useContent } from "./dudos-content-context";
+
+export function FAQ({ lang }: { lang: string }) {
+  const content = useContent();
+  const faqList = content?.faq || [];
+  return (
+    <Accordion type="single" collapsible className="faq">
+      {faqList.map((f: any, i: number) => (
+        <AccordionItem key={i} value={String(i)}>
+          <AccordionTrigger>{t(f.question, lang)}</AccordionTrigger>
+          <AccordionContent>{t(f.answer, lang)}</AccordionContent>
+        </AccordionItem>
+      ))}
+    </Accordion>
+  );
+}
