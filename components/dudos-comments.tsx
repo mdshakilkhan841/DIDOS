@@ -1,0 +1,9 @@
+'use client';
+import {useState} from 'react';
+import {MessageSquare} from 'lucide-react';
+import {Button} from '@/components/ui/button';
+import {Textarea} from '@/components/ui/textarea';
+import {Dialog,DialogContent,DialogHeader,DialogTitle,DialogDescription} from '@/components/ui/dialog';
+import {api} from '@/lib/dudos/client';
+import {Notice,Empty} from './dudos-ui';
+export function RecordComments({record,workspace}:{record:any;workspace:string}){const [open,setOpen]=useState(false),[rows,setRows]=useState<any[]>([]),[text,setText]=useState(''),[error,setError]=useState(''),[busy,setBusy]=useState(false);async function load(){try{const d=await api('/api/comments?workspace='+workspace+'&record_id='+record.id);setRows(d.comments);setError('')}catch(e){setError((e as Error).message)}}async function send(){setBusy(true);try{await api('/api/comments','POST',{workspace,record_id:record.id,body:text});setText('');await load()}catch(e){setError((e as Error).message)}finally{setBusy(false)}}return <><Button size="sm" variant="ghost" onClick={()=>{setOpen(true);void load()}}><MessageSquare size={15}/>Notes</Button><Dialog open={open} onOpenChange={setOpen}><DialogContent className="record-dialog"><DialogHeader><DialogTitle>{record.title}</DialogTitle><DialogDescription>Internal workspace notes. These are separate from customer request replies.</DialogDescription></DialogHeader>{error&&<Notice tone="error">{error}</Notice>}<Textarea aria-label="Add workspace note" rows={3} value={text} maxLength={10000} onChange={e=>setText(e.target.value)}/><Button disabled={busy||!text.trim()} onClick={()=>void send()}>Add note</Button><div className="message-list">{rows.length?rows.map(r=><article className="message" key={r.id}><span>{r.actor_id} · {new Date(r.created_at).toLocaleString()}</span><p>{r.body}</p></article>):<Empty title="No notes yet"/>}</div></DialogContent></Dialog></>}

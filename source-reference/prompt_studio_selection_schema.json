@@ -1,0 +1,747 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:dudos:prompt-studio:selection:1.0.0",
+  "title": "DUDOS Prompt Studio selection request — structure only, not authorization",
+  "description": "A proposed JSON Schema for validating client choices. Server_context is deliberately absent and must be resolved independently. Semantic rules are in the versioned catalogue.",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "selection_id": {
+      "type": "string",
+      "pattern": "^[A-Za-z][A-Za-z0-9_.:/-]{0,159}$"
+    },
+    "selection_version": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "intent": {
+      "type": "string",
+      "enum": [
+        "document_to_solution",
+        "modernize_existing_site",
+        "extend_existing_system",
+        "launch_commerce",
+        "integrate_operations",
+        "launch_talent_research_program",
+        "assess_opportunity",
+        "maintain_solution"
+      ]
+    },
+    "sector": {
+      "type": "string",
+      "enum": [
+        "association_chamber",
+        "education",
+        "retail_commerce",
+        "professional_services",
+        "isp_infrastructure",
+        "enterprise_group",
+        "public_interest",
+        "research_innovation",
+        "other_review_required"
+      ]
+    },
+    "audiences": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": [
+          "public",
+          "customer",
+          "member",
+          "student",
+          "alumni",
+          "faculty",
+          "researcher",
+          "merchant",
+          "staff",
+          "partner",
+          "sponsor",
+          "reviewer",
+          "administrator"
+        ]
+      },
+      "minItems": 1,
+      "uniqueItems": true
+    },
+    "requested_mode": {
+      "type": "string",
+      "enum": [
+        "DRAFT",
+        "PREVIEW",
+        "STAGING_BUILD",
+        "RELEASE_REVIEW",
+        "APPROVED_PRODUCTION"
+      ]
+    },
+    "source_manifest": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "source_id": {
+            "type": "string",
+            "pattern": "^[A-Za-z][A-Za-z0-9_.:/-]{0,159}$"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "document",
+              "spreadsheet",
+              "image",
+              "audio",
+              "video",
+              "website",
+              "repository",
+              "api_contract",
+              "decision",
+              "other"
+            ]
+          },
+          "locator": {
+            "type": "string",
+            "minLength": 1
+          },
+          "version": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "sha256": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "pattern": "^[a-f0-9]{64}$"
+          },
+          "classification": {
+            "type": "string",
+            "enum": [
+              "public",
+              "internal",
+              "confidential",
+              "restricted",
+              "unknown"
+            ]
+          },
+          "rights_state": {
+            "type": "string",
+            "enum": [
+              "verified",
+              "pending",
+              "not_permitted"
+            ]
+          },
+          "allowed_purposes": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "analysis",
+                "draft",
+                "preview",
+                "build",
+                "publish"
+              ]
+            },
+            "minItems": 1
+          },
+          "approval_state": {
+            "type": "string",
+            "enum": [
+              "approved",
+              "reported",
+              "proposed",
+              "unknown",
+              "superseded"
+            ]
+          },
+          "owner_ref": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "content_language": {
+            "type": "string",
+            "minLength": 1
+          },
+          "extraction_status": {
+            "type": "string",
+            "enum": [
+              "not_read",
+              "readable_text",
+              "ocr_unconfirmed",
+              "structured_extraction",
+              "failed"
+            ]
+          },
+          "source_of_record_ref": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "source_id",
+          "kind",
+          "locator",
+          "version",
+          "sha256",
+          "classification",
+          "rights_state",
+          "allowed_purposes",
+          "approval_state",
+          "owner_ref",
+          "content_language",
+          "extraction_status",
+          "source_of_record_ref"
+        ]
+      },
+      "minItems": 1
+    },
+    "modules": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": [
+          "website",
+          "cms",
+          "membership",
+          "events",
+          "publications",
+          "commerce",
+          "billing",
+          "crm",
+          "service_desk",
+          "field_operations",
+          "isp_hosting",
+          "analytics",
+          "ai_assistant",
+          "api_mcp",
+          "partner_marketplace",
+          "talent_projects",
+          "competitions",
+          "research",
+          "learning",
+          "technology_watch"
+        ]
+      },
+      "minItems": 1,
+      "uniqueItems": true
+    },
+    "recipe_ids": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": [
+          "PS-001",
+          "PS-002",
+          "PS-003",
+          "PS-004",
+          "PS-005",
+          "PS-006",
+          "PS-007",
+          "PS-008",
+          "PS-009",
+          "PS-010",
+          "PS-011",
+          "PS-012",
+          "PS-013",
+          "PS-014",
+          "PS-015",
+          "PS-016"
+        ]
+      },
+      "minItems": 1,
+      "uniqueItems": true
+    },
+    "delivery_approach": {
+      "type": "string",
+      "enum": [
+        "assess_options",
+        "static",
+        "dynamic",
+        "hybrid",
+        "preserve_existing"
+      ]
+    },
+    "content_goals": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": [
+          "inform",
+          "convert_lead",
+          "sell",
+          "serve_member",
+          "operate",
+          "recruit_talent",
+          "publish_research",
+          "teach",
+          "support",
+          "measure"
+        ]
+      },
+      "minItems": 1,
+      "uniqueItems": true
+    },
+    "locales": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": [
+          "en",
+          "bn",
+          "ar",
+          "hi",
+          "fr",
+          "es",
+          "de",
+          "zh-Hans",
+          "ja",
+          "other_review_required"
+        ]
+      },
+      "minItems": 1,
+      "uniqueItems": true
+    },
+    "default_locale": {
+      "type": "string",
+      "enum": [
+        "en",
+        "bn",
+        "ar",
+        "hi",
+        "fr",
+        "es",
+        "de",
+        "zh-Hans",
+        "ja",
+        "other_review_required"
+      ]
+    },
+    "markets": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "country_code": {
+            "type": "string",
+            "pattern": "^[A-Z]{2}$"
+          },
+          "currency_code": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "pattern": "^[A-Z]{3}$"
+          },
+          "timezone": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "residency_requirement_ref": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "market_owner_ref": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "country_code",
+          "currency_code",
+          "timezone",
+          "residency_requirement_ref",
+          "market_owner_ref"
+        ]
+      },
+      "minItems": 1
+    },
+    "channels": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": [
+          "web",
+          "email",
+          "whatsapp",
+          "facebook",
+          "instagram",
+          "linkedin",
+          "youtube",
+          "search",
+          "sms",
+          "other_review_required"
+        ]
+      },
+      "minItems": 0,
+      "uniqueItems": true
+    },
+    "integration_refs": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      },
+      "minItems": 0,
+      "uniqueItems": true
+    },
+    "existing_system": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "site_url": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "uri"
+        },
+        "repository_ref": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "system_refs": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "minItems": 0,
+          "uniqueItems": true
+        },
+        "inspection_state": {
+          "type": "string",
+          "enum": [
+            "not_inspected",
+            "historical_source_only",
+            "current_read_only",
+            "current_authorized_runtime"
+          ]
+        },
+        "legacy_security_state": {
+          "type": "string",
+          "enum": [
+            "unknown",
+            "reported_compromised",
+            "quarantined",
+            "verified_clean"
+          ]
+        },
+        "authorization_ref": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "site_url",
+        "repository_ref",
+        "system_refs",
+        "inspection_state",
+        "legacy_security_state",
+        "authorization_ref"
+      ]
+    },
+    "brand_asset_refs": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      },
+      "minItems": 0,
+      "uniqueItems": true
+    },
+    "reporting": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "metric_ids": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "minItems": 0,
+          "uniqueItems": true
+        },
+        "cadences": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "on_event",
+              "daily",
+              "weekly",
+              "monthly",
+              "on_demand"
+            ]
+          },
+          "minItems": 0
+        },
+        "recipient_group_refs": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "minItems": 0,
+          "uniqueItems": true
+        },
+        "delivery_channels": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "web",
+              "email",
+              "whatsapp",
+              "facebook",
+              "instagram",
+              "linkedin",
+              "youtube",
+              "search",
+              "sms",
+              "other_review_required"
+            ]
+          },
+          "minItems": 0
+        }
+      },
+      "required": [
+        "metric_ids",
+        "cadences",
+        "recipient_group_refs",
+        "delivery_channels"
+      ]
+    },
+    "service_expectation_refs": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      },
+      "minItems": 0,
+      "uniqueItems": true
+    },
+    "budget": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "currency_code": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "pattern": "^[A-Z]{3}$"
+        },
+        "draft_budget_limit": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0
+        },
+        "compute_token_cap": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "max_run_minutes": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "spend_authority_ref": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "currency_code",
+        "draft_budget_limit",
+        "compute_token_cap",
+        "max_run_minutes",
+        "spend_authority_ref"
+      ]
+    },
+    "output_formats": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": [
+          "docx",
+          "xlsx",
+          "json",
+          "markdown",
+          "html_preview",
+          "source_code",
+          "test_evidence",
+          "handover_zip"
+        ]
+      },
+      "minItems": 1,
+      "uniqueItems": true
+    },
+    "rights_policy_ref": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "data_use_purpose": {
+      "type": "string",
+      "minLength": 1
+    },
+    "tenant_profile_ref": {
+      "type": "string",
+      "pattern": "^[A-Za-z][A-Za-z0-9_.:/-]{0,159}$"
+    },
+    "approval_refs": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      },
+      "minItems": 0,
+      "uniqueItems": true
+    },
+    "extra_choices": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "field_id": {
+            "type": "string",
+            "pattern": "^[A-Za-z][A-Za-z0-9_.:/-]{0,159}$"
+          },
+          "proposed_code": {
+            "type": "string",
+            "pattern": "^[A-Za-z][A-Za-z0-9_.:/-]{0,159}$"
+          },
+          "label": {
+            "type": "string",
+            "minLength": 1
+          },
+          "reason": {
+            "type": "string",
+            "minLength": 1
+          },
+          "taxonomy_review_state": {
+            "type": "string",
+            "enum": [
+              "pending",
+              "accepted",
+              "rejected"
+            ]
+          }
+        },
+        "required": [
+          "field_id",
+          "proposed_code",
+          "label",
+          "reason",
+          "taxonomy_review_state"
+        ]
+      },
+      "minItems": 0
+    },
+    "case_pattern_ref": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "owner_refs": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "product_owner": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "technical_owner": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "content_owner": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "domain_owner": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "reviewer": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "product_owner",
+        "technical_owner",
+        "content_owner",
+        "domain_owner",
+        "reviewer"
+      ]
+    }
+  },
+  "required": [
+    "selection_id",
+    "selection_version",
+    "intent",
+    "sector",
+    "audiences",
+    "requested_mode",
+    "source_manifest",
+    "modules",
+    "recipe_ids",
+    "delivery_approach",
+    "content_goals",
+    "locales",
+    "default_locale",
+    "markets",
+    "channels",
+    "integration_refs",
+    "existing_system",
+    "brand_asset_refs",
+    "reporting",
+    "service_expectation_refs",
+    "budget",
+    "output_formats",
+    "rights_policy_ref",
+    "data_use_purpose",
+    "tenant_profile_ref",
+    "approval_refs",
+    "extra_choices",
+    "case_pattern_ref",
+    "owner_refs"
+  ]
+}

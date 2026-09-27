@@ -11,8 +11,52 @@ import {
 } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 
+import { ArrowUpRight } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { t, human } from "@/lib/i18n";
 export { t, human };
+
+export { SiteHeader as Header } from "@/components/home/SiteHeader";
+export { SiteFooter as Footer } from "@/components/home/SiteFooter";
+
+export function download(text: string, name: string) {
+  const url = URL.createObjectURL(
+    new Blob([text], {
+      type: name.endsWith(".html") ? "text/html" : "text/plain;charset=utf-8",
+    })
+  );
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = name;
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(url), 3000);
+}
+
+export function Download({
+  data,
+  name,
+  label = "Download JSON",
+}: {
+  data: any;
+  name: string;
+  label?: string;
+}) {
+  return (
+    <Button
+      variant="outline"
+      onClick={() =>
+        download(
+          typeof data === "string" ? data : JSON.stringify(data, null, 2),
+          name
+        )
+      }
+    >
+      {label}
+      <ArrowUpRight size={15} />
+    </Button>
+  );
+}
+
 
 export function Choose({
   value,

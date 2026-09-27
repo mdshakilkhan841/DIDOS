@@ -1,0 +1,119 @@
+{
+  "selection_id": "SEL-DEMO-001",
+  "selection_version": 1,
+  "intent": "document_to_solution",
+  "sector": "association_chamber",
+  "audiences": [
+    "public",
+    "member",
+    "staff"
+  ],
+  "requested_mode": "DRAFT",
+  "source_manifest": [
+    {
+      "source_id": "SRC-DEMO-001",
+      "kind": "document",
+      "locator": "demo://synthetic-association-brief",
+      "version": "1.0.0",
+      "sha256": null,
+      "classification": "public",
+      "rights_state": "verified",
+      "allowed_purposes": [
+        "analysis",
+        "draft",
+        "preview"
+      ],
+      "approval_state": "proposed",
+      "owner_ref": null,
+      "content_language": "en",
+      "extraction_status": "not_read",
+      "source_of_record_ref": null
+    }
+  ],
+  "modules": [
+    "website",
+    "cms",
+    "membership",
+    "events",
+    "research"
+  ],
+  "recipe_ids": [
+    "PS-001",
+    "PS-002",
+    "PS-003",
+    "PS-004",
+    "PS-005",
+    "PS-006",
+    "PS-007",
+    "PS-008",
+    "PS-013"
+  ],
+  "delivery_approach": "assess_options",
+  "content_goals": [
+    "inform",
+    "serve_member",
+    "publish_research"
+  ],
+  "locales": [
+    "en",
+    "bn"
+  ],
+  "default_locale": "en",
+  "markets": [
+    {
+      "country_code": "BD",
+      "currency_code": "BDT",
+      "timezone": "Asia/Dhaka",
+      "residency_requirement_ref": null,
+      "market_owner_ref": null
+    }
+  ],
+  "channels": [
+    "web",
+    "search"
+  ],
+  "integration_refs": [],
+  "existing_system": {
+    "site_url": null,
+    "repository_ref": null,
+    "system_refs": [],
+    "inspection_state": "not_inspected",
+    "legacy_security_state": "unknown",
+    "authorization_ref": null
+  },
+  "brand_asset_refs": [],
+  "reporting": {
+    "metric_ids": [],
+    "cadences": [
+      "monthly"
+    ],
+    "recipient_group_refs": [],
+    "delivery_channels": []
+  },
+  "service_expectation_refs": [],
+  "budget": {
+    "currency_code": "BDT",
+    "draft_budget_limit": null,
+    "compute_token_cap": 30000,
+    "max_run_minutes": 30,
+    "spend_authority_ref": null
+  },
+  "output_formats": [
+    "docx",
+    "json",
+    "markdown"
+  ],
+  "rights_policy_ref": null,
+  "data_use_purpose": "Design a synthetic association example; do not use ICC or any other customer data.",
+  "tenant_profile_ref": "DEMO-WORKSPACE-REF",
+  "approval_refs": [],
+  "extra_choices": [],
+  "case_pattern_ref": "CASE-ICC-001",
+  "owner_refs": {
+    "product_owner": null,
+    "technical_owner": null,
+    "content_owner": null,
+    "domain_owner": null,
+    "reviewer": null
+  }
+}

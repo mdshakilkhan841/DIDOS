@@ -1,0 +1,4 @@
+export const operationalKinds=['project','task','field_visit','market_review','campaign','content'];
+const review:Record<string,string[]>={draft:['draft','submitted','archived'],submitted:['in_review','draft','archived'],in_review:['needs_changes','reviewed','archived'],needs_changes:['draft','archived'],reviewed:['draft','archived'],archived:['draft']};
+const delivery:Record<string,string[]>={draft:['draft','queued','archived'],queued:['in_progress','blocked','cancelled','draft'],in_progress:['blocked','completed','cancelled','draft'],blocked:['in_progress','cancelled','draft'],completed:['in_progress','archived','draft'],cancelled:['draft','archived'],archived:['draft']};
+export function nextStates(kind:string,status:string){if(!operationalKinds.includes(kind))return review[status]||[];return delivery[status]||review[status]||[]}

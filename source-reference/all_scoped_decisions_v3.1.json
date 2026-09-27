@@ -1,0 +1,473 @@
+{
+  "version": "3.1 Yellow Review Candidate",
+  "date": "2026-09-15",
+  "count": 24,
+  "status": "All open; no approval recorded",
+  "decisions": [
+    {
+      "source_file": "freeze_decisions.json",
+      "record": {
+        "id": "Y31-DEC-01",
+        "decision": "Adopt exact DUDOS design baseline",
+        "owner_role": "DUDOS authorized design authority",
+        "required_evidence": "Signed decision referencing the v3.1 manifest, selected modules, source versions, scope and conditions",
+        "affected_action": "Formal design freeze",
+        "independent_work_allowed": "Document comparison and technical preparation may continue",
+        "source": "MPT-WEB G-WEB-24; Master C01 C22",
+        "status": "Open - scoped decision required",
+        "named_owner": null,
+        "approver": null,
+        "approval_date": null,
+        "evidence_ref": null,
+        "approved_version_hash": null
+      }
+    },
+    {
+      "source_file": "freeze_decisions.json",
+      "record": {
+        "id": "Y31-DEC-02",
+        "decision": "Reconcile DOL shared interfaces",
+        "owner_role": "Enterprise architect and each source owner",
+        "required_evidence": "Approved DOL-INT-001 mapping to SWL-INT-001 and source-owned operations; field-level write authority",
+        "affected_action": "Cross-system writes with unresolved ownership",
+        "independent_work_allowed": "Read-only or simulated adapters",
+        "source": "DOL D04; sections 3 and 13",
+        "status": "Open - scoped decision required",
+        "named_owner": null,
+        "approver": null,
+        "approval_date": null,
+        "evidence_ref": null,
+        "approved_version_hash": null
+      }
+    },
+    {
+      "source_file": "freeze_decisions.json",
+      "record": {
+        "id": "Y31-DEC-03",
+        "decision": "Confirm actual HR and identity contracts",
+        "owner_role": "Perfect HR product owner and IAM lead",
+        "required_evidence": "Actual suite/field export, issuer/subject rules, employment events, grant revocation and correction policy",
+        "affected_action": "Live HR-dependent access and personnel workflows",
+        "independent_work_allowed": "Synthetic identity and reviewed interface specification",
+        "source": "DOL D02; section 8",
+        "status": "Open - scoped decision required",
+        "named_owner": null,
+        "approver": null,
+        "approval_date": null,
+        "evidence_ref": null,
+        "approved_version_hash": null
+      }
+    },
+    {
+      "source_file": "freeze_decisions.json",
+      "record": {
+        "id": "Y31-DEC-04",
+        "decision": "Confirm commercial source systems",
+        "owner_role": "Sales Operations Finance and integration owners",
+        "required_evidence": "Actual CRM/case, ISP billing, commerce and accounting versions/modules/API rights; ledger ownership",
+        "affected_action": "Live service activation, invoices, payment posting and reconciliation",
+        "independent_work_allowed": "Proposed adapters and sandbox contract tests",
+        "source": "DOL D03; sections 3 6 13",
+        "status": "Open - scoped decision required",
+        "named_owner": null,
+        "approver": null,
+        "approval_date": null,
+        "evidence_ref": null,
+        "approved_version_hash": null
+      }
+    },
+    {
+      "source_file": "freeze_decisions.json",
+      "record": {
+        "id": "Y31-DEC-05",
+        "decision": "Approve sellable services and facility limits",
+        "owner_role": "Commercial Network Finance and facility owners",
+        "required_evidence": "Verified provider rights, prices, City/Ashulia resource inventory, institutional commitments and failover reserve; admission rules",
+        "affected_action": "Binding offers and capacity reservation/provisioning",
+        "independent_work_allowed": "Enquiry, estimate marked unpriced and simulated resource tests",
+        "source": "DOL D06; section 6",
+        "status": "Open - scoped decision required",
+        "named_owner": null,
+        "approver": null,
+        "approval_date": null,
+        "evidence_ref": null,
+        "approved_version_hash": null
+      }
+    },
+    {
+      "source_file": "freeze_decisions.json",
+      "record": {
+        "id": "Y31-DEC-06",
+        "decision": "Approve field-location operating policy",
+        "owner_role": "Operations HR privacy and security owners",
+        "required_evidence": "On-duty purpose, notice/lawful basis, mobile approach, sampling, retention, access, exceptions and review policy",
+        "affected_action": "Live employee location collection",
+        "independent_work_allowed": "Synthetic visits and foreground geolocation design",
+        "source": "DOL D05; section 9",
+        "status": "Open - scoped decision required",
+        "named_owner": null,
+        "approver": null,
+        "approval_date": null,
+        "evidence_ref": null,
+        "approved_version_hash": null
+      }
+    },
+    {
+      "source_file": "freeze_decisions.json",
+      "record": {
+        "id": "Y31-DEC-07",
+        "decision": "Approve agent tools and providers",
+        "owner_role": "AI owner and domain/security owners",
+        "required_evidence": "Per-tool grant, data class, provider/protocol version, budget, evaluation thresholds, escalation and kill evidence",
+        "affected_action": "Agent execution beyond the authorized tested scope",
+        "independent_work_allowed": "Draft/read-only agent designs and isolated evaluations",
+        "source": "DOL D07; section 12; Master C12",
+        "status": "Open - scoped decision required",
+        "named_owner": null,
+        "approver": null,
+        "approval_date": null,
+        "evidence_ref": null,
+        "approved_version_hash": null
+      }
+    },
+    {
+      "source_file": "freeze_decisions.json",
+      "record": {
+        "id": "Y31-DEC-08",
+        "decision": "Approve channels content and claims",
+        "owner_role": "Communications Commercial and content owners",
+        "required_evidence": "Exact official accounts, recovery custodians, messaging consent/templates, approved assets, claims and bilingual notices",
+        "affected_action": "Publishing, campaign spend and customer messaging",
+        "independent_work_allowed": "Draft pages, content and message templates",
+        "source": "DOL D06 D07; sections 11 and 14",
+        "status": "Open - scoped decision required",
+        "named_owner": null,
+        "approver": null,
+        "approval_date": null,
+        "evidence_ref": null,
+        "approved_version_hash": null
+      }
+    },
+    {
+      "source_file": "freeze_decisions.json",
+      "record": {
+        "id": "Y31-DEC-09",
+        "decision": "Assign a bounded pilot",
+        "owner_role": "DUDOS product owner and DOL delivery lead",
+        "required_evidence": "Named owner/deputy/verifier, tenant, service area, repository/environment, budget, selected features, dates and acceptance criteria",
+        "affected_action": "A committed live pilot and release decision",
+        "independent_work_allowed": "Implementation planning and synthetic staging when separately authorized",
+        "source": "DOL D01 D08; section 16",
+        "status": "Open - scoped decision required",
+        "named_owner": null,
+        "approver": null,
+        "approval_date": null,
+        "evidence_ref": null,
+        "approved_version_hash": null
+      }
+    },
+    {
+      "source_file": "freeze_decisions.json",
+      "record": {
+        "id": "Y31-DEC-10",
+        "decision": "Approve service and recovery objectives",
+        "owner_role": "Operations Finance and security owners",
+        "required_evidence": "Measured baseline, coverage calendar, current SLO/SLA, RPO/RTO, restore/reconciliation test and customer terms",
+        "affected_action": "Contractual service promises and production readiness",
+        "independent_work_allowed": "Proposed targets and recovery rehearsal plans",
+        "source": "DOL D08; sections 10 and 15",
+        "status": "Open - scoped decision required",
+        "named_owner": null,
+        "approver": null,
+        "approval_date": null,
+        "evidence_ref": null,
+        "approved_version_hash": null
+      }
+    },
+    {
+      "source_file": "freeze_decisions.json",
+      "record": {
+        "id": "Y31-DEC-11",
+        "decision": "Approve learning research and partner scope",
+        "owner_role": "Academy institution research and partner owners",
+        "required_evidence": "Course/seat/issuer contracts, dataset rights, GPU quotas, licences and white-label/resale rights",
+        "affected_action": "Actual credentials, partner listings and sensitive research workloads",
+        "independent_work_allowed": "Conditional module design and supervised simulations",
+        "source": "DOL sections 6 and 7; Master C15 C16",
+        "status": "Open - scoped decision required",
+        "named_owner": null,
+        "approver": null,
+        "approval_date": null,
+        "evidence_ref": null,
+        "approved_version_hash": null
+      }
+    },
+    {
+      "source_file": "freeze_decisions.json",
+      "record": {
+        "id": "Y31-DEC-12",
+        "decision": "Authorize exact production release",
+        "owner_role": "Designated release authority with domain sign-offs",
+        "required_evidence": "Same-version acceptance results, security/isolation, source reconciliation, support/recovery, rights and deployment rollback evidence",
+        "affected_action": "Production launch for the affected capability",
+        "independent_work_allowed": "Approved unaffected work and remediation",
+        "source": "MPT-WEB gates; DOL section 16; Master C22",
+        "status": "Open - scoped decision required",
+        "named_owner": null,
+        "approver": null,
+        "approval_date": null,
+        "evidence_ref": null,
+        "approved_version_hash": null
+      }
+    },
+    {
+      "source_file": "team_additions.json",
+      "record": {
+        "id": "TEAM-DEC-001",
+        "requirement_id": "TEAM-REQ-001",
+        "title": "DAIOS daily-operation versus case execution boundary",
+        "recommended_resolution": "Adopt explicit execution profiles; daily delegated operations do not wait for full DAIOS.",
+        "status": "Open",
+        "blocked_action": "Activating the temporary governance adapter without approved authority/migration contract",
+        "permitted_independent_work": "Source analysis, reversible design, contract drafting and synthetic staging preparation within existing authorization.",
+        "owner_role": "Chief Enterprise Architect",
+        "closure_evidence": "Version-pinned profile and owner-approved routing ADR",
+        "required_evidence": "Version-pinned profile and owner-approved routing ADR",
+        "decision": "Adopt explicit execution profiles; daily delegated operations do not wait for full DAIOS.",
+        "affected_action": "Activating the temporary governance adapter without approved authority/migration contract",
+        "independent_work_allowed": "Reversible design, source mapping and synthetic contract preparation may continue.",
+        "approval": null
+      }
+    },
+    {
+      "source_file": "team_additions.json",
+      "record": {
+        "id": "TEAM-DEC-002",
+        "requirement_id": "TEAM-REQ-006",
+        "title": "Two-service integration versus merged deployment claim",
+        "recommended_resolution": "Use separate services/databases first; single-image rewrite remains unapproved alternative.",
+        "status": "Open",
+        "blocked_action": "Claiming combined implementation or merging codebases based on prose",
+        "permitted_independent_work": "Source analysis, reversible design, contract drafting and synthetic staging preparation within existing authorization.",
+        "owner_role": "Chief Enterprise Architect",
+        "closure_evidence": "Repository/runtime/license review and tested interface ADR",
+        "required_evidence": "Repository/runtime/license review and tested interface ADR",
+        "decision": "Use separate services/databases first; single-image rewrite remains unapproved alternative.",
+        "affected_action": "Claiming combined implementation or merging codebases based on prose",
+        "independent_work_allowed": "Reversible design, source mapping and synthetic contract preparation may continue.",
+        "approval": null
+      }
+    },
+    {
+      "source_file": "team_additions.json",
+      "record": {
+        "id": "TEAM-DEC-003",
+        "requirement_id": "TEAM-REQ-003",
+        "title": "Source EADC activation versus DAIOS local activation",
+        "recommended_resolution": "Import as draft; preserve local authorized activation and EADC provenance.",
+        "status": "Open",
+        "blocked_action": "Automatic upstream policy activation inside DAIOS",
+        "permitted_independent_work": "Source analysis, reversible design, contract drafting and synthetic staging preparation within existing authorization.",
+        "owner_role": "Governance Integration Lead",
+        "closure_evidence": "Rule/authority mapping and signed governance procedure",
+        "required_evidence": "Rule/authority mapping and signed governance procedure",
+        "decision": "Import as draft; preserve local authorized activation and EADC provenance.",
+        "affected_action": "Automatic upstream policy activation inside DAIOS",
+        "independent_work_allowed": "Reversible design, source mapping and synthetic contract preparation may continue.",
+        "approval": null
+      }
+    },
+    {
+      "source_file": "team_additions.json",
+      "record": {
+        "id": "TEAM-DEC-004",
+        "requirement_id": "TEAM-REQ-015",
+        "title": "Four-capability DAIOS instruction scope",
+        "recommended_resolution": "Keep exact four-capability adapter; broader platform capabilities use separate approved contracts.",
+        "status": "Open",
+        "blocked_action": "Using this key for payment/deployment or any unsupported capability",
+        "permitted_independent_work": "Source analysis, reversible design, contract drafting and synthetic staging preparation within existing authorization.",
+        "owner_role": "DUDOS Runtime Lead",
+        "closure_evidence": "Contract test for scoped endpoint/capability refusal",
+        "required_evidence": "Contract test for scoped endpoint/capability refusal",
+        "decision": "Keep exact four-capability adapter; broader platform capabilities use separate approved contracts.",
+        "affected_action": "Using this key for payment/deployment or any unsupported capability",
+        "independent_work_allowed": "Reversible design, source mapping and synthetic contract preparation may continue.",
+        "approval": null
+      }
+    },
+    {
+      "source_file": "team_additions.json",
+      "record": {
+        "id": "TEAM-DEC-005",
+        "requirement_id": "TEAM-REQ-023",
+        "title": "DAD/MPIP preparation and approval order",
+        "recommended_resolution": "Allow governed drafting for gate evidence; approve implementation scope before coding/investment.",
+        "status": "Open",
+        "blocked_action": "Circular requirement that prevents preparing gate artifacts, or coding before scope approval",
+        "permitted_independent_work": "Source analysis, reversible design, contract drafting and synthetic staging preparation within existing authorization.",
+        "owner_role": "Chief Product Officer",
+        "closure_evidence": "Existing terminology/order decision resolved with preparation/implementation distinction",
+        "required_evidence": "Existing terminology/order decision resolved with preparation/implementation distinction",
+        "decision": "Allow governed drafting for gate evidence; approve implementation scope before coding/investment.",
+        "affected_action": "Circular requirement that prevents preparing gate artifacts, or coding before scope approval",
+        "independent_work_allowed": "Reversible design, source mapping and synthetic contract preparation may continue.",
+        "approval": null
+      }
+    },
+    {
+      "source_file": "team_additions.json",
+      "record": {
+        "id": "TEAM-DEC-006",
+        "requirement_id": "TEAM-REQ-030",
+        "title": "Catalog and constitutional count discrepancies",
+        "recommended_resolution": "21actualdomains retained; missing definitions and source twenty-volume / twelve-layer claims remain unverified.",
+        "status": "Open",
+        "blocked_action": "Certifying full 25-domain / 20-approved-volume / 12-layer coverage",
+        "permitted_independent_work": "Source analysis, reversible design, contract drafting and synthetic staging preparation within existing authorization.",
+        "owner_role": "Enterprise Architect",
+        "closure_evidence": "Exact adopted manifest and semantic crosswalk",
+        "required_evidence": "Exact adopted manifest and semantic crosswalk",
+        "decision": "21actualdomains retained; missing definitions and source twenty-volume / twelve-layer claims remain unverified.",
+        "affected_action": "Certifying full 25-domain / 20-approved-volume / 12-layer coverage",
+        "independent_work_allowed": "Reversible design, source mapping and synthetic contract preparation may continue.",
+        "approval": null
+      }
+    },
+    {
+      "source_file": "team_additions.json",
+      "record": {
+        "id": "TEAM-DEC-007",
+        "requirement_id": "TEAM-REQ-032",
+        "title": "Day 90 revenue and dependency milestones",
+        "recommended_resolution": "Select one sellable pilot; sequence minimum registries/CRM, payment and support before first-revenue gate.",
+        "status": "Open",
+        "blocked_action": "Claiming Day 90accepted or first revenue from targets alone",
+        "permitted_independent_work": "Source analysis, reversible design, contract drafting and synthetic staging preparation within existing authorization.",
+        "owner_role": "Product Owner and CRO",
+        "closure_evidence": "Named buyer/offer/owner and verified controlled transaction evidence",
+        "required_evidence": "Named buyer/offer/owner and verified controlled transaction evidence",
+        "decision": "Select one sellable pilot; sequence minimum registries/CRM, payment and support before first-revenue gate.",
+        "affected_action": "Claiming Day 90accepted or first revenue from targets alone",
+        "independent_work_allowed": "Reversible design, source mapping and synthetic contract preparation may continue.",
+        "approval": null
+      }
+    },
+    {
+      "source_file": "team_additions.json",
+      "record": {
+        "id": "TEAM-DEC-008",
+        "requirement_id": "TEAM-REQ-033",
+        "title": "Metric targets versus hard work validity",
+        "recommended_resolution": "Hard per-record validity preserved; percentages describe adoption backlog only.",
+        "status": "Open",
+        "blocked_action": "Closing unsupported tasks or admitting ownerless new work",
+        "permitted_independent_work": "Source analysis, reversible design, contract drafting and synthetic staging preparation within existing authorization.",
+        "owner_role": "Quality and Central MIS Lead",
+        "closure_evidence": "Approved metric dictionary with denominator, hard-rule and source evidence",
+        "required_evidence": "Approved metric dictionary with denominator, hard-rule and source evidence",
+        "decision": "Hard per-record validity preserved; percentages describe adoption backlog only.",
+        "affected_action": "Closing unsupported tasks or admitting ownerless new work",
+        "independent_work_allowed": "Reversible design, source mapping and synthetic contract preparation may continue.",
+        "approval": null
+      }
+    },
+    {
+      "source_file": "talent_global_additions.json",
+      "record": {
+        "id": "TG-DEC-01",
+        "decision": "Adopt the first programme’s challenge charter, eligibility, rubric, conflicts, quorum, tie/appeal rules and any funded prize terms.",
+        "owner_role": "Challenge owner and independent judging chair; Finance for funded prizes",
+        "required_evidence": [
+          "Named programme and responsible institution",
+          "Versioned participant/IP/publicity terms",
+          "Approved rubric and appeal authority",
+          "Prize budget evidence if a prize is promised"
+        ],
+        "affected_action": "Publishing binding participation/prize terms, accepting affected entries under those terms and issuing final awards.",
+        "independent_work_allowed": "Prepare drafts, accessible forms, synthetic judging exercises, internal programme design and unrelated authorized customer work.",
+        "status": "OPEN",
+        "approval_ref": null,
+        "related_requirements": [
+          "TG-004",
+          "TG-005",
+          "TG-020"
+        ]
+      }
+    },
+    {
+      "source_file": "talent_global_additions.json",
+      "record": {
+        "id": "TG-DEC-02",
+        "decision": "Resolve ownership, permitted use and commercial benefit-sharing for the selected student/research output.",
+        "owner_role": "Rights holders, institution Research/IP office and qualified legal reviewer",
+        "required_evidence": [
+          "Actual applicable institutional/funder/employment/student agreements",
+          "Contributor and third-party code/data/content rights inventory",
+          "Executed license/assignment and revenue-sharing terms for the chosen route",
+          "Public disclosure/IP protection decision where relevant"
+        ],
+        "affected_action": "Commercial reuse, redistribution, public disclosure or model training beyond existing granted scope for that output.",
+        "independent_work_allowed": "Private review under existing permission, synthetic prototypes, rights negotiation, source inventory and other rights-cleared products.",
+        "status": "OPEN",
+        "approval_ref": null,
+        "related_requirements": [
+          "TG-007",
+          "TG-008",
+          "TG-009"
+        ]
+      }
+    },
+    {
+      "source_file": "talent_global_additions.json",
+      "record": {
+        "id": "TG-DEC-03",
+        "decision": "Approve the actual first live student/talent programme and any cross-institution or resource admission terms.",
+        "owner_role": "Programme/academic owner, participating tenant and resource owners",
+        "required_evidence": [
+          "Named supervisor and maintenance owner",
+          "Voluntary participation, work status and applicable compensation terms",
+          "Accepted project memberships and data-sharing scope",
+          "Programme-specific safeguarding/accommodation route",
+          "Actual resource capacity, quota and provider terms where selected"
+        ],
+        "affected_action": "Live participant admission, access to customer data, cross-institution project assets or restricted physical/compute resources.",
+        "independent_work_allowed": "Open-interest intake with appropriate notice, private draft applications, sandbox simulations and non-personal programme planning.",
+        "status": "OPEN",
+        "approval_ref": null,
+        "related_requirements": [
+          "TG-002",
+          "TG-006",
+          "TG-010",
+          "TG-011",
+          "TG-019",
+          "TG-020"
+        ]
+      }
+    },
+    {
+      "source_file": "talent_global_additions.json",
+      "record": {
+        "id": "TG-DEC-04",
+        "decision": "Select and validate the next country/entity/offer and the languages required for that offer.",
+        "owner_role": "Country launch owner with qualified Legal, Finance, data and service owners",
+        "required_evidence": [
+          "Observed demand hypothesis and supported offer",
+          "Seller/partner/provider eligibility",
+          "Payment, currency, invoice/tax and refund arrangement",
+          "Data location/transfer and contractual review for that scope",
+          "Real support hours/language capability and reviewed critical localized content"
+        ],
+        "affected_action": "Selling or processing restricted transactions/data for the selected country/offer; this does not prevent viewing a supported language or a lawful lead-only page.",
+        "independent_work_allowed": "Market research, approved public content drafts, country assessment and supported existing-market services.",
+        "status": "OPEN",
+        "approval_ref": null,
+        "related_requirements": [
+          "TG-012",
+          "TG-013",
+          "TG-014"
+        ]
+      }
+    }
+  ]
+}
