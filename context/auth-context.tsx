@@ -24,7 +24,7 @@ interface AuthContextType {
   activeRole: StakeholderRole;
   isAuthenticated: boolean;
   isLoading: boolean;
-  login: (identifier: string, role?: StakeholderRole) => Promise<boolean>;
+  login: (identifier: string, password?: string, role?: StakeholderRole) => Promise<boolean>;
   register: (data: Partial<UserProfile> & { password?: string }) => Promise<boolean>;
   logout: () => void;
   switchRole: (newRole: StakeholderRole) => void;
@@ -194,16 +194,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   // Save session when user or role changes
-  const persistSession = (u: UserProfile | null, r: StakeholderRole) => {
+  const persistSession = (u: UserProfile | null, r: StakeholderRole, jwtToken?: string) => {
     try {
       if (u) {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify({ user: u, activeRole: r }));
+        localStorage.setItem(STORAGE_KEY, JSON.stringify({ user: u, activeRole: r, token: jwtToken }));
+        if (jwtToken) {
+          localStorage.setItem("dudos_jwt_token", jwtToken);
+        }
         try {
           document.cookie = `dudos_session=${encodeURIComponent(JSON.stringify({ userId: u.id, displayName: u.displayName, email: u.email, role: u.role }))}; path=/; max-age=2592000; SameSite=Lax`;
-          document.cookie = `dudos_at=token_${u.id}; path=/; max-age=2592000; SameSite=Lax`;
+          document.cookie = `dudos_at=${jwtToken || `token_${u.id}`}; path=/; max-age=2592000; SameSite=Lax`;
         } catch {}
       } else {
         localStorage.removeItem(STORAGE_KEY);
+        localStorage.removeItem("dudos_jwt_token");
         try {
           document.cookie = `dudos_session=; path=/; max-age=0; SameSite=Lax`;
           document.cookie = `dudos_at=; path=/; max-age=0; SameSite=Lax`;
@@ -214,36 +218,45 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const login = async (identifier: string, preferredRole?: StakeholderRole): Promise<boolean> => {
+  const login = async (identifier: string, password?: string, preferredRole?: StakeholderRole): Promise<boolean> => {
     setIsLoading(true);
     try {
-      await new Promise((res) => setTimeout(res, 500));
+      const apiBase = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8000/api/v1";
+      const res = await fetch(`${apiBase}/auth/login`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email: identifier.trim(),
+          password: password || "",
+        }),
+      });
 
-      const role = preferredRole || activeRole;
+      if (!res.ok) {
+        const errJson = await res.json().catch(() => ({}));
+        const message = errJson.detail || "Incorrect email or password.";
+        showToast.error("Sign-in failed", { description: message });
+        throw new Error(message);
+      }
+
+      const data = await res.json();
+      const role = (data.user.role as StakeholderRole) || preferredRole || activeRole;
       const config = STAKEHOLDER_CONFIGS[role] || STAKEHOLDER_CONFIGS.client;
-      const cleanUsername = identifier.includes("@") ? identifier.split("@")[0] : identifier;
-
-      // Check if this username/email exists in registrations
-      const existing = registrations.find(
-        (r) => r.username.toLowerCase() === cleanUsername.toLowerCase() || r.email.toLowerCase() === identifier.toLowerCase()
-      );
 
       const authenticatedUser: UserProfile = {
-        id: existing?.id || "usr_" + Math.random().toString(36).substring(2, 9),
-        email: existing?.email || (identifier.includes("@") ? identifier : `${identifier}@daffodil.family`),
-        username: cleanUsername,
-        displayName: existing?.displayName || cleanUsername.replace(/[._]/g, " "),
-        role,
-        status: existing?.status || (role === "admin" ? "active" : "pending_review"),
-        credits: existing?.credits ?? user?.credits ?? 1000,
-        organizationName: existing?.organizationName || config.title,
-        createdAt: existing?.createdAt || new Date().toISOString(),
-        intake: existing?.intake,
+        id: data.user.id,
+        email: data.user.email,
+        username: data.user.email.split("@")[0],
+        displayName: data.user.displayName || data.user.email.split("@")[0],
+        role: role,
+        status: data.user.status || "approved",
+        credits: data.user.credits ?? 1000,
+        organizationName: data.user.organizationName || config.title,
+        createdAt: data.user.createdAt || new Date().toISOString(),
       };
 
       setUser(authenticatedUser);
       setActiveRole(role);
-      persistSession(authenticatedUser, role);
+      persistSession(authenticatedUser, role, data.token);
 
       showToast.success(`Welcome back, ${authenticatedUser.displayName}!`, {
         description: `Signed in as ${config.title}.`,
@@ -251,8 +264,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       return true;
     } catch (e: any) {
-      showToast.error("Sign-in failed", { description: e.message || "An unexpected error occurred." });
-      return false;
+      throw e;
     } finally {
       setIsLoading(false);
     }
@@ -261,25 +273,42 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const register = async (data: Partial<UserProfile> & { password?: string; intake?: ProjectIntakeData }): Promise<boolean> => {
     setIsLoading(true);
     try {
-      await new Promise((res) => setTimeout(res, 600));
+      const apiBase = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8000/api/v1";
+      const res = await fetch(`${apiBase}/auth/register`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email: data.email?.trim(),
+          password: data.password || "",
+          displayName: data.displayName?.trim(),
+          role: "client",
+          organizationName: data.organizationName,
+          phone: data.phone,
+        }),
+      });
 
-      const role = data.role || activeRole;
-      const config = STAKEHOLDER_CONFIGS[role] || STAKEHOLDER_CONFIGS.client;
-      const username = data.username || (data.email ? data.email.split("@")[0] : "user_" + Math.random().toString(36).slice(2, 6));
+      if (!res.ok) {
+        const errJson = await res.json().catch(() => ({}));
+        const message = errJson.detail || "Registration failed. Please try again.";
+        showToast.error("Registration failed", { description: message });
+        throw new Error(message);
+      }
+
+      const respData = await res.json();
+      const role: StakeholderRole = "client";
+      const config = STAKEHOLDER_CONFIGS.client;
 
       const newUser: UserProfile = {
-        id: "usr_" + Math.random().toString(36).substring(2, 9),
-        email: data.email || "",
-        username,
-        displayName: data.displayName || username,
-        role,
-        status: role === "admin" ? "active" : "pending_review",
-        credits: 1000, // 1000 credits package bonus on registration
-        organizationName: data.organizationName,
+        id: respData.user.id,
+        email: respData.user.email,
+        username: respData.user.email.split("@")[0],
+        displayName: respData.user.displayName,
+        role: "client",
+        status: respData.user.status || "approved",
+        credits: respData.user.credits ?? 1000,
+        organizationName: respData.user.organizationName || config.title,
         phone: data.phone,
-        identifier: data.identifier,
-        department: data.department,
-        createdAt: new Date().toISOString(),
+        createdAt: respData.user.createdAt || new Date().toISOString(),
         intake: data.intake || {
           businessDomain: "General Digital Transformation",
           projectScope: "Standard client onboarding & workspace initialization.",
@@ -290,44 +319,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       setUser(newUser);
       setActiveRole(role);
-      persistSession(newUser, role);
+      persistSession(newUser, role, respData.token);
 
-      // Record in registrations queue
-      const updatedRegs = [newUser, ...registrations.filter((r) => r.id !== newUser.id)];
-      setRegistrations(updatedRegs);
-      try {
-        localStorage.setItem(REGISTRATIONS_KEY, JSON.stringify(updatedRegs));
-      } catch {}
-
-      // Record welcome credits transaction
-      const welcomeTx: CreditTransaction = {
-        id: "tx_" + Date.now().toString(36),
-        amount: 1000,
-        type: "credit",
-        reason: "Registration Bonus: 1,000 credits granted",
-        timestamp: new Date().toISOString(),
-      };
-      const updatedTx = [welcomeTx, ...creditTransactions];
-      setCreditTransactions(updatedTx);
-      try {
-        localStorage.setItem(TRANSACTIONS_KEY, JSON.stringify(updatedTx));
-      } catch {}
-
-      // Clear pre-registration draft upon successful registration
       clearPreRegistrationDraft();
 
-      showToast.success("Registration submitted successfully!", {
-        description: `Your intake has been logged for technical review. 1,000 welcome credits granted.`,
+      showToast.success("Registration successful!", {
+        description: `Welcome to DUDOS! 1,000 welcome credits granted.`,
       });
 
       return true;
     } catch (e: any) {
-      showToast.error("Registration failed", { description: e.message || "Could not complete account creation." });
-      return false;
+      throw e;
     } finally {
       setIsLoading(false);
     }
   };
+
 
   const updateRegistrationStatus = (
     userId: string,

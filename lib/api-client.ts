@@ -100,19 +100,20 @@ export const dudosApi = {
       }
     },
 
-    async login(email: string): Promise<{ success: boolean; user?: UserProfile; token?: string; error?: string }> {
+    async login(email: string, password?: string): Promise<{ success: boolean; user?: UserProfile; token?: string; error?: string }> {
       if (USE_BACKEND) {
         const res = await fetchBackend<{ user: UserProfile; token: string }>("/auth/login", {
           method: "POST",
-          body: JSON.stringify({ email }),
+          body: JSON.stringify({ email, password: password || "" }),
         });
         if (res.data) {
           localStorage.setItem(STORAGE_KEYS.AUTH_TOKEN, res.data.token);
           return { success: true, user: res.data.user, token: res.data.token };
         }
+        return { success: false, error: res.error || "Incorrect email or password." };
       }
 
-      // LocalStorage Fallback
+      // LocalStorage Fallback (only if USE_BACKEND is false)
       try {
         const sessionStr = localStorage.getItem(STORAGE_KEYS.AUTH_SESSION);
         if (sessionStr) {

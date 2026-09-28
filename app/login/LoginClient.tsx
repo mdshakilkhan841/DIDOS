@@ -49,7 +49,7 @@ export function LoginClient({
     setError("");
     try {
       if (mode === "signin") {
-        const ok = await login(email);
+        const ok = await login(email, password);
         if (!ok) throw new Error("Sign-in failed. Please check your credentials.");
       } else {
         const ok = await register({
@@ -60,7 +60,7 @@ export function LoginClient({
         });
         if (!ok) throw new Error("Registration failed. Please try again.");
       }
-      window.location.href = returnTo;
+      window.location.replace(returnTo);
     } catch (e) {
       setError((e as Error).message);
     } finally {
