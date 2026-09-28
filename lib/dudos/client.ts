@@ -1,4 +1,5 @@
 'use client';
+import { safeJsonParse } from "@/lib/subdomains";
 
 /**
  * Static client-side mock provider for DUDOS.
@@ -100,11 +101,36 @@ function getCurrentSession(): { user: any; activeRole: string } | null {
   if (typeof window === 'undefined') return null;
   try {
     const val = localStorage.getItem('dudos_auth_session');
-    if (!val) return null;
-    return JSON.parse(val);
-  } catch {
-    return null;
-  }
+    if (val) {
+      const parsed = safeJsonParse(val);
+      if (parsed?.user) return parsed;
+    }
+  } catch {}
+
+  // Fallback to cookie
+  try {
+    const match = document.cookie.match(/(^|;\s*)dudos_session=([^;]*)/);
+    if (match) {
+      const parsed = safeJsonParse(match[2]);
+      if (parsed) {
+        return {
+          user: {
+            id: parsed.userId || parsed.id || 'usr_session',
+            email: parsed.email || '',
+            username: parsed.email?.split('@')[0] || 'user',
+            displayName: parsed.displayName || parsed.email?.split('@')[0] || 'User',
+            role: parsed.role || 'client',
+            status: 'approved',
+            credits: 1000,
+            organizationName: parsed.organizationName || '',
+          },
+          activeRole: parsed.role || 'client',
+        };
+      }
+    }
+  } catch {}
+
+  return null;
 }
 
 function getStore<T>(key: string, fallback: T): T {

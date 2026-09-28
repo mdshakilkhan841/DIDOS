@@ -8,6 +8,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Notice } from "@/components/dudos-ui";
 import { useAuth } from "@/context/auth-context";
+import { buildSubdomainUrl, SubdomainType } from "@/lib/subdomains";
+
+import { showToast } from "@/lib/toast";
 
 const HIGHLIGHTS = [
   "Save drafts and send requests to DUDOS",
@@ -41,7 +44,14 @@ export function LoginClient({
   const [displayName, setDisplayName] = useState("");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
-  const { login, register } = useAuth();
+  const { login, register, logout } = useAuth();
+
+  // Dismiss any lingering toasts and ensure clean unauthenticated state on login/register page
+  useEffect(() => {
+    showToast.dismiss();
+    logout();
+  }, [logout]);
+
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -49,24 +59,60 @@ export function LoginClient({
     setError("");
     try {
       if (mode === "signin") {
-        const ok = await login(email, password);
-        if (!ok) throw new Error("Sign-in failed. Please check your credentials.");
+        const result = await login(email, password);
+        if (!result) throw new Error("Sign-in failed. Please check your credentials.");
+
+        const targetSubdomain: SubdomainType = result.user.role === "admin" ? "admin" : "app";
+        const defaultPath = result.user.role === "admin" ? "/en/app/tenant-admin" : "/en/app";
+
+        let cleanReturnTo = returnTo;
+        if (cleanReturnTo && (cleanReturnTo.includes("/login") || cleanReturnTo.includes("/register") || cleanReturnTo === "/")) {
+          cleanReturnTo = "";
+        }
+        const dest = cleanReturnTo || defaultPath;
+
+        let targetUrl: URL;
+        if (dest.startsWith("http")) {
+          const parsed = new URL(dest);
+          const cleanPathAndQuery = parsed.pathname + parsed.search;
+          targetUrl = new URL(buildSubdomainUrl(targetSubdomain, cleanPathAndQuery));
+        } else {
+          targetUrl = new URL(buildSubdomainUrl(targetSubdomain, dest));
+        }
+
+        // Clean out any existing duplicate dudos_ tokens
+        targetUrl.searchParams.delete("dudos_at");
+        targetUrl.searchParams.delete("dudos_session");
+
+        targetUrl.searchParams.set("dudos_at", result.token);
+        targetUrl.searchParams.set("dudos_session", JSON.stringify(result.user));
+
+        window.location.replace(targetUrl.toString());
+        return;
       } else {
-        const ok = await register({
+        const regResult = await register({
           email,
           displayName,
           password,
           role: "client",
         });
-        if (!ok) throw new Error("Registration failed. Please try again.");
+        if (!regResult) throw new Error("Registration failed. Please try again.");
+
+        const targetUrl = new URL(buildSubdomainUrl("app", "/en/app"));
+        targetUrl.searchParams.delete("dudos_at");
+        targetUrl.searchParams.delete("dudos_session");
+        targetUrl.searchParams.set("dudos_at", regResult.token);
+        targetUrl.searchParams.set("dudos_session", JSON.stringify(regResult.user));
+        window.location.replace(targetUrl.toString());
+        return;
       }
-      window.location.replace(returnTo);
     } catch (e) {
       setError((e as Error).message);
     } finally {
       setBusy(false);
     }
   }
+
 
   return (
     <div className="flex min-h-screen w-full">
@@ -130,6 +176,7 @@ export function LoginClient({
               ? "Use the email and password for your DUDOS account."
               : "Set up an account to save drafts and send requests."}
           </p>
+
 
           <form onSubmit={submit} className="mt-8 space-y-4">
             {mode === "signup" && (

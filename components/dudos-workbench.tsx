@@ -22,6 +22,7 @@ import {CreditBadgeButton} from './billing/CreditWalletModal';
 import {ProjectDashboard} from './projects/ProjectDashboard';
 import {AdminControlPanel} from './admin/AdminControlPanel';
 import {CustomerUserPanel} from './workspace/CustomerUserPanel';
+import {buildSubdomainUrl} from '@/lib/subdomains';
 const mainLinks=[['overview','Overview','সংক্ষিপ্ত চিত্র',LayoutDashboard],['projects','Projects & ERP','প্রজেক্ট ও ইআরপি',Folder],['tenant-admin','Admin Panel','অ্যাডমিন প্যানেল',Shield],['studio','Prompt Studio','প্রম্পট স্টুডিও',Sparkles],['assets','Source files','উৎস ফাইল',Folder],['reference','Requirements & fields','শর্ত ও ক্ষেত্র',Search],['documents','Governing documents','মূল নির্দেশনা',FileText],['audit','Activity history','কাজের ইতিহাস',Activity]] as const;
 export default function Workbench({
   lang,
@@ -33,6 +34,7 @@ export default function Workbench({
   displayName?: string;
 }) {
   const { user, isAuthenticated, isLoading, logout } = useAuth();
+  const [isSigningOut, setIsSigningOut] = useState(false);
   const [account, setAccount] = useState<any>(null);
   const [unread, setUnread] = useState(0);
   const [workspaces, setWorkspaces] = useState<any[]>([]);
@@ -47,13 +49,18 @@ export default function Workbench({
   const kind = section[1];
   const mod = moduleById(kind);
 
-  // 1. Strict Auth Gate: Redirect unauthenticated visitors to login
+  // 1. Strict Auth Gate: Redirect unauthenticated visitors to login on main domain
   useEffect(() => {
+    if (isSigningOut) return;
     if (!isLoading && (!isAuthenticated || !user)) {
-      const returnTo = `/${lang}/app${section.length ? '/' + section.join('/') : ''}`;
-      window.location.replace(`/login?return_to=${encodeURIComponent(returnTo)}`);
+      const cleanUrl = new URL(window.location.href);
+      cleanUrl.searchParams.delete('dudos_at');
+      cleanUrl.searchParams.delete('dudos_session');
+      const returnTo = cleanUrl.toString();
+      const loginUrl = buildSubdomainUrl('main', `/login?return_to=${encodeURIComponent(returnTo)}`);
+      window.location.replace(loginUrl);
     }
-  }, [isLoading, isAuthenticated, user, lang, section]);
+  }, [isLoading, isAuthenticated, user, isSigningOut]);
 
   // Handle bfcache (back-forward cache in browser)
   useEffect(() => {
@@ -61,16 +68,21 @@ export default function Workbench({
       if (event.persisted) {
         try {
           const stored = localStorage.getItem('dudos_auth_session');
-          if (!stored) {
-            const returnTo = `/${lang}/app${section.length ? '/' + section.join('/') : ''}`;
-            window.location.replace(`/login?return_to=${encodeURIComponent(returnTo)}`);
+          const hasCookie = typeof document !== 'undefined' && (document.cookie.includes('dudos_at=') || document.cookie.includes('dudos_session='));
+          if (!stored && !hasCookie) {
+            const cleanUrl = new URL(window.location.href);
+            cleanUrl.searchParams.delete('dudos_at');
+            cleanUrl.searchParams.delete('dudos_session');
+            const returnTo = cleanUrl.toString();
+            const loginUrl = buildSubdomainUrl('main', `/login?return_to=${encodeURIComponent(returnTo)}`);
+            window.location.replace(loginUrl);
           }
         } catch {}
       }
     };
     window.addEventListener('pageshow', handlePageShow);
     return () => window.removeEventListener('pageshow', handlePageShow);
-  }, [lang, section]);
+  }, []);
 
   // 2. Load dynamic account, notifications, and user workspaces
   useEffect(() => {
@@ -238,8 +250,20 @@ export default function Workbench({
             <button
               type="button"
               onClick={() => {
-                logout();
-                window.location.href = `/${lang}`;
+                setIsSigningOut(true);
+                try {
+                  localStorage.removeItem('dudos_auth_session');
+                  localStorage.removeItem('dudos_jwt_token');
+                  sessionStorage.clear();
+                  const epoch = "expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax";
+                  document.cookie = `dudos_session=; path=/; max-age=0; ${epoch}`;
+                  document.cookie = `dudos_at=; path=/; max-age=0; ${epoch}`;
+                  document.cookie = `dudos_session=; path=/; domain=localhost; max-age=0; ${epoch}`;
+                  document.cookie = `dudos_at=; path=/; domain=localhost; max-age=0; ${epoch}`;
+                  document.cookie = `dudos_session=; path=/; domain=.localhost; max-age=0; ${epoch}`;
+                  document.cookie = `dudos_at=; path=/; domain=.localhost; max-age=0; ${epoch}`;
+                } catch {}
+                window.location.href = buildSubdomainUrl('main', `/logout?return_to=/login`);
               }}
               style={{
                 display: 'inline-flex',

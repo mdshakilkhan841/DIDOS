@@ -7,6 +7,7 @@ import { useAuth } from "@/context/auth-context";
 import { Button } from "@/components/ui/button";
 import { STAKEHOLDER_CONFIGS } from "@/types/auth";
 import { CreditBadgeButton } from "@/components/billing/CreditWalletModal";
+import { buildSubdomainUrl } from "@/lib/subdomains";
 
 export function Navbar() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -105,7 +106,25 @@ export function Navbar() {
                   </Button>
                 </Link>
               )}
-              <Button variant="ghost" size="sm" onClick={logout}>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => {
+                  try {
+                    localStorage.removeItem("dudos_auth_session");
+                    localStorage.removeItem("dudos_jwt_token");
+                    sessionStorage.clear();
+                    const epoch = "expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax";
+                    document.cookie = `dudos_session=; path=/; max-age=0; ${epoch}`;
+                    document.cookie = `dudos_at=; path=/; max-age=0; ${epoch}`;
+                    document.cookie = `dudos_session=; path=/; domain=localhost; max-age=0; ${epoch}`;
+                    document.cookie = `dudos_at=; path=/; domain=localhost; max-age=0; ${epoch}`;
+                    document.cookie = `dudos_session=; path=/; domain=.localhost; max-age=0; ${epoch}`;
+                    document.cookie = `dudos_at=; path=/; domain=.localhost; max-age=0; ${epoch}`;
+                  } catch {}
+                  window.location.href = buildSubdomainUrl("main", `/logout?return_to=/login`);
+                }}
+              >
                 Sign Out
               </Button>
             </div>

@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/sheet";
 import { useContent } from "@/components/dudos-content-context";
 import { useAuth } from "@/context/auth-context";
+import { buildSubdomainUrl } from "@/lib/subdomains";
 import { t } from "@/lib/i18n";
 
 export function SiteHeader({
@@ -23,8 +24,13 @@ export function SiteHeader({
   path?: string;
 }) {
   const content = useContent();
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, user } = useAuth();
+  const [mounted, setMounted] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   useEffect(() => {
     setMenuOpen(false);
@@ -37,9 +43,37 @@ export function SiteHeader({
 
   const nextLang = lang === "en" ? "bn" : "en";
   const switchTarget = `/${nextLang}${path ? `/${path}` : ""}`;
-  const workspaceHref = isAuthenticated
-    ? `/${lang}/app`
-    : `/login?return_to=${encodeURIComponent(`/${lang}/app`)}`;
+
+  // Default server-stable values to ensure 100% hydration parity
+  const defaultWorkspaceHref = `/login?return_to=${encodeURIComponent("/en/app")}`;
+  const defaultWorkspaceLabel = t("nav.workspace", lang);
+
+  const workspaceHref = mounted
+    ? (isAuthenticated
+        ? (() => {
+            const rawUrl = user?.role === "admin"
+              ? buildSubdomainUrl("admin", `/${lang}/app/tenant-admin`)
+              : buildSubdomainUrl("app", `/${lang}/app`);
+            if (typeof window !== "undefined" && (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1")) {
+              const token = localStorage.getItem("dudos_jwt_token") || (user ? `token_${user.id}` : "");
+              if (token && user) {
+                const u = new URL(rawUrl);
+                u.searchParams.delete("dudos_at");
+                u.searchParams.delete("dudos_session");
+                u.searchParams.set("dudos_at", token);
+                u.searchParams.set("dudos_session", JSON.stringify(user));
+                return u.toString();
+              }
+            }
+            return rawUrl;
+          })()
+        : `/login?return_to=${encodeURIComponent(buildSubdomainUrl("app", `/${lang}/app`))}`)
+    : defaultWorkspaceHref;
+
+  const workspaceLabel = mounted && isAuthenticated && user?.role === "admin"
+    ? (lang === "bn" ? "অ্যাডমিন প্যানেল" : "Admin Panel")
+    : defaultWorkspaceLabel;
+
 
   return (
     <>
@@ -77,7 +111,7 @@ export function SiteHeader({
             <span>{t("common.switchLanguageLabel", lang)}</span>
           </Link>
           <Link className="desktop-login" href={workspaceHref}>
-            {t("nav.workspace", lang)}
+            {workspaceLabel}
           </Link>
           <Button asChild className="header-cta">
             <Link href={`/${lang}/builder`}>
@@ -113,10 +147,11 @@ export function SiteHeader({
                   </Link>
                 ))}
                 <Link href={`/${lang}/transform`}>{t("nav.transformation", lang)}</Link>
-                <Link href={workspaceHref}>{t("nav.workspace", lang)}</Link>
+                <Link href={workspaceHref}>{workspaceLabel}</Link>
               </nav>
             </SheetContent>
           </Sheet>
+
         </div>
       </header>
     </>

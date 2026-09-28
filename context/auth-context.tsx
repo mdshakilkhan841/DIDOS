@@ -1,6 +1,6 @@
 "use client";
 
-import React, { createContext, useContext, useState, useEffect } from "react";
+import React, { createContext, useContext, useState, useEffect, useCallback } from "react";
 import {
   StakeholderRole,
   UserProfile,
@@ -10,6 +10,7 @@ import {
   ProjectIntakeData,
 } from "@/types/auth";
 import { showToast } from "@/lib/toast";
+import { getCookieDomain, safeJsonParse } from "@/lib/subdomains";
 
 export interface CreditTransaction {
   id: string;
@@ -24,8 +25,8 @@ interface AuthContextType {
   activeRole: StakeholderRole;
   isAuthenticated: boolean;
   isLoading: boolean;
-  login: (identifier: string, password?: string, role?: StakeholderRole) => Promise<boolean>;
-  register: (data: Partial<UserProfile> & { password?: string }) => Promise<boolean>;
+  login: (identifier: string, password?: string, role?: StakeholderRole) => Promise<{ user: UserProfile; token: string }>;
+  register: (data: Partial<UserProfile> & { password?: string }) => Promise<{ user: UserProfile; token: string }>;
   logout: () => void;
   switchRole: (newRole: StakeholderRole) => void;
   // Credits system
@@ -151,17 +152,89 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   // Restore saved session, credit logs, and registrations on mount
   useEffect(() => {
     try {
+      let restoredUser: UserProfile | null = null;
+      let restoredRole: StakeholderRole | null = null;
+      let restoredToken: string | undefined = undefined;
+
+      // 1. Check localStorage first
       const stored = localStorage.getItem(STORAGE_KEY);
       if (stored) {
-        const parsed = JSON.parse(stored);
-        if (parsed.user && parsed.activeRole) {
-          setUser(parsed.user);
-          setActiveRole(parsed.activeRole);
+        try {
+          const parsed = JSON.parse(stored);
+          if (parsed.user && parsed.activeRole) {
+            restoredUser = parsed.user;
+            restoredRole = parsed.activeRole;
+            restoredToken = parsed.token || localStorage.getItem("dudos_jwt_token") || undefined;
+          }
+        } catch {}
+      }
+
+      // 2. Fallback to cookies (enables cross-subdomain SSO and session persistence across origins)
+      if (!restoredUser && typeof document !== "undefined") {
+        const getCookie = (name: string) => {
+          const match = document.cookie.match(new RegExp("(^|;\\s*)" + name + "=([^;]*)"));
+          return match ? match[2] : null;
+        };
+
+        const cookieSessionRaw = getCookie("dudos_session");
+        const cookieToken = getCookie("dudos_at");
+
+        if (cookieSessionRaw) {
           try {
-            document.cookie = `dudos_session=${encodeURIComponent(JSON.stringify({ userId: parsed.user.id, displayName: parsed.user.displayName, email: parsed.user.email, role: parsed.user.role }))}; path=/; max-age=2592000; SameSite=Lax`;
-            document.cookie = `dudos_at=token_${parsed.user.id}; path=/; max-age=2592000; SameSite=Lax`;
+            const sessionData = safeJsonParse(cookieSessionRaw);
+            if (sessionData) {
+              const role = (sessionData.role as StakeholderRole) || "client";
+              const config = STAKEHOLDER_CONFIGS[role] || STAKEHOLDER_CONFIGS.client;
+              restoredUser = {
+                id: sessionData.userId || sessionData.id || "usr_session",
+                email: sessionData.email || "",
+                username: sessionData.email?.split("@")[0] || "user",
+                displayName: sessionData.displayName || sessionData.email?.split("@")[0] || "User",
+                role: role,
+                status: "approved",
+                credits: 1000,
+                organizationName: sessionData.organizationName || config.title,
+                createdAt: new Date().toISOString(),
+              };
+              restoredRole = role;
+              restoredToken = cookieToken || undefined;
+
+              // Sync to this origin's localStorage
+              localStorage.setItem(STORAGE_KEY, JSON.stringify({ user: restoredUser, activeRole: role, token: restoredToken }));
+              if (restoredToken) {
+                localStorage.setItem("dudos_jwt_token", restoredToken);
+              }
+            }
           } catch {}
         }
+
+        // If session cookie was missing/corrupted but auth token cookie exists, restore basic session
+        if (!restoredUser && cookieToken) {
+          const role: StakeholderRole = "client";
+          const config = STAKEHOLDER_CONFIGS.client;
+          restoredUser = {
+            id: cookieToken.startsWith("token_") ? cookieToken.replace("token_", "") : "usr_session",
+            email: "",
+            username: "user",
+            displayName: "User",
+            role: role,
+            status: "approved",
+            credits: 1000,
+            organizationName: config.title,
+            createdAt: new Date().toISOString(),
+          };
+          restoredRole = role;
+          restoredToken = cookieToken;
+          try {
+            localStorage.setItem(STORAGE_KEY, JSON.stringify({ user: restoredUser, activeRole: role, token: restoredToken }));
+            localStorage.setItem("dudos_jwt_token", restoredToken);
+          } catch {}
+        }
+      }
+
+      if (restoredUser && restoredRole) {
+        setUser(restoredUser);
+        setActiveRole(restoredRole);
       }
 
       const storedTx = localStorage.getItem(TRANSACTIONS_KEY);
@@ -196,21 +269,34 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   // Save session when user or role changes
   const persistSession = (u: UserProfile | null, r: StakeholderRole, jwtToken?: string) => {
     try {
+      const cookieDomain = getCookieDomain();
+      const domainAttr = cookieDomain ? `; domain=${cookieDomain}` : "";
+
       if (u) {
         localStorage.setItem(STORAGE_KEY, JSON.stringify({ user: u, activeRole: r, token: jwtToken }));
         if (jwtToken) {
           localStorage.setItem("dudos_jwt_token", jwtToken);
         }
         try {
-          document.cookie = `dudos_session=${encodeURIComponent(JSON.stringify({ userId: u.id, displayName: u.displayName, email: u.email, role: u.role }))}; path=/; max-age=2592000; SameSite=Lax`;
-          document.cookie = `dudos_at=${jwtToken || `token_${u.id}`}; path=/; max-age=2592000; SameSite=Lax`;
+          document.cookie = `dudos_session=${encodeURIComponent(JSON.stringify({ userId: u.id, displayName: u.displayName, email: u.email, role: u.role }))}; path=/; max-age=2592000; SameSite=Lax${domainAttr}`;
+          document.cookie = `dudos_at=${jwtToken || `token_${u.id}`}; path=/; max-age=2592000; SameSite=Lax${domainAttr}`;
         } catch {}
       } else {
         localStorage.removeItem(STORAGE_KEY);
         localStorage.removeItem("dudos_jwt_token");
         try {
-          document.cookie = `dudos_session=; path=/; max-age=0; SameSite=Lax`;
-          document.cookie = `dudos_at=; path=/; max-age=0; SameSite=Lax`;
+          // Thoroughly delete cookies for host-only, domain-scoped, and localhost contexts
+          const epoch = "expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax";
+          document.cookie = `dudos_session=; path=/; max-age=0; ${epoch}`;
+          document.cookie = `dudos_at=; path=/; max-age=0; ${epoch}`;
+          document.cookie = `dudos_session=; path=/; domain=localhost; max-age=0; ${epoch}`;
+          document.cookie = `dudos_at=; path=/; domain=localhost; max-age=0; ${epoch}`;
+          document.cookie = `dudos_session=; path=/; domain=.localhost; max-age=0; ${epoch}`;
+          document.cookie = `dudos_at=; path=/; domain=.localhost; max-age=0; ${epoch}`;
+          if (domainAttr) {
+            document.cookie = `dudos_session=; path=/; max-age=0; ${epoch}${domainAttr}`;
+            document.cookie = `dudos_at=; path=/; max-age=0; ${epoch}${domainAttr}`;
+          }
         } catch {}
       }
     } catch {
@@ -218,7 +304,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const login = async (identifier: string, password?: string, preferredRole?: StakeholderRole): Promise<boolean> => {
+  const login = async (identifier: string, password?: string, preferredRole?: StakeholderRole): Promise<{ user: UserProfile; token: string }> => {
     setIsLoading(true);
     try {
       const apiBase = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8000/api/v1";
@@ -262,7 +348,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         description: `Signed in as ${config.title}.`,
       });
 
-      return true;
+      return { user: authenticatedUser, token: data.token };
     } catch (e: any) {
       throw e;
     } finally {
@@ -270,7 +356,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const register = async (data: Partial<UserProfile> & { password?: string; intake?: ProjectIntakeData }): Promise<boolean> => {
+
+  const register = async (data: Partial<UserProfile> & { password?: string; intake?: ProjectIntakeData }): Promise<{ user: UserProfile; token: string }> => {
     setIsLoading(true);
     try {
       const apiBase = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8000/api/v1";
@@ -327,13 +414,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         description: `Welcome to DUDOS! 1,000 welcome credits granted.`,
       });
 
-      return true;
+      return { user: newUser, token: respData.token };
     } catch (e: any) {
       throw e;
     } finally {
       setIsLoading(false);
     }
   };
+
 
 
   const updateRegistrationStatus = (
@@ -412,11 +500,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     showToast.success(`Allocated ${amount.toLocaleString()} credits to user!`);
   };
 
-  const logout = () => {
+  const logout = useCallback(() => {
     setUser(null);
     persistSession(null, activeRole);
-    showToast.info("Signed out successfully.");
-  };
+  }, [activeRole]);
 
   const switchRole = (newRole: StakeholderRole) => {
     setActiveRole(newRole);
