@@ -85,6 +85,11 @@
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-ring: var(--sidebar-ring);
+  --color-dudos-primary: #087f79;
+  --color-dudos-border: #dce5e9;
+  --color-dudos-surface: #f7f9fa;
+  --color-dudos-text: #162c38;
+  --color-dudos-text-secondary: #5b6f7b;
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
@@ -92,6 +97,16 @@
   --font-sans: Arial, Helvetica, sans-serif;
   --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
     "Liberation Mono", "Courier New", monospace;
+}
+
+@layer base {
+  *,
+  ::after,
+  ::before,
+  ::backdrop,
+  ::file-selector-button {
+    border-color: var(--border, #dce5e9);
+  }
 }
 
 @media (prefers-color-scheme: dark) {

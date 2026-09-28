@@ -33,21 +33,43 @@ import { UserProfile, UserStatus, ProjectIntakeData } from "@/types/auth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import {
+  Table,
+  TableHeader,
+  TableBody,
+  TableRow,
+  TableHead,
+  TableCell,
+} from "@/components/ui/table";
 import { AdminEstimationModal } from "@/components/projects/AdminEstimationModal";
 import { showToast } from "@/lib/toast";
 
-export function AdminControlPanel({ lang = "en" }: { lang?: string }) {
+export function AdminControlPanel({
+  lang = "en",
+  initialTab = "queue",
+}: {
+  lang?: string;
+  initialTab?: "queue" | "quotes" | "deployments" | "ledger";
+}) {
   const {
     user,
     registrations,
+    refreshUsers,
     updateRegistrationStatus,
     allocateCreditsToUser,
     creditTransactions,
   } = useAuth();
 
-  const [activeTab, setActiveTab] = useState<"queue" | "quotes" | "deployments" | "ledger">("queue");
+  const [activeTab, setActiveTab] = useState<"queue" | "quotes" | "deployments" | "ledger">(initialTab);
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [isSyncing, setIsSyncing] = useState(false);
+
+  useEffect(() => {
+    if (initialTab) {
+      setActiveTab(initialTab);
+    }
+  }, [initialTab]);
 
   // Deployment Tickets State
   const [deploymentTickets, setDeploymentTickets] = useState<any[]>([]);
@@ -220,37 +242,70 @@ export function AdminControlPanel({ lang = "en" }: { lang?: string }) {
 
   return (
     <div className="space-y-6">
-      {/* Top Banner / Admin Header */}
-      <div className="bg-white rounded-2xl p-6 border border-dudos-border shadow-xs flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+      {/* 1. Authentic DUDOS Section Heading (No boxed whiteboard card) */}
+      <div className="section-heading">
         <div>
-          <div className="flex items-center gap-2">
-            <span className="p-2 rounded-xl bg-[#112C3A] text-white">
-              <Shield className="h-5 w-5 text-teal-400" />
-            </span>
-            <div>
-              <h1 className="text-xl font-bold tracking-tight text-dudos-text">
-                {lang === "bn" ? "সিস্টেম অ্যাডমিন ও টেক কন্ট্রোল প্যানেল" : "System Administration & Tech Control Plane"}
-              </h1>
-              <p className="text-xs text-dudos-text-secondary mt-0.5">
-                Client intake intake queue, technical estimations, credit allocations & workspace provisioning.
-              </p>
-            </div>
-          </div>
+          <p className="eyebrow">
+            <span />
+            {lang === "bn" ? "প্ল্যাটফর্ম গভর্নেন্স" : "PLATFORM GOVERNANCE"}
+          </p>
+          <h1>
+            {lang === "bn"
+              ? "সিস্টেম অ্যাডমিন ও টেক কন্ট্রোল প্যানেল"
+              : "System Administration & Tech Control Plane"}
+          </h1>
+          <p>
+            {lang === "bn"
+              ? "ক্লায়েন্ট ইনটেক কিউ, টেকনিক্যাল এস্টিমেশন, ক্রেডিট বরাদ্দ ও ওয়ার্কস্পেস প্রভিশনিং।"
+              : "Client intake queue, technical estimations, credit allocations & workspace provisioning."}
+          </p>
         </div>
 
         <div className="flex items-center gap-2 shrink-0">
-          <Badge variant="outline" className="bg-teal-50 text-teal-900 border-teal-200 py-1 text-xs">
+          <Badge
+            variant="outline"
+            className="bg-[#edf7f4] text-[#087f79] border-[#c2e2dc] py-1 text-xs"
+          >
             Admin Authority: Full Control
           </Badge>
           <Button
             size="sm"
             variant="outline"
-            className="text-xs"
+            className="text-xs bg-white border-[#dce5e9] hover:bg-[#f4f7f8] text-[#162c38]"
+            disabled={isSyncing}
+            onClick={async () => {
+              setIsSyncing(true);
+              try {
+                if (refreshUsers) {
+                  await refreshUsers();
+                }
+                showToast.success("Synchronized with PostgreSQL database!");
+              } catch {
+                showToast.error("Failed to sync with database.");
+              } finally {
+                setIsSyncing(false);
+              }
+            }}
+          >
+            <RefreshCw
+              className={`h-3.5 w-3.5 mr-1 ${isSyncing ? "animate-spin" : ""}`}
+            />
+            Sync DB
+          </Button>
+          <Button
+            size="sm"
+            variant="outline"
+            className="text-xs bg-white border-[#dce5e9] hover:bg-[#f4f7f8] text-[#162c38]"
             onClick={() => {
-              const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(registrations, null, 2));
+              const dataStr =
+                "data:text/json;charset=utf-8," +
+                encodeURIComponent(JSON.stringify(registrations, null, 2));
               const downloadAnchor = document.createElement("a");
               downloadAnchor.setAttribute("href", dataStr);
-              downloadAnchor.setAttribute("download", `dudos_registrations_${Date.now()}.json`);
+              downloadAnchor.setAttribute(
+                "download",
+                `dudos_registrations_${Date.now()}.json`
+              );
               document.body.appendChild(downloadAnchor);
               downloadAnchor.click();
               downloadAnchor.remove();
@@ -263,87 +318,72 @@ export function AdminControlPanel({ lang = "en" }: { lang?: string }) {
         </div>
       </div>
 
-      {/* KPI Stats Row */}
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-        <div className="bg-white rounded-xl p-4 border border-dudos-border shadow-xs">
-          <span className="text-[11px] font-semibold text-dudos-text-secondary uppercase tracking-wider block">
-            Total Registrations
-          </span>
-          <div className="mt-2 flex items-baseline justify-between">
-            <span className="text-2xl font-extrabold text-dudos-text">{totalRegistrations}</span>
-            <Users className="h-4 w-4 text-dudos-primary" />
-          </div>
-          <span className="text-[11px] text-gray-500 mt-1 block">In localStorage queue</span>
+      {/* 2. Workspace Stats - Authentic DUDOS CSS (.workspace-stats) */}
+      <div
+        className="workspace-stats"
+        style={{
+          gridTemplateColumns: "repeat(auto-fit, minmax(190px, 1fr))",
+          margin: "20px 0 28px",
+        }}
+      >
+        <div>
+          <span>{lang === "bn" ? "মোট নিবন্ধন" : "Total registrations"}</span>
+          <strong>{totalRegistrations}</strong>
+          <small>{lang === "bn" ? "ডাটাবেস ও কিউ" : "In platform queue"}</small>
         </div>
 
-        <div className="bg-white rounded-xl p-4 border border-amber-200 bg-amber-50/20 shadow-xs">
-          <span className="text-[11px] font-semibold text-amber-800 uppercase tracking-wider block">
-            Awaiting Scoping
-          </span>
-          <div className="mt-2 flex items-baseline justify-between">
-            <span className="text-2xl font-extrabold text-amber-900">{pendingCount}</span>
-            <Clock className="h-4 w-4 text-amber-600" />
-          </div>
-          <span className="text-[11px] text-amber-700/80 mt-1 block">Gate 01 Pending</span>
+        <div>
+          <span>{lang === "bn" ? "স্কোপিং অপেক্ষমাণ" : "Awaiting scoping"}</span>
+          <strong className="text-amber-700">{pendingCount}</strong>
+          <small>{lang === "bn" ? "গেট ০১ অপেক্ষমাণ" : "Gate 01 pending"}</small>
         </div>
 
-        <div className="bg-white rounded-xl p-4 border border-blue-200 bg-blue-50/20 shadow-xs">
-          <span className="text-[11px] font-semibold text-blue-800 uppercase tracking-wider block">
-            In Estimation
-          </span>
-          <div className="mt-2 flex items-baseline justify-between">
-            <span className="text-2xl font-extrabold text-blue-900">{inScopingCount}</span>
-            <Calculator className="h-4 w-4 text-blue-600" />
-          </div>
-          <span className="text-[11px] text-blue-700/80 mt-1 block">Tech hours draft</span>
+        <div>
+          <span>{lang === "bn" ? "এস্টিমেশনে রয়েছে" : "In estimation"}</span>
+          <strong className="text-blue-700">{inScopingCount}</strong>
+          <small>{lang === "bn" ? "টেক আওয়ার্স খসড়া" : "Tech hours draft"}</small>
         </div>
 
-        <div className="bg-white rounded-xl p-4 border border-emerald-200 bg-emerald-50/20 shadow-xs">
-          <span className="text-[11px] font-semibold text-emerald-800 uppercase tracking-wider block">
-            Active Workspaces
-          </span>
-          <div className="mt-2 flex items-baseline justify-between">
-            <span className="text-2xl font-extrabold text-emerald-900">{activeCount}</span>
-            <CheckCircle2 className="h-4 w-4 text-emerald-600" />
-          </div>
-          <span className="text-[11px] text-emerald-700/80 mt-1 block">Gate 04 provisioned</span>
+        <div>
+          <span>{lang === "bn" ? "সক্রিয় ওয়ার্কস্পেস" : "Active workspaces"}</span>
+          <strong className="text-[#087f79]">{activeCount}</strong>
+          <small>{lang === "bn" ? "গেট ০৪ প্রভিশনড" : "Gate 04 provisioned"}</small>
         </div>
 
-        <div className="bg-white rounded-xl p-4 border border-dudos-border shadow-xs">
-          <span className="text-[11px] font-semibold text-dudos-text-secondary uppercase tracking-wider block">
-            System Credits
-          </span>
-          <div className="mt-2 flex items-baseline justify-between">
-            <span className="text-2xl font-extrabold text-teal-700">{totalCreditsAllocated.toLocaleString()}</span>
-            <Coins className="h-4 w-4 text-amber-500" />
-          </div>
-          <span className="text-[11px] text-gray-500 mt-1 block">Active platform wallet</span>
+        <div>
+          <span>{lang === "bn" ? "সিস্টেম ক্রেডিট" : "System credits"}</span>
+          <strong className="text-[#087f79]">
+            {totalCreditsAllocated.toLocaleString()}
+          </strong>
+          <small>
+            {lang === "bn" ? "সক্রিয় প্ল্যাটফর্ম ওয়ালেট" : "Active platform wallet"}
+          </small>
         </div>
       </div>
 
-      {/* Tabs Navigation */}
-      <div className="flex items-center gap-2 border-b border-dudos-border pb-1">
+      {/* 3. DUDOS Pill Tabs Navigation */}
+      <div className="flex items-center gap-1.5 p-1 bg-[#f0f4f6] rounded-lg w-fit border border-[#dce5e9] mb-4">
         <button
           onClick={() => setActiveTab("queue")}
-          className={`flex items-center gap-2 px-4 py-2.5 rounded-t-xl text-xs font-semibold transition-all cursor-pointer ${
+          className={`flex items-center gap-2 px-3.5 py-1.5 rounded-md text-xs font-semibold transition-all cursor-pointer ${
             activeTab === "queue"
-              ? "bg-white border-t border-x border-dudos-border text-dudos-primary shadow-xs"
-              : "text-dudos-text-secondary hover:text-dudos-text"
+              ? "bg-white text-[#087f79] shadow-xs"
+              : "text-[#5b6f7b] hover:text-[#162c38]"
           }`}
         >
-          <Users className="h-4 w-4" />
+          <Users className="h-3.5 w-3.5" />
           <span>Client Intakes & Registrations ({registrations.length})</span>
         </button>
 
         <button
           onClick={() => setActiveTab("quotes")}
-          className={`flex items-center gap-2 px-4 py-2.5 rounded-t-xl text-xs font-semibold transition-all cursor-pointer ${
+          className={`flex items-center gap-2 px-3.5 py-1.5 rounded-md text-xs font-semibold transition-all cursor-pointer ${
             activeTab === "quotes"
-              ? "bg-white border-t border-x border-dudos-border text-dudos-primary shadow-xs"
-              : "text-dudos-text-secondary hover:text-dudos-text"
+              ? "bg-white text-[#087f79] shadow-xs"
+              : "text-[#5b6f7b] hover:text-[#162c38]"
           }`}
         >
-          <Calculator className="h-4 w-4" />
+          <Calculator className="h-3.5 w-3.5" />
           <span>Technical Estimates & Quotes (${totalPipelineValue.toLocaleString()})</span>
         </button>
 
@@ -352,52 +392,52 @@ export function AdminControlPanel({ lang = "en" }: { lang?: string }) {
             setActiveTab("deployments");
             loadDeploymentTickets();
           }}
-          className={`flex items-center gap-2 px-4 py-2.5 rounded-t-xl text-xs font-semibold transition-all cursor-pointer ${
+          className={`flex items-center gap-2 px-3.5 py-1.5 rounded-md text-xs font-semibold transition-all cursor-pointer ${
             activeTab === "deployments"
-              ? "bg-white border-t border-x border-dudos-border text-dudos-primary shadow-xs"
-              : "text-dudos-text-secondary hover:text-dudos-text"
+              ? "bg-white text-[#087f79] shadow-xs"
+              : "text-[#5b6f7b] hover:text-[#162c38]"
           }`}
         >
-          <Server className="h-4 w-4" />
+          <Server className="h-3.5 w-3.5" />
           <span>Managed Deployments ({deploymentTickets.length})</span>
         </button>
 
         <button
           onClick={() => setActiveTab("ledger")}
-          className={`flex items-center gap-2 px-4 py-2.5 rounded-t-xl text-xs font-semibold transition-all cursor-pointer ${
+          className={`flex items-center gap-2 px-3.5 py-1.5 rounded-md text-xs font-semibold transition-all cursor-pointer ${
             activeTab === "ledger"
-              ? "bg-white border-t border-x border-dudos-border text-dudos-primary shadow-xs"
-              : "text-dudos-text-secondary hover:text-dudos-text"
+              ? "bg-white text-[#087f79] shadow-xs"
+              : "text-[#5b6f7b] hover:text-[#162c38]"
           }`}
         >
-          <History className="h-4 w-4" />
+          <History className="h-3.5 w-3.5" />
           <span>Platform Credit & Billing Ledger</span>
         </button>
       </div>
 
       {/* Tab 1: Client Registrations & Intake Queue */}
       {activeTab === "queue" && (
-        <div className="bg-white rounded-2xl border border-dudos-border shadow-xs overflow-hidden">
-          {/* Filter Bar */}
-          <div className="p-4 border-b border-dudos-border bg-gray-50/50 flex flex-col sm:flex-row items-center justify-between gap-3">
-            <div className="relative w-full sm:w-80">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-gray-400" />
+        <div>
+          {/* Catalog Tools / Filter Bar */}
+          <div className="catalog-tools">
+            <div className="search-input">
+              <Search size={16} />
               <Input
                 placeholder="Search by client, entity, domain..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-8 text-xs bg-white"
+                className="bg-white border-[#dce5e9] text-xs h-10"
               />
             </div>
 
-            <div className="flex items-center gap-2 w-full sm:w-auto">
-              <span className="text-xs text-gray-500 flex items-center gap-1">
-                <Filter className="h-3 w-3" /> Filter:
+            <div className="flex items-center gap-2 ml-auto">
+              <span className="text-xs text-[#5b6f7b] flex items-center gap-1 font-medium">
+                <Filter className="h-3.5 w-3.5" /> Filter:
               </span>
               <select
                 value={statusFilter}
                 onChange={(e) => setStatusFilter(e.target.value)}
-                className="rounded-lg border border-dudos-border bg-white px-2.5 py-1 text-xs text-dudos-text focus:outline-none focus:ring-1 focus:ring-dudos-primary"
+                className="rounded-md border border-[#dce5e9] bg-white px-3 py-2 text-xs text-[#162c38] focus:outline-none focus:ring-1 focus:ring-[#087f79]"
               >
                 <option value="all">All Statuses ({registrations.length})</option>
                 <option value="pending">Pending Review ({pendingCount})</option>
@@ -407,80 +447,87 @@ export function AdminControlPanel({ lang = "en" }: { lang?: string }) {
             </div>
           </div>
 
-          {/* Table */}
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs">
-              <thead className="bg-gray-50 border-b border-dudos-border text-dudos-text-secondary uppercase font-semibold text-[10px] tracking-wider">
-                <tr>
-                  <th className="py-3 px-4">Client / Entity</th>
-                  <th className="py-3 px-4">Domain & Stack</th>
-                  <th className="py-3 px-4">Status & Gate</th>
-                  <th className="py-3 px-4">Credits</th>
-                  <th className="py-3 px-4">Submitted</th>
-                  <th className="py-3 px-4 text-right">Admin Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-dudos-border">
+          {/* Authentic DUDOS Data Table */}
+          <div className="data-table">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Client / Entity</TableHead>
+                  <TableHead>Domain & Stack</TableHead>
+                  <TableHead>Status & Gate</TableHead>
+                  <TableHead>Credits</TableHead>
+                  <TableHead>Submitted</TableHead>
+                  <TableHead className="text-right">Admin Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
                 {filteredRegistrations.length === 0 ? (
-                  <tr>
-                    <td colSpan={6} className="py-8 text-center text-gray-500">
+                  <TableRow>
+                    <TableCell
+                      colSpan={6}
+                      className="py-8 text-center text-gray-500"
+                    >
                       No client registrations match your search filters.
-                    </td>
-                  </tr>
+                    </TableCell>
+                  </TableRow>
                 ) : (
                   filteredRegistrations.map((client) => {
-                    const isClientApproved = client.status === "approved" || client.status === "active";
+                    const isClientApproved =
+                      client.status === "approved" || client.status === "active";
                     return (
-                      <tr key={client.id} className="hover:bg-gray-50/80 transition-colors">
-                        <td className="py-3 px-4">
+                      <TableRow key={client.id}>
+                        <TableCell>
                           <div>
-                            <span className="font-semibold text-dudos-text block text-sm">
+                            <strong className="text-sm font-semibold text-[#162c38] block">
                               {client.displayName}
+                            </strong>
+                            <small className="text-[#5b6f7b] block">
+                              {client.organizationName || "Independent"} • @
+                              {client.username}
+                            </small>
+                            <span className="text-[11px] text-[#087f79] block mt-0.5">
+                              {client.email}
                             </span>
-                            <span className="text-[11px] text-gray-500 block">
-                              {client.organizationName || "Independent"} • @{client.username}
-                            </span>
-                            <span className="text-[11px] text-teal-700">{client.email}</span>
                           </div>
-                        </td>
+                        </TableCell>
 
-                        <td className="py-3 px-4">
+                        <TableCell>
                           <div>
-                            <span className="font-medium text-gray-900 block">
+                            <span className="font-medium text-[#162c38] block">
                               {client.intake?.businessDomain || "Enterprise Systems"}
                             </span>
-                            <span className="text-[10px] font-mono text-gray-500 bg-gray-100 px-1.5 py-0.5 rounded inline-block mt-0.5">
+                            <span className="text-[10px] font-mono text-[#5b6f7b] bg-[#f0f4f6] px-1.5 py-0.5 rounded inline-block mt-0.5">
                               {client.intake?.targetStack || "Next.js + FastAPI"}
                             </span>
                           </div>
-                        </td>
+                        </TableCell>
 
-                        <td className="py-3 px-4">{getStatusBadge(client.status)}</td>
+                        <TableCell>{getStatusBadge(client.status)}</TableCell>
 
-                        <td className="py-3 px-4">
-                          <span className="font-semibold text-teal-800 bg-teal-50 px-2 py-0.5 rounded border border-teal-200">
+                        <TableCell>
+                          <span className="font-semibold text-[#087f79] bg-[#edf7f4] px-2 py-0.5 rounded border border-[#c2e2dc]">
                             {client.credits.toLocaleString()} Cr
                           </span>
-                        </td>
+                        </TableCell>
 
-                        <td className="py-3 px-4 text-gray-500 text-[11px]">
+                        <TableCell className="text-[#5b6f7b] text-[11px]">
                           {new Date(client.createdAt).toLocaleDateString("en-US", {
                             month: "short",
                             day: "numeric",
                             hour: "2-digit",
                             minute: "2-digit",
                           })}
-                        </td>
+                        </TableCell>
 
-                        <td className="py-3 px-4 text-right">
-                          <div className="flex items-center justify-end gap-1.5">
+                        <TableCell className="text-right">
+                          <div className="row-actions justify-end">
                             <Button
                               size="sm"
                               variant="outline"
                               onClick={() => setInspectingUser(client)}
-                              className="text-[11px] h-7 px-2.5 text-gray-700"
+                              className="text-[11px] h-7 px-2.5 text-[#162c38] border-[#dce5e9] hover:bg-[#edf7f4] hover:text-[#087f79]"
                             >
-                              <FileText className="h-3 w-3 mr-1 text-teal-600" />
+                              <FileText className="h-3 w-3 mr-1 text-[#087f79]" />
                               Inspect
                             </Button>
 
@@ -507,9 +554,10 @@ export function AdminControlPanel({ lang = "en" }: { lang?: string }) {
                             {!isClientApproved ? (
                               <Button
                                 size="sm"
-                                variant="primary"
-                                onClick={() => handleStatusChange(client.id, "active")}
-                                className="text-[11px] h-7 px-2.5 bg-emerald-600 hover:bg-emerald-700 text-white"
+                                onClick={() =>
+                                  handleStatusChange(client.id, "active")
+                                }
+                                className="text-[11px] h-7 px-2.5 bg-[#087f79] hover:bg-[#076c67] text-white"
                               >
                                 <CheckCircle2 className="h-3 w-3 mr-1" />
                                 Approve
@@ -518,38 +566,40 @@ export function AdminControlPanel({ lang = "en" }: { lang?: string }) {
                               <Button
                                 size="sm"
                                 variant="outline"
-                                onClick={() => handleStatusChange(client.id, "pending_review")}
-                                className="text-[11px] h-7 px-2 text-gray-500 hover:text-amber-800"
+                                onClick={() =>
+                                  handleStatusChange(client.id, "pending_review")
+                                }
+                                className="text-[11px] h-7 px-2 text-[#5b6f7b] border-[#dce5e9] hover:bg-gray-100"
                                 title="Revert to Pending"
                               >
                                 Hold
                               </Button>
                             )}
                           </div>
-                        </td>
-                      </tr>
+                        </TableCell>
+                      </TableRow>
                     );
                   })
                 )}
-              </tbody>
-            </table>
+              </TableBody>
+            </Table>
           </div>
         </div>
       )}
 
       {/* Tab 2: Technical Estimates & Quotes */}
       {activeTab === "quotes" && (
-        <div className="bg-white rounded-2xl border border-dudos-border shadow-xs p-6 space-y-4">
-          <div className="flex items-center justify-between pb-4 border-b border-dudos-border">
+        <div className="bg-white rounded-xl border border-[#dce5e9] p-6 space-y-4">
+          <div className="flex items-center justify-between pb-4 border-b border-[#dce5e9]">
             <div>
-              <h3 className="text-base font-bold text-dudos-text">
+              <h3 className="text-base font-bold text-[#162c38]">
                 Authorized Engineering Quotes & Technical Scoping
               </h3>
-              <p className="text-xs text-dudos-text-secondary mt-0.5">
+              <p className="text-xs text-[#5b6f7b] mt-0.5">
                 Technical estimations calculated based on frontend, backend, QA and DevOps man-hours.
               </p>
             </div>
-            <span className="text-sm font-bold text-teal-800 bg-teal-50 px-3 py-1 rounded-xl border border-teal-200">
+            <span className="text-sm font-bold text-[#087f79] bg-[#edf7f4] px-3 py-1 rounded-lg border border-[#c2e2dc]">
               Total Value: ${totalPipelineValue.toLocaleString()} USD
             </span>
           </div>
@@ -562,44 +612,44 @@ export function AdminControlPanel({ lang = "en" }: { lang?: string }) {
                 return (
                   <div
                     key={r.id}
-                    className="p-5 rounded-xl border border-dudos-border bg-gray-50/40 space-y-3"
+                    className="p-5 rounded-lg border border-[#dce5e9] bg-[#f7f9fa] space-y-3"
                   >
                     <div className="flex items-start justify-between">
                       <div>
-                        <h4 className="text-sm font-bold text-dudos-text">{r.organizationName || r.displayName}</h4>
-                        <span className="text-xs text-teal-700">{r.intake?.businessDomain}</span>
+                        <h4 className="text-sm font-bold text-[#162c38]">{r.organizationName || r.displayName}</h4>
+                        <span className="text-xs text-[#087f79]">{r.intake?.businessDomain}</span>
                       </div>
-                      <Badge className="bg-teal-100 text-teal-800 border-teal-300">
+                      <Badge className="bg-[#edf7f4] text-[#087f79] border-[#c2e2dc]">
                         ${quote.totalQuote.toLocaleString()} {quote.currency}
                       </Badge>
                     </div>
 
-                    <p className="text-xs text-gray-600 line-clamp-2">
+                    <p className="text-xs text-[#5b6f7b] line-clamp-2">
                       {r.intake?.projectScope}
                     </p>
 
-                    <div className="grid grid-cols-3 gap-2 pt-2 border-t border-gray-200 text-xs">
+                    <div className="grid grid-cols-3 gap-2 pt-2 border-t border-[#dce5e9] text-xs">
                       <div>
-                        <span className="text-gray-400 block text-[10px]">EFFORT</span>
-                        <strong className="text-gray-800">{quote.manHours} Hours</strong>
+                        <span className="text-[#5b6f7b] block text-[10px]">EFFORT</span>
+                        <strong className="text-[#162c38]">{quote.manHours} Hours</strong>
                       </div>
                       <div>
-                        <span className="text-gray-400 block text-[10px]">HOURLY RATE</span>
-                        <strong className="text-gray-800">${quote.hourlyRate}/hr</strong>
+                        <span className="text-[#5b6f7b] block text-[10px]">HOURLY RATE</span>
+                        <strong className="text-[#162c38]">${quote.hourlyRate}/hr</strong>
                       </div>
                       <div>
-                        <span className="text-gray-400 block text-[10px]">INFRA / VPS</span>
-                        <strong className="text-gray-800">${quote.infraCost}</strong>
+                        <span className="text-[#5b6f7b] block text-[10px]">INFRA / VPS</span>
+                        <strong className="text-[#162c38]">${quote.infraCost}</strong>
                       </div>
                     </div>
 
-                    <div className="flex items-center justify-between pt-2 text-[11px] text-gray-500">
+                    <div className="flex items-center justify-between pt-2 text-[11px] text-[#5b6f7b]">
                       <span>Stack: {r.intake?.targetStack}</span>
                       <Button
                         size="sm"
                         variant="outline"
                         onClick={() => setEstimatingUser(r)}
-                        className="text-[11px] h-6 px-2"
+                        className="text-[11px] h-6 px-2 bg-white border-[#dce5e9] text-[#162c38] hover:bg-[#edf7f4] hover:text-[#087f79]"
                       >
                         Edit Quote
                       </Button>
@@ -613,37 +663,37 @@ export function AdminControlPanel({ lang = "en" }: { lang?: string }) {
 
       {/* Tab 3: Billing & Credit Ledger */}
       {activeTab === "ledger" && (
-        <div className="bg-white rounded-2xl border border-dudos-border shadow-xs p-6 space-y-4">
-          <div className="flex items-center justify-between pb-4 border-b border-dudos-border">
+        <div className="bg-white rounded-xl border border-[#dce5e9] p-6 space-y-4">
+          <div className="flex items-center justify-between pb-4 border-b border-[#dce5e9]">
             <div>
-              <h3 className="text-base font-bold text-dudos-text">
+              <h3 className="text-base font-bold text-[#162c38]">
                 Platform Credit & Transaction Ledger
               </h3>
-              <p className="text-xs text-dudos-text-secondary mt-0.5">
+              <p className="text-xs text-[#5b6f7b] mt-0.5">
                 Real-time journal of AI generation credits, package activations, and administrative adjustments.
               </p>
             </div>
-            <Badge variant="outline" className="text-xs font-mono">
+            <Badge variant="outline" className="text-xs font-mono bg-white border-[#dce5e9] text-[#5b6f7b]">
               Ledger Transactions: {creditTransactions.length}
             </Badge>
           </div>
 
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs">
-              <thead className="bg-gray-50 border-b border-dudos-border text-dudos-text-secondary uppercase font-semibold text-[10px]">
-                <tr>
-                  <th className="py-2.5 px-4">Transaction ID</th>
-                  <th className="py-2.5 px-4">Type</th>
-                  <th className="py-2.5 px-4">Credits</th>
-                  <th className="py-2.5 px-4">Reason / Notes</th>
-                  <th className="py-2.5 px-4 text-right">Timestamp</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-dudos-border">
+          <div className="data-table">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Transaction ID</TableHead>
+                  <TableHead>Type</TableHead>
+                  <TableHead>Credits</TableHead>
+                  <TableHead>Reason / Notes</TableHead>
+                  <TableHead className="text-right">Timestamp</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
                 {creditTransactions.map((tx) => (
-                  <tr key={tx.id} className="hover:bg-gray-50/50">
-                    <td className="py-2.5 px-4 font-mono text-[11px] text-gray-600">{tx.id}</td>
-                    <td className="py-2.5 px-4">
+                  <TableRow key={tx.id}>
+                    <TableCell className="font-mono text-[11px] text-[#5b6f7b]">{tx.id}</TableCell>
+                    <TableCell>
                       {tx.type === "credit" ? (
                         <span className="px-2 py-0.5 rounded text-[10px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
                           CREDIT
@@ -653,26 +703,26 @@ export function AdminControlPanel({ lang = "en" }: { lang?: string }) {
                           DEBIT
                         </span>
                       )}
-                    </td>
-                    <td className="py-2.5 px-4 font-bold text-gray-900">
+                    </TableCell>
+                    <TableCell className="font-bold text-[#162c38]">
                       {tx.type === "credit" ? `+${tx.amount.toLocaleString()}` : `-${tx.amount.toLocaleString()}`}
-                    </td>
-                    <td className="py-2.5 px-4 text-gray-700">{tx.reason}</td>
-                    <td className="py-2.5 px-4 text-right text-gray-500 text-[11px]">
+                    </TableCell>
+                    <TableCell className="text-[#5b6f7b]">{tx.reason}</TableCell>
+                    <TableCell className="text-right text-[#5b6f7b] text-[11px]">
                       {new Date(tx.timestamp).toLocaleString()}
-                    </td>
-                  </tr>
+                    </TableCell>
+                  </TableRow>
                 ))}
-              </tbody>
-            </table>
+              </TableBody>
+            </Table>
           </div>
         </div>
       )}
 
       {/* Tab 4: Managed Deployments Queue */}
       {activeTab === "deployments" && (
-        <div className="bg-white rounded-2xl border border-dudos-border shadow-xs p-6 space-y-5">
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between pb-4 border-b border-dudos-border gap-3">
+        <div className="bg-white rounded-xl border border-[#dce5e9] p-6 space-y-5">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between pb-4 border-b border-[#dce5e9] gap-3">
             <div>
               <div className="flex items-center gap-2">
                 <Server className="h-5 w-5 text-dudos-primary" />
@@ -784,7 +834,7 @@ export function AdminControlPanel({ lang = "en" }: { lang?: string }) {
                       className={`p-5 rounded-2xl border transition-all ${
                         isLive
                           ? "bg-emerald-50/30 border-emerald-300"
-                          : "bg-white border-dudos-border shadow-xs hover:border-slate-300"
+                          : "bg-white border-[#dce5e9] shadow-xs hover:border-slate-300"
                       }`}
                     >
                       <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 pb-3 border-b border-slate-200/80">
@@ -978,8 +1028,8 @@ export function AdminControlPanel({ lang = "en" }: { lang?: string }) {
       {/* Inspect Intake Modal */}
       {inspectingUser && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
-          <div className="bg-white rounded-2xl max-w-2xl w-full p-6 border border-dudos-border shadow-2xl space-y-5 animate-in fade-in zoom-in-95 duration-150">
-            <div className="flex items-start justify-between pb-4 border-b border-dudos-border">
+          <div className="bg-white rounded-2xl max-w-2xl w-full p-6 border border-[#dce5e9] shadow-2xl space-y-5 animate-in fade-in zoom-in-95 duration-150">
+            <div className="flex items-start justify-between pb-4 border-b border-[#dce5e9]">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-xl bg-teal-50 text-teal-700 flex items-center justify-center">
                   <Building className="h-5 w-5" />
@@ -1034,7 +1084,7 @@ export function AdminControlPanel({ lang = "en" }: { lang?: string }) {
               </div>
             </div>
 
-            <div className="flex items-center justify-between pt-4 border-t border-dudos-border">
+            <div className="flex items-center justify-between pt-4 border-t border-[#dce5e9]">
               <Button
                 variant="outline"
                 size="sm"
@@ -1080,8 +1130,8 @@ export function AdminControlPanel({ lang = "en" }: { lang?: string }) {
       {/* Credit Allocation Modal */}
       {creditModalUser && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
-          <div className="bg-white rounded-2xl max-w-md w-full p-6 border border-dudos-border shadow-2xl space-y-4 animate-in fade-in zoom-in-95 duration-150">
-            <div className="flex items-center gap-3 pb-3 border-b border-dudos-border">
+          <div className="bg-white rounded-2xl max-w-md w-full p-6 border border-[#dce5e9] shadow-2xl space-y-4 animate-in fade-in zoom-in-95 duration-150">
+            <div className="flex items-center gap-3 pb-3 border-b border-[#dce5e9]">
               <div className="w-10 h-10 rounded-xl bg-amber-50 text-amber-700 flex items-center justify-center">
                 <Coins className="h-5 w-5" />
               </div>
@@ -1121,7 +1171,7 @@ export function AdminControlPanel({ lang = "en" }: { lang?: string }) {
               </div>
             </div>
 
-            <div className="flex items-center justify-end gap-2 pt-3 border-t border-dudos-border">
+            <div className="flex items-center justify-end gap-2 pt-3 border-t border-[#dce5e9]">
               <Button
                 variant="outline"
                 size="sm"

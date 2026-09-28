@@ -40,6 +40,7 @@ interface AuthContextType {
   clearPreRegistrationDraft: () => void;
   // Admin & Registrations Queue
   registrations: UserProfile[];
+  refreshUsers: () => Promise<void>;
   updateRegistrationStatus: (
     userId: string,
     newStatus: UserStatus,
@@ -259,6 +260,28 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setRegistrations(SEED_REGISTRATIONS);
         localStorage.setItem(REGISTRATIONS_KEY, JSON.stringify(SEED_REGISTRATIONS));
       }
+
+      // Fetch dynamic PostgreSQL users asynchronously
+      const apiBase = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8000/api/v1";
+      fetch(`${apiBase}/admin/users`)
+        .then((res) => res.json())
+        .then((data) => {
+          if (data?.users && Array.isArray(data.users)) {
+            setRegistrations((prev) => {
+              const combined = [...data.users];
+              for (const p of prev) {
+                if (!combined.some((u) => u.id === p.id || u.email.toLowerCase() === p.email.toLowerCase())) {
+                  combined.push(p);
+                }
+              }
+              try {
+                localStorage.setItem(REGISTRATIONS_KEY, JSON.stringify(combined));
+              } catch {}
+              return combined;
+            });
+          }
+        })
+        .catch(() => {});
     } catch {
       // Fallback silently if storage read fails
     } finally {
@@ -432,11 +455,45 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
 
 
+  const refreshUsers = async () => {
+    try {
+      const apiBase = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8000/api/v1";
+      const res = await fetch(`${apiBase}/admin/users`);
+      if (res.ok) {
+        const data = await res.json();
+        if (data?.users && Array.isArray(data.users)) {
+          setRegistrations((prev) => {
+            const combined = [...data.users];
+            for (const p of prev) {
+              if (!combined.some((u) => u.id === p.id || (u.email && p.email && u.email.toLowerCase() === p.email.toLowerCase()))) {
+                combined.push(p);
+              }
+            }
+            try {
+              localStorage.setItem(REGISTRATIONS_KEY, JSON.stringify(combined));
+            } catch {}
+            return combined;
+          });
+        }
+      }
+    } catch {}
+  };
+
   const updateRegistrationStatus = (
     userId: string,
     newStatus: UserStatus,
     quote?: ProjectIntakeData["estimationQuote"]
   ) => {
+    // Asynchronously update in PostgreSQL backend
+    try {
+      const apiBase = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8000/api/v1";
+      fetch(`${apiBase}/admin/users/${userId}/status`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: newStatus }),
+      }).catch(() => {});
+    } catch {}
+
     const updated = registrations.map((r) => {
       if (r.id === userId) {
         const intake = r.intake || {
@@ -474,9 +531,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const allocateCreditsToUser = (userId: string, amount: number, reason: string) => {
+    // Asynchronously update in PostgreSQL backend
+    try {
+      const apiBase = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8000/api/v1";
+      fetch(`${apiBase}/admin/users/${userId}/credits`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ amount, reason }),
+      }).catch(() => {});
+    } catch {}
+
     const updated = registrations.map((r) => {
       if (r.id === userId) {
-        return { ...r, credits: r.credits + amount };
+        return { ...r, credits: (r.credits || 0) + amount };
       }
       return r;
     });
@@ -487,7 +554,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } catch {}
 
     if (user && user.id === userId) {
-      const updatedUser = { ...user, credits: user.credits + amount };
+      const updatedUser = { ...user, credits: (user.credits || 0) + amount };
       setUser(updatedUser);
       persistSession(updatedUser, activeRole);
     }
@@ -629,6 +696,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         getPreRegistrationDraft,
         clearPreRegistrationDraft,
         registrations,
+        refreshUsers,
         updateRegistrationStatus,
         allocateCreditsToUser,
       }}

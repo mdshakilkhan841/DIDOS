@@ -489,42 +489,46 @@ ${draft.projectScope}
 
   return (
     <div className="space-y-6">
-      {/* 1. Client Identity & Workspace Header */}
-      <div className="bg-white rounded-2xl p-6 border border-dudos-border shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
+      {/* 1. Client Identity & Workspace Header - Authentic DUDOS Template */}
+      <div className="section-heading">
         <div>
-          <div className="flex items-center gap-2 mb-1">
-            <span className="p-1.5 rounded-lg bg-teal-50 text-teal-700 border border-teal-200">
-              <Building2 className="h-5 w-5" />
-            </span>
-            <h1 className="text-xl font-bold tracking-tight text-dudos-text">
-              {activeDraft?.organizationName || user?.organizationName || "Customer Workspace"}
-            </h1>
-            <Badge variant="outline" className="bg-teal-50 text-teal-800 border-teal-300 text-xs">
-              Client Workspace
-            </Badge>
-          </div>
-          <p className="text-xs text-dudos-text-secondary">
-            Manage your project specifications, AI Q&A scope revisions, quotations, and deployment lifecycles.
+          <p className="eyebrow">
+            <span />
+            {lang === "bn" ? "ক্লায়েন্ট ওয়ার্কস্পেস" : "CLIENT WORKSPACE"}
+          </p>
+          <h1>
+            {activeDraft?.organizationName || user?.organizationName || "Customer Workspace"}
+          </h1>
+          <p>
+            {lang === "bn"
+              ? "প্রজেক্ট স্পেসিফিকেশন, এআই কিউঅ্যান্ডএ স্কোপ রিভিশন, কোটেশন ও ডিপ্লয়মেন্ট পরিচালনা করুন।"
+              : "Manage your project specifications, AI Q&A scope revisions, quotations, and deployment lifecycles."}
           </p>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 shrink-0">
           {/* Clickable Credit Wallet Button */}
           <button
             onClick={() => setShowCreditModal(true)}
-            className="bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-xl px-3 py-2 flex items-center gap-2 text-xs transition-colors cursor-pointer group"
+            className="bg-[#f0f4f6] hover:bg-[#e4ebef] border border-[#dce5e9] rounded-lg px-3 py-2 flex items-center gap-2 text-xs transition-colors cursor-pointer group"
             title="Click to view Credit Wallet & Packages"
           >
             <Coins className="h-4 w-4 text-amber-500 group-hover:scale-110 transition-transform" />
-            <span className="text-dudos-text-secondary">Wallet:</span>
-            <span className="font-bold text-dudos-text">{user?.credits?.toLocaleString() || 1000}</span>
-            <span className="text-[10px] text-teal-700 font-semibold bg-teal-50 px-1.5 py-0.5 rounded border border-teal-200 ml-1">
+            <span className="text-[#5b6f7b]">Wallet:</span>
+            <span className="font-bold text-[#162c38]">
+              {user?.credits?.toLocaleString() || 1000}
+            </span>
+            <span className="text-[10px] text-[#087f79] font-semibold bg-[#edf7f4] px-1.5 py-0.5 rounded border border-[#c2e2dc] ml-1">
               + Top Up
             </span>
           </button>
 
           <Link href="/onboarding">
-            <Button size="sm" variant="outline" className="text-xs flex items-center gap-1.5">
+            <Button
+              size="sm"
+              variant="outline"
+              className="text-xs flex items-center gap-1.5 bg-white border-[#dce5e9] text-[#162c38] hover:bg-[#f4f7f8]"
+            >
               <Plus className="h-3.5 w-3.5" />
               <span>{lang === "bn" ? "নতুন খসড়া" : "New Onboarding Request"}</span>
             </Button>
@@ -533,7 +537,7 @@ ${draft.projectScope}
       </div>
 
       {/* 2. Visual 8-Step Lifecycle Pipeline */}
-      <div className="bg-white rounded-2xl p-5 border border-dudos-border shadow-xs">
+      <div className="bg-white rounded-xl p-5 border border-[#dce5e9] shadow-xs">
         <div className="flex items-center justify-between mb-4">
           <span className="text-xs font-bold text-dudos-text uppercase tracking-wider flex items-center gap-2">
             <Sparkles className="h-4 w-4 text-dudos-primary" />
@@ -622,8 +626,8 @@ ${draft.projectScope}
 
       {/* 3. Active Project Draft Card */}
       {activeDraft ? (
-        <div className="bg-white rounded-2xl p-6 border border-dudos-border shadow-xs space-y-6">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-4 border-b border-dudos-border gap-3">
+        <div className="bg-white rounded-xl p-6 border border-[#dce5e9] shadow-xs space-y-6">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-4 border-b border-[#dce5e9] gap-3">
             <div>
               <div className="flex items-center gap-2">
                 <FolderKanban className="h-5 w-5 text-dudos-primary" />
@@ -1019,7 +1023,7 @@ ${draft.projectScope}
           )}
         </div>
       ) : (
-        <div className="bg-white rounded-2xl p-8 border border-dudos-border shadow-xs text-center space-y-4">
+        <div className="bg-white rounded-xl p-8 border border-[#dce5e9] shadow-xs text-center space-y-4">
           <FolderKanban className="h-10 w-10 text-dudos-text-secondary mx-auto opacity-40" />
           <div>
             <h3 className="text-base font-bold text-dudos-text">No Active Project Draft Found</h3>
@@ -1039,8 +1043,8 @@ ${draft.projectScope}
 
       {/* 4. Dispatched Formal Quotations / Billing Invoices */}
       {relevantInvoice && (
-        <div className="bg-white rounded-2xl p-6 border border-dudos-border shadow-xs space-y-4">
-          <div className="flex items-center justify-between pb-3 border-b border-dudos-border">
+        <div className="bg-white rounded-xl p-6 border border-[#dce5e9] shadow-xs space-y-4">
+          <div className="flex items-center justify-between pb-3 border-b border-[#dce5e9]">
             <div className="flex items-center gap-2">
               <DollarSign className="h-5 w-5 text-emerald-600" />
               <h3 className="text-sm font-bold text-dudos-text">
@@ -1174,7 +1178,7 @@ ${draft.projectScope}
                       className={`p-3 rounded-xl border text-left transition-all ${
                         paymentMethod === m.id
                           ? "border-emerald-500 bg-emerald-50/50 text-emerald-900 ring-2 ring-emerald-300/40"
-                          : "border-dudos-border bg-white text-dudos-text hover:bg-slate-50"
+                          : "border-[#dce5e9] bg-white text-dudos-text hover:bg-slate-50"
                       }`}
                     >
                       <span className="font-bold block">{m.label}</span>
@@ -1202,7 +1206,7 @@ ${draft.projectScope}
                 </div>
               )}
 
-              <div className="flex justify-end gap-2 pt-3 border-t border-dudos-border">
+              <div className="flex justify-end gap-2 pt-3 border-t border-[#dce5e9]">
                 <Button
                   size="sm"
                   variant="ghost"
@@ -1295,7 +1299,7 @@ ${draft.projectScope}
               <select
                 value={editableQa.multiTenant}
                 onChange={(e) => setEditableQa({ ...editableQa, multiTenant: e.target.value })}
-                className="w-full h-9 px-3 rounded-lg border border-dudos-border text-xs bg-white text-dudos-text"
+                className="w-full h-9 px-3 rounded-lg border border-[#dce5e9] text-xs bg-white text-dudos-text"
               >
                 <option value="yes">Yes - Strict Multi-Tenant Data Isolation (Row-Level Security)</option>
                 <option value="no">No - Single-Tenant Dedicated Database</option>
@@ -1309,7 +1313,7 @@ ${draft.projectScope}
               <select
                 value={editableQa.paymentGateway}
                 onChange={(e) => setEditableQa({ ...editableQa, paymentGateway: e.target.value })}
-                className="w-full h-9 px-3 rounded-lg border border-dudos-border text-xs bg-white text-dudos-text"
+                className="w-full h-9 px-3 rounded-lg border border-[#dce5e9] text-xs bg-white text-dudos-text"
               >
                 <option value="bKash, Nagad & Online Gateway">bKash, Nagad & Local MFS (Bangladesh)</option>
                 <option value="Stripe & Global Credit Cards">Stripe & International Credit Cards (USD / EUR)</option>
@@ -1325,7 +1329,7 @@ ${draft.projectScope}
               <select
                 value={editableQa.userScale}
                 onChange={(e) => setEditableQa({ ...editableQa, userScale: e.target.value })}
-                className="w-full h-9 px-3 rounded-lg border border-dudos-border text-xs bg-white text-dudos-text"
+                className="w-full h-9 px-3 rounded-lg border border-[#dce5e9] text-xs bg-white text-dudos-text"
               >
                 <option value="1,000 - 5,000 users">Startup Tier: 1,000 - 5,000 DAU</option>
                 <option value="10,000 - 50,000 users">Growth Tier: 10,000 - 50,000 DAU</option>
@@ -1340,7 +1344,7 @@ ${draft.projectScope}
               <select
                 value={editableQa.databaseChoice}
                 onChange={(e) => setEditableQa({ ...editableQa, databaseChoice: e.target.value })}
-                className="w-full h-9 px-3 rounded-lg border border-dudos-border text-xs bg-white text-dudos-text"
+                className="w-full h-9 px-3 rounded-lg border border-[#dce5e9] text-xs bg-white text-dudos-text"
               >
                 <option value="PostgreSQL with Row-Level Security">PostgreSQL 16 (Recommended for RLS & FastAPI)</option>
                 <option value="Supabase / Cloud Managed PG">Supabase Managed Cloud Postgres</option>
@@ -1349,7 +1353,7 @@ ${draft.projectScope}
             </div>
           </div>
 
-          <div className="flex justify-end gap-2 pt-3 border-t border-dudos-border">
+          <div className="flex justify-end gap-2 pt-3 border-t border-[#dce5e9]">
             <Button size="sm" variant="ghost" onClick={() => setShowQaModal(false)} className="text-xs">
               Cancel
             </Button>
