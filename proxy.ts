@@ -211,6 +211,18 @@ export function proxy(req: NextRequest) {
       return NextResponse.redirect(loginUrl);
     }
 
+    // Role check: If admin user accesses client workspace, redirect to admin portal
+    if (userRole === "admin") {
+      const adminBase = isLocalhost ? `${protocol}//admin.localhost${port}` : `${protocol}//admin.${rootDomain}${port}`;
+      return NextResponse.redirect(new URL(`${adminBase}/en/app/tenant-admin`));
+    }
+
+    // Client user trying to access admin paths on app subdomain: redirect to client root
+    if (url.pathname.includes("tenant-admin") || url.pathname.includes("/admin")) {
+      url.pathname = "/en/app";
+      return NextResponse.redirect(url);
+    }
+
     // Rewrite app root to customer workspace (/en/app)
     if (url.pathname === "/" || url.pathname === "/en" || url.pathname === "/bn" || url.pathname === "/app") {
       url.pathname = "/en/app";

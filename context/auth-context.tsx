@@ -408,6 +408,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setActiveRole(role);
       persistSession(newUser, role, respData.token);
 
+      setRegistrations((prev) => {
+        const next = [newUser, ...prev.filter((p) => p.id !== newUser.id)];
+        try {
+          localStorage.setItem(REGISTRATIONS_KEY, JSON.stringify(next));
+        } catch {}
+        return next;
+      });
+
       clearPreRegistrationDraft();
 
       showToast.success("Registration successful!", {
