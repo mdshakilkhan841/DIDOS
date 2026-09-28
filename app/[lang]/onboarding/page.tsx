@@ -1,10 +1,4 @@
-import { notFound } from "next/navigation";
-import { CustomerOnboardingWizard } from "@/components/onboarding/CustomerOnboardingWizard";
-
-export const metadata = {
-  title: "Client Onboarding & Project Intake | DUDOS",
-  description: "DUDOS customer lifecycle onboarding, technical estimation review, and billing gate.",
-};
+import { redirect, notFound } from "next/navigation";
 
 export default async function OnboardingPage({
   params,
@@ -14,5 +8,5 @@ export default async function OnboardingPage({
   const { lang } = await params;
   if (!["en", "bn"].includes(lang)) notFound();
 
-  return <CustomerOnboardingWizard lang={lang} />;
+  redirect(`/${lang}/transform`);
 }

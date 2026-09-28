@@ -12,6 +12,7 @@ import {
   SheetTrigger,
 } from "@/components/ui/sheet";
 import { useContent } from "@/components/dudos-content-context";
+import { useAuth } from "@/context/auth-context";
 import { t } from "@/lib/i18n";
 
 export function SiteHeader({
@@ -22,6 +23,7 @@ export function SiteHeader({
   path?: string;
 }) {
   const content = useContent();
+  const { isAuthenticated } = useAuth();
   const [menuOpen, setMenuOpen] = useState(false);
 
   useEffect(() => {
@@ -35,6 +37,9 @@ export function SiteHeader({
 
   const nextLang = lang === "en" ? "bn" : "en";
   const switchTarget = `/${nextLang}${path ? `/${path}` : ""}`;
+  const workspaceHref = isAuthenticated
+    ? `/${lang}/app`
+    : `/login?return_to=${encodeURIComponent(`/${lang}/app`)}`;
 
   return (
     <>
@@ -71,7 +76,7 @@ export function SiteHeader({
             <Globe2 size={15} />
             <span>{t("common.switchLanguageLabel", lang)}</span>
           </Link>
-          <Link className="desktop-login" href={`/${lang}/app`}>
+          <Link className="desktop-login" href={workspaceHref}>
             {t("nav.workspace", lang)}
           </Link>
           <Button asChild className="header-cta">
@@ -108,7 +113,7 @@ export function SiteHeader({
                   </Link>
                 ))}
                 <Link href={`/${lang}/transform`}>{t("nav.transformation", lang)}</Link>
-                <Link href={`/${lang}/app`}>{t("nav.workspace", lang)}</Link>
+                <Link href={workspaceHref}>{t("nav.workspace", lang)}</Link>
               </nav>
             </SheetContent>
           </Sheet>

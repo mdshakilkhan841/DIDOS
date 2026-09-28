@@ -1,8 +1,8 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { useRouter } from "next/navigation";
-import { User, Mail, Lock, Building, GraduationCap, Briefcase, Shield, Check, ArrowRight } from "lucide-react";
+import { User, Mail, Lock, Building, GraduationCap, Briefcase, Shield, ArrowRight } from "lucide-react";
 import { StakeholderRole, STAKEHOLDER_CONFIGS } from "@/types/auth";
 import { useAuth } from "@/context/auth-context";
 import { Button } from "@/components/ui/button";
@@ -15,97 +15,25 @@ import { showToast } from "@/lib/toast";
 interface RegisterFormProps {
   onSwitchToLogin?: () => void;
   initialRole?: StakeholderRole;
+  returnTo?: string;
 }
 
-export function RegisterForm({ onSwitchToLogin, initialRole = "client" }: RegisterFormProps) {
+export function RegisterForm({ onSwitchToLogin, initialRole = "client", returnTo }: RegisterFormProps) {
   const router = useRouter();
-  const { register, isLoading, savePreRegistrationDraft, getPreRegistrationDraft, clearPreRegistrationDraft } = useAuth();
+  const { register, isLoading } = useAuth();
 
   const [role, setRole] = useState<StakeholderRole>(initialRole);
   const [displayName, setDisplayName] = useState("");
-  const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
 
-  // Role-specific & Project Intake fields
+  // Role-specific fields
   const [orgName, setOrgName] = useState("");
   const [identifier, setIdentifier] = useState(""); // Student ID, Staff ID, Trade License
   const [department, setDepartment] = useState("");
-  const [businessDomain, setBusinessDomain] = useState("E-Commerce & Digital Business");
-  const [targetStack, setTargetStack] = useState("Next.js 16 + FastAPI + PostgreSQL");
-  const [projectScope, setProjectScope] = useState("");
-  const [referenceUrls, setReferenceUrls] = useState("");
   const [termsAccepted, setTermsAccepted] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
-  const [hasRestoredDraft, setHasRestoredDraft] = useState(false);
-
-  // Restore pre-registration draft from sessionStorage/localStorage on mount
-  useEffect(() => {
-    const draft = getPreRegistrationDraft();
-    if (draft) {
-      if (draft.displayName) setDisplayName(draft.displayName);
-      if (draft.username) setUsername(draft.username);
-      if (draft.email) setEmail(draft.email);
-      if (draft.role) setRole(draft.role);
-      if (draft.organizationName) setOrgName(draft.organizationName);
-      if (draft.identifier) setIdentifier(draft.identifier);
-      if (draft.department) setDepartment(draft.department);
-      if (draft.businessDomain) setBusinessDomain(draft.businessDomain);
-      if (draft.targetStack) setTargetStack(draft.targetStack);
-      if (draft.projectScope) setProjectScope(draft.projectScope);
-      if (draft.referenceUrls) setReferenceUrls(draft.referenceUrls);
-      setHasRestoredDraft(true);
-    }
-  }, []);
-
-  // Real-time autosave to localStorage & sessionStorage
-  useEffect(() => {
-    if (displayName || username || email || orgName || projectScope) {
-      savePreRegistrationDraft({
-        role,
-        displayName,
-        username,
-        email,
-        organizationName: orgName,
-        identifier,
-        department,
-        businessDomain,
-        targetStack,
-        projectScope,
-        referenceUrls,
-        savedAt: new Date().toISOString(),
-      });
-    }
-  }, [
-    role,
-    displayName,
-    username,
-    email,
-    orgName,
-    identifier,
-    department,
-    businessDomain,
-    targetStack,
-    projectScope,
-    referenceUrls,
-  ]);
-
-  const handleClearDraft = () => {
-    clearPreRegistrationDraft();
-    setDisplayName("");
-    setUsername("");
-    setEmail("");
-    setOrgName("");
-    setIdentifier("");
-    setDepartment("");
-    setBusinessDomain("E-Commerce & Digital Business");
-    setTargetStack("Next.js 16 + FastAPI + PostgreSQL");
-    setProjectScope("");
-    setReferenceUrls("");
-    setHasRestoredDraft(false);
-    showToast.info("Cleared saved registration draft.");
-  };
 
   // Calculate password strength
   const getPasswordStrength = () => {
@@ -132,14 +60,8 @@ export function RegisterForm({ onSwitchToLogin, initialRole = "client" }: Regist
       return;
     }
 
-    if (!username.trim()) {
-      setErrorMsg("Please choose a unique username.");
-      showToast.error("Username is required.");
-      return;
-    }
-
     if (!email || !email.includes("@")) {
-      setErrorMsg("Please provide a valid email address.");
+      setErrorMsg("Please provide a valid corporate or academic email.");
       showToast.error("Invalid email address.");
       return;
     }
@@ -162,31 +84,22 @@ export function RegisterForm({ onSwitchToLogin, initialRole = "client" }: Regist
       return;
     }
 
+    const username = email.split("@")[0].toLowerCase().replace(/[^a-z0-9]/g, "_");
+
     const success = await register({
       email,
       username,
       displayName,
       role,
-      organizationName: orgName || STAKEHOLDER_CONFIGS[role].sampleOrgPlaceholder,
+      organizationName: orgName || STAKEHOLDER_CONFIGS[role]?.sampleOrgPlaceholder || "Daffodil Organization",
       identifier,
       department,
       password,
-      intake: {
-        businessDomain: businessDomain || "Enterprise Digital Business",
-        projectScope: projectScope || "Automated website, portal and digital operations setup.",
-        targetStack: targetStack || "Next.js 16 + FastAPI + PostgreSQL",
-        referenceUrls: referenceUrls || "",
-        submittedAt: new Date().toISOString(),
-      },
     });
 
     if (success) {
-      // Admin goes directly to control plane; clients go to the onboarding & verification process gate
-      if (role === "admin") {
-        router.push("/app/tenant-admin");
-      } else {
-        router.push("/onboarding");
-      }
+      const destination = returnTo || STAKEHOLDER_CONFIGS[role]?.recommendedRoute || "/app";
+      router.push(destination);
     } else {
       setErrorMsg("Registration could not be completed. Please try again.");
     }
@@ -204,30 +117,10 @@ export function RegisterForm({ onSwitchToLogin, initialRole = "client" }: Regist
         </p>
       </div>
 
-      {/* Free credit activation banner */}
-      <div className="flex items-center gap-2 p-2.5 rounded-lg bg-teal-50 border border-teal-200 text-xs text-teal-800 mb-4">
-        <Check className="h-4 w-4 text-teal-600 shrink-0" />
-        <span><strong>Free Registration:</strong> Includes 1,000 complimentary AI Builder credits + dedicated workspace setup.</span>
-      </div>
-
-      {/* Restored draft notice */}
-      {hasRestoredDraft && (
-        <div className="flex items-center justify-between p-2.5 rounded-lg bg-blue-50 border border-blue-200 text-xs text-blue-800 mb-4">
-          <span>Draft registration data restored from your session.</span>
-          <button
-            type="button"
-            onClick={handleClearDraft}
-            className="font-medium underline hover:text-blue-950 ml-2"
-          >
-            Clear Draft
-          </button>
-        </div>
-      )}
-
       {/* Stakeholder Selection Grid */}
       <div className="mb-6">
         <label className="block text-xs font-semibold uppercase tracking-wider text-dudos-text-secondary mb-2">
-          Step 1: Choose Your Role
+          Step 1: Choose Your Stakeholder Profile
         </label>
         <StakeholderSelector
           selectedRole={role}
@@ -247,39 +140,20 @@ export function RegisterForm({ onSwitchToLogin, initialRole = "client" }: Regist
 
       {/* Form Details */}
       <form onSubmit={handleSubmit} className="space-y-4">
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <div>
-            <Label htmlFor="displayName" required>
-              Full Name
-            </Label>
-            <div className="relative mt-1.5">
-              <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-dudos-text-secondary" />
-              <Input
-                id="displayName"
-                value={displayName}
-                onChange={(e) => setDisplayName(e.target.value)}
-                placeholder="e.g. Shakil Khan"
-                className="pl-9"
-                required
-              />
-            </div>
-          </div>
-
-          <div>
-            <Label htmlFor="username" required>
-              Username
-            </Label>
-            <div className="relative mt-1.5">
-              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-semibold text-dudos-text-secondary">@</span>
-              <Input
-                id="username"
-                value={username}
-                onChange={(e) => setUsername(e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, ""))}
-                placeholder="username"
-                className="pl-8"
-                required
-              />
-            </div>
+        <div>
+          <Label htmlFor="displayName" required>
+            Full Name
+          </Label>
+          <div className="relative mt-1.5">
+            <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-dudos-text-secondary" />
+            <Input
+              id="displayName"
+              value={displayName}
+              onChange={(e) => setDisplayName(e.target.value)}
+              placeholder="e.g. Dr. Sabrina Khan or Shakil Ahmed"
+              className="pl-9"
+              required
+            />
           </div>
         </div>
 
@@ -309,7 +183,7 @@ export function RegisterForm({ onSwitchToLogin, initialRole = "client" }: Regist
         <div className="p-3.5 rounded-xl border border-dudos-border bg-dudos-surface/70 space-y-3">
           <div className="text-xs font-semibold text-dudos-primary flex items-center gap-1.5">
             <Shield className="h-3.5 w-3.5" />
-            <span>{STAKEHOLDER_CONFIGS[role].badge} Specific Information</span>
+            <span>{STAKEHOLDER_CONFIGS[role]?.badge || "Role"} Specific Information</span>
           </div>
 
           <div>
@@ -330,7 +204,7 @@ export function RegisterForm({ onSwitchToLogin, initialRole = "client" }: Regist
                 id="orgName"
                 value={orgName}
                 onChange={(e) => setOrgName(e.target.value)}
-                placeholder={STAKEHOLDER_CONFIGS[role].sampleOrgPlaceholder}
+                placeholder={STAKEHOLDER_CONFIGS[role]?.sampleOrgPlaceholder}
                 className="pl-9 text-xs"
               />
             </div>
@@ -369,77 +243,6 @@ export function RegisterForm({ onSwitchToLogin, initialRole = "client" }: Regist
             </div>
           )}
         </div>
-
-        {/* Project Scope & Intake Data Collection */}
-        {role !== "admin" && (
-          <div className="p-3.5 rounded-xl border border-teal-200 bg-teal-50/40 space-y-3">
-            <div className="text-xs font-semibold text-teal-800 flex items-center justify-between">
-              <span className="flex items-center gap-1.5">
-                <Building className="h-3.5 w-3.5 text-teal-600" />
-                <span>Project Scope & Intake Data Collection</span>
-              </span>
-              <span className="text-[10px] bg-teal-100 text-teal-700 px-1.5 py-0.5 rounded font-mono font-medium">Auto-Saved</span>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-              <div>
-                <Label htmlFor="businessDomain" className="text-xs">Business Domain / Industry</Label>
-                <select
-                  id="businessDomain"
-                  value={businessDomain}
-                  onChange={(e) => setBusinessDomain(e.target.value)}
-                  className="mt-1 w-full rounded-md border border-dudos-border bg-white px-2.5 py-1.5 text-xs text-dudos-text shadow-sm focus:border-dudos-primary focus:outline-none focus:ring-1 focus:ring-dudos-primary"
-                >
-                  <option value="E-Commerce & Digital Business">E-Commerce & Retail</option>
-                  <option value="Healthcare & Telemedicine">Healthcare & Clinics</option>
-                  <option value="Education & Academy">Education & Academy</option>
-                  <option value="Logistics & Supply Chain">Logistics & Fleet</option>
-                  <option value="SaaS & Cloud Operations">SaaS & Technology</option>
-                  <option value="Finance & Enterprise ERP">Enterprise Operations & ERP</option>
-                </select>
-              </div>
-
-              <div>
-                <Label htmlFor="targetStack" className="text-xs">Preferred Target Stack</Label>
-                <select
-                  id="targetStack"
-                  value={targetStack}
-                  onChange={(e) => setTargetStack(e.target.value)}
-                  className="mt-1 w-full rounded-md border border-dudos-border bg-white px-2.5 py-1.5 text-xs text-dudos-text shadow-sm focus:border-dudos-primary focus:outline-none focus:ring-1 focus:ring-dudos-primary"
-                >
-                  <option value="Next.js 16 + FastAPI + PostgreSQL">Next.js 16 + FastAPI + PostgreSQL</option>
-                  <option value="React 19 + Node.js + PostgreSQL">React 19 + Node.js</option>
-                  <option value="WordPress Headless + Next.js">WordPress Headless</option>
-                  <option value="Laravel 11 + Vue 3">Laravel 11 + Vue 3</option>
-                  <option value="Static HTML5 + Tailwind CSS">Static HTML5 High-Performance</option>
-                </select>
-              </div>
-            </div>
-
-            <div>
-              <Label htmlFor="projectScope" className="text-xs">Project Scope & Key Deliverables</Label>
-              <textarea
-                id="projectScope"
-                rows={2}
-                value={projectScope}
-                onChange={(e) => setProjectScope(e.target.value)}
-                placeholder="Briefly describe what you are building, key features, user roles, or business goals..."
-                className="mt-1 w-full rounded-md border border-dudos-border bg-white px-2.5 py-1.5 text-xs text-dudos-text shadow-sm focus:border-dudos-primary focus:outline-none focus:ring-1 focus:ring-dudos-primary placeholder:text-gray-400"
-              />
-            </div>
-
-            <div>
-              <Label htmlFor="referenceUrls" className="text-xs">Reference URLs / Benchmark Sites (Optional)</Label>
-              <Input
-                id="referenceUrls"
-                value={referenceUrls}
-                onChange={(e) => setReferenceUrls(e.target.value)}
-                placeholder="e.g. https://example.com, https://dhl.com"
-                className="text-xs mt-1"
-              />
-            </div>
-          </div>
-        )}
 
         {/* Passwords */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">

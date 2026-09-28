@@ -160,9 +160,15 @@ flowchart TD
 | **T-11** | Managed Deployment Ticket Modal (`ManagedDeploymentModal.tsx`) & Staging | Steps 8–9 | Shakil Khan | 🟢 Completed |
 | **T-12** | FastAPI Backend Bridge Contract Verification & Final QA by 30th Sep 2026 | Full Flow | Shakil Khan | 🟢 Completed |
 | **T-13** | Custom Project Form Auto-Feed & Active Draft Sync (`CustomProjectForm.tsx`) | Step 4 | Shakil Khan | 🟢 Completed |
-| **T-14** | End-to-End 7-Step Browser Verification Walkthrough & QA Audit | Full Flow | Shakil Khan | ⚪ Next Task |
-| **T-15** | Python FastAPI Backend Server Scaffold & Service Endpoints (`api/`) | Backend Bridge | Shakil Khan | ⚪ Scheduled |
-| **T-16** | Docker & VPS Production Deployment Package | Production Release | Shakil Khan | ⚪ Scheduled |
+| **T-14** | End-to-End 7-Step Browser Verification Walkthrough & QA Audit | Full Flow | Shakil Khan | 🟢 Completed |
+| **T-15** | Safe Backend Setup & Run Server (`devscope-ai-builder` on `wip/shakil`) | Backend Engine | Shakil Khan | 🟢 Completed (Port 8000) |
+| **T-16** | Enable CORS for Next.js (`http://localhost:3000`) in `devscope-ai-builder` | Network / API | Shakil Khan | 🟢 Completed |
+| **T-17** | Customer Auth Endpoints (`POST /api/v1/auth/register`, `/login`, `GET /me`) | Auth System | Shakil Khan | 🟢 Completed |
+| **T-18** | Onboarding & Active Draft APIs (`/api/v1/onboarding/draft`, `/api/v1/projects/active-draft`) | Data Feed | Shakil Khan | 🟢 Completed |
+| **T-19** | AI QA & Specification Confirmation APIs (`POST /api/v1/projects/qa`, `/confirm`) | AI QA Final | Shakil Khan | 🟢 Completed |
+| **T-20** | Commercial Billing & Invoices APIs (`GET /api/v1/billing/invoices`, `/pay`) | Commercial Gate | Shakil Khan | 🟢 Completed |
+| **T-21** | Managed Deployment Ticket APIs (`/api/v1/deployments/tickets`, `/verify-dns`, `/deploy`) | Deploy Phase | Shakil Khan | 🟢 Completed |
+| **T-22** | Wire Next.js Frontend (`NEXT_PUBLIC_USE_BACKEND_API=true`) & Live End-to-End Test | Integration | Shakil Khan | 🟢 Completed |
 
 ---
 
@@ -171,5 +177,9 @@ flowchart TD
 - **Phase 2 (Day 2)**: Committed (`db0db62`)
 - **Phase 3 (Day 3)**: Committed (`a6a1198`)
 - **Phase 4 (Day 4)**: Committed (`245dc58`)
-- **Step 4 CustomProjectForm Integration (T-13)**: 🟢 Completed
-- **Next Milestone**: End-to-End Browser Flow Verification & Audit (T-14)
+- **Step 4 CustomProjectForm Integration (T-13)**: 🟢 Completed (`c84ad25`, `8300313`)
+- **End-to-End Browser Flow Verification (T-14)**: 🟢 Completed
+- **Backend Running on Port 8000 (T-15)**: 🟢 Completed (`devscope-ai-builder` on `wip/shakil`)
+- **CORS & Customer Lifecycle APIs (T-16 to T-21)**: 🟢 Completed
+- **Frontend Bridge Connected (T-22)**: 🟢 Configured in `dudos/.env.local`
+- **Commit Rule**: 🛑 Never commit without user instruction.

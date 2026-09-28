@@ -7,7 +7,7 @@ import {RecordComments} from './dudos-comments';
 import {nextStates,operationalKinds} from '@/lib/dudos/workflow';
 import {useWebMCP} from '@/lib/dudos/webmcp';
 import Link from './dudos-link';
-import {ArrowRight,ArrowLeft,Check,Save,Plus,Upload,FileText,ArrowUpRight,RefreshCw} from 'lucide-react';
+import {ArrowRight,ArrowLeft,Check,Save,Plus,Upload,FileText,ArrowUpRight,RefreshCw,Lock} from 'lucide-react';
 import {Button} from '@/components/ui/button';
 import {Input} from '@/components/ui/input';
 import {Textarea} from '@/components/ui/textarea';
@@ -19,8 +19,130 @@ import {Table,TableHeader,TableBody,TableRow,TableHead,TableCell} from '@/compon
 import modules,{Field,moduleById} from '@/lib/dudos/modules';
 import {Choose,Multi,Notice,Empty,Download,t,human,download} from './dudos-ui';
 import {api} from '@/lib/dudos/client';
+import {useAuth} from '@/context/auth-context';
 export {api} from '@/lib/dudos/client';
-export function WorkspaceGate({lang,children}:{lang:string;children:(w:string)=>React.ReactNode}){const [workspaces,setWorkspaces]=useState<any[]>([]),[workspace,setWorkspace]=useState(''),[name,setName]=useState(''),[error,setError]=useState(''),[busy,setBusy]=useState(true);async function load(){try{const d=await api('/api/workspaces');setWorkspaces(d.workspaces);setWorkspace(d.workspaces.find((w:any)=>w.id===preferredWorkspace())?.id||d.workspaces[0]?.id||'');setError('')}catch(e){setError((e as Error).message)}finally{setBusy(false)}}useEffect(()=>{void load()},[]);async function create(){setBusy(true);try{const d=await api('/api/workspaces','POST',{name});setWorkspaces([...workspaces,d]);setWorkspace(d.id);rememberWorkspace(d.id);setName('');setError('')}catch(e){setError((e as Error).message)}finally{setBusy(false)}}return <>{error&&<Notice tone="error">{error} <a target="_top" href={'/login?return_to='+encodeURIComponent('/'+lang+'/app')}>{lang==='bn'?'সাইন ইন':'Sign in'}</a></Notice>}{workspaces.length>0?<div className="workspace-choice"><Label>{lang==='bn'?'ওয়ার্কস্পেস':'Workspace'}</Label><Choose label="Workspace" value={workspace} onChange={v=>{setWorkspace(v);rememberWorkspace(v)}} options={workspaces.map(w=>({id:w.id,label:w.name}))}/></div>:<div className="workspace-create"><h3>{lang==='bn'?'প্রথম ব্যক্তিগত ওয়ার্কস্পেস তৈরি করুন':'Create your first private workspace'}</h3><p>{lang==='bn'?'খসড়া ও রেকর্ড আপনার অ্যাকাউন্টের অধীনে সংরক্ষিত হবে।':'Drafts and records are stored under your signed-in account.'}</p><form onSubmit={e=>{e.preventDefault();void create()}}><Input aria-label="Workspace name" value={name} onChange={e=>setName(e.target.value)} placeholder={lang==='bn'?'ওয়ার্কস্পেসের নাম':'Workspace name'} maxLength={100}/><Button disabled={busy||name.trim().length<2} type="submit"><Plus size={17}/>{busy?'…':lang==='bn'?'তৈরি করুন':'Create'}</Button></form></div>}{workspace&&children(workspace)}</>}
+
+export function WorkspaceGate({lang,children}:{lang:string;children:(w:string)=>React.ReactNode}){
+  const {user,isAuthenticated}=useAuth();
+  const [workspaces,setWorkspaces]=useState<any[]>([]),
+        [workspace,setWorkspace]=useState(''),
+        [name,setName]=useState(''),
+        [error,setError]=useState(''),
+        [busy,setBusy]=useState(true);
+
+  async function load(){
+    try{
+      const d=await api('/api/workspaces');
+      setWorkspaces(d.workspaces);
+      setWorkspace(d.workspaces.find((w:any)=>w.id===preferredWorkspace())?.id||d.workspaces[0]?.id||'');
+      setError('');
+    }catch(e){
+      setError((e as Error).message);
+    }finally{
+      setBusy(false);
+    }
+  }
+
+  useEffect(()=>{
+    if(isAuthenticated){
+      void load();
+    }else{
+      setBusy(false);
+    }
+  },[isAuthenticated]);
+
+  async function create(){
+    setBusy(true);
+    try{
+      const d=await api('/api/workspaces','POST',{name});
+      setWorkspaces([...workspaces,d]);
+      setWorkspace(d.id);
+      rememberWorkspace(d.id);
+      setName('');
+      setError('');
+    }catch(e){
+      setError((e as Error).message);
+    }finally{
+      setBusy(false);
+    }
+  }
+
+  if(!isAuthenticated||!user){
+    return (
+      <div className="workspace-gate-auth max-w-md mx-auto my-12 p-8 bg-white rounded-2xl border border-dudos-border shadow-xs text-center space-y-5">
+        <div className="inline-flex p-3 rounded-full bg-teal-50 text-dudos-primary mx-auto">
+          <Lock className="h-6 w-6 text-teal-600" />
+        </div>
+        <div className="space-y-1.5">
+          <h3 className="text-xl font-bold tracking-tight text-dudos-text">
+            {lang==='bn'?'সাইন ইন বা নিবন্ধন আবশ্যক':'Account Required for Assessment'}
+          </h3>
+          <p className="text-xs text-dudos-text-secondary leading-relaxed">
+            {lang==='bn'
+              ?'আপনার রূপান্তর মূল্যায়ন ও খসড়া রেকর্ডগুলি একটি সুরক্ষিত ওয়ার্কস্পেসের অধীনে সংরক্ষিত হয়। এগিয়ে যেতে অনুগ্রহ করে সাইন ইন করুন বা নতুন অ্যাকাউন্ট তৈরি করুন।'
+              :'Transformation assessments, system goals and generated specifications are stored under your workspace account. Sign in or register to begin.'}
+          </p>
+        </div>
+        <div className="flex flex-col sm:flex-row gap-3 pt-2 justify-center">
+          <Button asChild variant="primary" size="default" className="bg-teal-600 hover:bg-teal-700 text-white font-semibold">
+            <Link href={`/login?return_to=${encodeURIComponent('/'+lang+'/transform')}`}>
+              {lang==='bn'?'সাইন ইন করুন':'Sign In'}
+            </Link>
+          </Button>
+          <Button asChild variant="outline" size="default">
+            <Link href={`/register?return_to=${encodeURIComponent('/'+lang+'/transform')}`}>
+              {lang==='bn'?'অ্যাকাউন্ট তৈরি করুন':'Create Account'}
+            </Link>
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <>
+      {error&&<Notice tone="error">{error}</Notice>}
+      {workspaces.length>0?(
+        <div className="workspace-choice">
+          <Label>{lang==='bn'?'ওয়ার্কস্পেস':'Workspace'}</Label>
+          <Choose
+            label="Workspace"
+            value={workspace}
+            onChange={(v)=>{
+              setWorkspace(v);
+              rememberWorkspace(v);
+            }}
+            options={workspaces.map((w)=>({id:w.id,label:w.name}))}
+          />
+        </div>
+      ):(
+        <div className="workspace-create">
+          <h3>{lang==='bn'?'প্রথম ব্যক্তিগত ওয়ার্কস্পেস তৈরি করুন':'Create your first private workspace'}</h3>
+          <p>{lang==='bn'?'খসড়া ও রেকর্ড আপনার অ্যাকাউন্টের অধীনে সংরক্ষিত হবে।':'Drafts and records are stored under your signed-in account.'}</p>
+          <form
+            onSubmit={(e)=>{
+              e.preventDefault();
+              void create();
+            }}
+          >
+            <Input
+              aria-label="Workspace name"
+              value={name}
+              onChange={(e)=>setName(e.target.value)}
+              placeholder={lang==='bn'?'ওয়ার্কস্পেসের নাম':'Workspace name'}
+              maxLength={100}
+            />
+            <Button disabled={busy||name.trim().length<2} type="submit">
+              <Plus size={17} />
+              {busy?'…':lang==='bn'?'তৈরি করুন':'Create'}
+            </Button>
+          </form>
+        </div>
+      )}
+      {workspace&&children(workspace)}
+    </>
+  );
+}
 export function FieldControl({f,value,onChange,lang}:{f:Field;value:string;onChange:(v:string)=>void;lang:string}){const id='input-'+f.key;return <div className={'form-field '+(f.type==='textarea'?'wide':'')}><Label htmlFor={id}>{lang==='bn'?f.bn:f.label}{f.required&&<span className="required"> *</span>}</Label>{f.options?<Choose value={value} onChange={onChange} options={f.options} label={lang==='bn'?f.bn:f.label} id={id}/>:f.type==='textarea'?<Textarea id={id} value={value} onChange={e=>onChange(e.target.value)} maxLength={10000} rows={4}/>:<Input id={id} type={f.type||'text'} value={value} onChange={e=>onChange(e.target.value)} min={f.type==='number'?0:undefined} maxLength={10000}/>}</div>}
 export function RecordForm({kind,workspace,lang,record,initial,onSaved}:{kind:string;workspace:string;lang:string;record?:any;initial?:any;onSaved?:(r:any)=>void}){const mod=moduleById(kind)!;const [title,setTitle]=useState(record?.title||initial?.title||''),[data,setData]=useState<Record<string,string>>(record?.data||initial?.data||{}),[error,setError]=useState(''),[busy,setBusy]=useState(false),[saved,setSaved]=useState<any>(null),[key]=useState(()=>crypto.randomUUID());useEffect(()=>{if(!record&&!initial&&kind==='application'){const p=new URLSearchParams(window.location.search).get('programme');if(p)setData(d=>({...d,programme:p.slice(0,200)}))}},[]);async function save(e:React.FormEvent){e.preventDefault();setBusy(true);setError('');try{const d=await api('/api/records',record?'PATCH':'POST',record?{workspace,id:record.id,version:record.version,title,data,status:'draft'}:{workspace,kind,title,data,idempotency_key:key});setSaved({...d,kind,title,data:JSON.parse(JSON.stringify(data))});onSaved?.(d)}catch(e){setError((e as Error).message)}finally{setBusy(false)}}if(!mod)return null;return <form onSubmit={save} className="record-form">{mod.external&&<Notice>{mod.external}</Notice>}<div className="form-field"><Label htmlFor="record-title">{lang==='bn'?'শিরোনাম':'Record title'} *</Label><Input id="record-title" value={title} onChange={e=>setTitle(e.target.value)} required maxLength={180}/></div><div className="form-grid">{mod.fields.map(f=><FieldControl key={f.key} f={f} lang={lang} value={data[f.key]||''} onChange={v=>setData({...data,[f.key]:v})}/>)}</div><p className="field-help">{lang==='bn'?'পাসওয়ার্ড, API কী বা সংবেদনশীল ব্যক্তিগত তথ্য লিখবেন না। খসড়া জমা দেওয়ার আগে প্রয়োজনীয় তথ্য পূরণ করুন।':'Do not enter passwords, API keys or unnecessary sensitive personal data. Required fields are checked before submission.'}</p>{error&&<Notice tone="error">{error}</Notice>}{saved&&<Notice tone="success">{lang==='bn'?'খসড়া সংরক্ষিত হয়েছে। বাহ্যিক কোনো কাজ সম্পাদিত হয়নি।':'Draft saved. No external action was performed.'} <code>{saved.id}</code></Notice>}<Button type="submit" disabled={busy||!!saved}><Save size={17}/>{busy?'…':lang==='bn'?'খসড়া সংরক্ষণ':'Save draft'}</Button>{saved&&<SendRequest record={saved} workspace={workspace} lang={lang}/>}</form>}
 export function QuickIntake({kind,lang}:{kind:string;lang:string}){return <WorkspaceGate lang={lang}>{w=><RecordForm key={w} kind={kind} workspace={w} lang={lang}/>}</WorkspaceGate>}

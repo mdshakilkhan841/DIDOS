@@ -1,3 +1,6 @@
+export const dynamic = "force-dynamic";
+
+import { cookies } from "next/headers";
 import { notFound, redirect } from "next/navigation";
 import Workbench from "@/components/dudos-workbench";
 import { moduleById } from "@/lib/dudos/modules";
@@ -14,6 +17,14 @@ export default async function Page({
 }) {
   const { lang, section = [] } = await params;
   if (!["en", "bn"].includes(lang)) notFound();
+
+  // Server-side auth check: if no session cookie, redirect immediately to login
+  const jar = await cookies();
+  const sessionToken = jar.get("dudos_at")?.value || jar.get("dudos_session")?.value;
+  if (!sessionToken) {
+    const returnTo = `/${lang}/app${section.length ? "/" + section.join("/") : ""}`;
+    redirect(`/login?return_to=${encodeURIComponent(returnTo)}`);
+  }
 
   const aliases: Record<string, string> = {
     admin: "tenant-admin",
@@ -60,7 +71,6 @@ export default async function Page({
     <Workbench
       lang={lang}
       section={section}
-      displayName="Operations Lead"
     />
   );
 }

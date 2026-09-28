@@ -1,4 +1,5 @@
 import { Metadata } from "next";
+import { redirect } from "next/navigation";
 import { LoginClient } from "./LoginClient";
 
 export const metadata: Metadata = {
@@ -18,12 +19,18 @@ export default async function LoginPage({
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const params = await searchParams;
-  const mode = params.mode === "signup" || params.mode === "register" ? "signup" : "signin";
+  const returnTo = safeReturnTo(params.return_to);
+
+  // If accessed with signup/register mode, redirect cleanly to /register
+  if (params.mode === "signup" || params.mode === "register") {
+    const qs = returnTo && returnTo !== "/app" ? `?return_to=${encodeURIComponent(returnTo)}` : "";
+    redirect(`/register${qs}`);
+  }
 
   return (
     <LoginClient
-      initialMode={mode}
-      returnTo={safeReturnTo(params.return_to)}
+      initialMode="signin"
+      returnTo={returnTo}
     />
   );
 }

@@ -96,6 +96,17 @@ const SEED_TEAM = [
   { id: 'mem_3', user_id: 'engineer@daffodil.family', role: 'viewer', created_at: new Date(Date.now() - 86400000 * 5).toISOString() },
 ];
 
+function getCurrentSession(): { user: any; activeRole: string } | null {
+  if (typeof window === 'undefined') return null;
+  try {
+    const val = localStorage.getItem('dudos_auth_session');
+    if (!val) return null;
+    return JSON.parse(val);
+  } catch {
+    return null;
+  }
+}
+
 function getStore<T>(key: string, fallback: T): T {
   if (typeof window === 'undefined') return fallback;
   try {
@@ -121,9 +132,48 @@ export async function api(path: string, method = 'GET', data?: any): Promise<any
   // Simulate minimal natural network delay
   await new Promise((r) => setTimeout(r, 60));
 
+  const session = getCurrentSession();
+  const currentUser = session?.user;
+
+  // --- ACCOUNT ---
+  if (urlPath === '/api/account' || urlPath === 'account') {
+    if (!currentUser) {
+      return { id: 'usr_guest', name: 'Guest', email: '', role: 'client', platform_admin: false, credits: 0 };
+    }
+    return {
+      id: currentUser.id,
+      name: currentUser.displayName || currentUser.username,
+      email: currentUser.email,
+      role: currentUser.role,
+      platform_admin: currentUser.role === 'admin',
+      credits: currentUser.credits ?? 1000,
+      organization: currentUser.organizationName || '',
+      status: currentUser.status || 'active',
+    };
+  }
+
   // --- WORKSPACES ---
   if (urlPath === '/api/workspaces' || urlPath === 'workspaces') {
-    let ws = getStore('workspaces', SEED_WORKSPACES);
+    const storeKey = currentUser ? `workspaces_${currentUser.id}` : 'workspaces';
+    const defaultWorkspaces = currentUser
+      ? [
+          {
+            id: `ws_${currentUser.id}`,
+            name: currentUser.organizationName
+              ? currentUser.organizationName
+              : `${currentUser.displayName || currentUser.username}'s Workspace`,
+            role: 'owner',
+            created_at: currentUser.createdAt || new Date().toISOString(),
+          },
+        ]
+      : SEED_WORKSPACES;
+
+    let ws = getStore(storeKey, defaultWorkspaces);
+    if (!ws || !ws.length) {
+      ws = defaultWorkspaces;
+      setStore(storeKey, ws);
+    }
+
     if (method === 'POST') {
       const newWs = {
         id: 'ws_' + Date.now().toString(36),
@@ -132,7 +182,7 @@ export async function api(path: string, method = 'GET', data?: any): Promise<any
         created_at: new Date().toISOString(),
       };
       ws = [...ws, newWs];
-      setStore('workspaces', ws);
+      setStore(storeKey, ws);
       return newWs;
     }
     return { workspaces: ws };
@@ -140,15 +190,45 @@ export async function api(path: string, method = 'GET', data?: any): Promise<any
 
   // --- RECORDS ---
   if (urlPath === '/api/records' || urlPath === 'records') {
-    let records = getStore('records', SEED_RECORDS);
+    const storeKey = currentUser ? `records_${currentUser.id}` : 'records';
+    let records = getStore(storeKey, SEED_RECORDS);
     const workspace = params.get('workspace') || data?.workspace;
     const kind = params.get('kind') || data?.kind;
+
+    if (params.get('summary')) {
+      const filtered = workspace ? records.filter((r: any) => r.workspace === workspace) : records;
+      const by_status: Record<string, number> = {};
+      const by_kind: Record<string, number> = {};
+      filtered.forEach((r: any) => {
+        by_status[r.status] = (by_status[r.status] || 0) + 1;
+        by_kind[r.kind] = (by_kind[r.kind] || 0) + 1;
+      });
+      return {
+        total: filtered.length,
+        by_status,
+        by_kind,
+        asset_count: getStore('assets', []).length,
+      };
+    }
+
+    if (params.get('events')) {
+      const filtered = workspace ? records.filter((r: any) => r.workspace === workspace) : records;
+      const events = filtered.map((r: any, idx: number) => ({
+        id: 'evt_' + r.id + '_' + idx,
+        created_at: r.updated_at || r.created_at || new Date().toISOString(),
+        action: r.status === 'draft' ? 'created_draft' : 'updated_record',
+        record_id: r.id,
+        actor_id: currentUser?.displayName || 'Workspace Member',
+        detail: `Record [${r.title || r.id}] in status: ${r.status}`,
+      }));
+      return { events };
+    }
 
     if (method === 'POST') {
       const newRec = {
         id: 'rec_' + Date.now().toString(36),
         kind: data.kind || 'general',
-        workspace: data.workspace,
+        workspace: data.workspace || (currentUser ? `ws_${currentUser.id}` : 'ws_daffodil'),
         title: data.title || 'Untitled Record',
         version: 1,
         status: data.status || 'draft',
@@ -157,12 +237,12 @@ export async function api(path: string, method = 'GET', data?: any): Promise<any
         data: data.data || {},
       };
       records = [newRec, ...records];
-      setStore('records', records);
+      setStore(storeKey, records);
       return newRec;
     }
 
     if (method === 'PATCH') {
-      const idx = records.findIndex((r) => r.id === data.id);
+      const idx = records.findIndex((r: any) => r.id === data.id);
       if (idx !== -1) {
         const updated = {
           ...records[idx],
@@ -171,15 +251,15 @@ export async function api(path: string, method = 'GET', data?: any): Promise<any
           updated_at: new Date().toISOString(),
         };
         records[idx] = updated;
-        setStore('records', records);
+        setStore(storeKey, records);
         return updated;
       }
       return data;
     }
 
     let filtered = records;
-    if (workspace) filtered = filtered.filter((r) => r.workspace === workspace);
-    if (kind) filtered = filtered.filter((r) => r.kind === kind);
+    if (workspace) filtered = filtered.filter((r: any) => r.workspace === workspace);
+    if (kind) filtered = filtered.filter((r: any) => r.kind === kind);
     return { records: filtered, total: filtered.length };
   }
 

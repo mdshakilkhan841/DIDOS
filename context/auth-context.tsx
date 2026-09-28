@@ -157,6 +157,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         if (parsed.user && parsed.activeRole) {
           setUser(parsed.user);
           setActiveRole(parsed.activeRole);
+          try {
+            document.cookie = `dudos_session=${encodeURIComponent(JSON.stringify({ userId: parsed.user.id, displayName: parsed.user.displayName, email: parsed.user.email, role: parsed.user.role }))}; path=/; max-age=2592000; SameSite=Lax`;
+            document.cookie = `dudos_at=token_${parsed.user.id}; path=/; max-age=2592000; SameSite=Lax`;
+          } catch {}
         }
       }
 
@@ -194,8 +198,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       if (u) {
         localStorage.setItem(STORAGE_KEY, JSON.stringify({ user: u, activeRole: r }));
+        try {
+          document.cookie = `dudos_session=${encodeURIComponent(JSON.stringify({ userId: u.id, displayName: u.displayName, email: u.email, role: u.role }))}; path=/; max-age=2592000; SameSite=Lax`;
+          document.cookie = `dudos_at=token_${u.id}; path=/; max-age=2592000; SameSite=Lax`;
+        } catch {}
       } else {
         localStorage.removeItem(STORAGE_KEY);
+        try {
+          document.cookie = `dudos_session=; path=/; max-age=0; SameSite=Lax`;
+          document.cookie = `dudos_at=; path=/; max-age=0; SameSite=Lax`;
+        } catch {}
       }
     } catch {
       // Ignore storage errors in restricted contexts
