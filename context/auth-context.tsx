@@ -333,9 +333,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         phone: data.phone,
         createdAt: respData.user.createdAt || new Date().toISOString(),
         intake: data.intake || {
-          businessDomain: "General Digital Transformation",
-          projectScope: "Standard client onboarding & workspace initialization.",
-          targetStack: "Next.js 16 + FastAPI + PostgreSQL",
+          businessDomain: "",
+          projectScope: "",
+          targetStack: "",
           submittedAt: new Date().toISOString(),
         },
       };
@@ -402,9 +402,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const updated = registrations.map((r) => {
       if (r.id === userId) {
         const intake = r.intake || {
-          businessDomain: "Digital System",
-          projectScope: "Client Project",
-          targetStack: "Next.js + FastAPI",
+          businessDomain: "",
+          projectScope: "",
+          targetStack: "",
           submittedAt: new Date().toISOString(),
         };
         return {
