@@ -263,6 +263,43 @@ export function CustomerOnboardingWizard({ lang = "en" }: { lang?: string }) {
       ];
       localStorage.setItem("dudos_custom_projects", JSON.stringify(updatedCustom));
     } catch {}
+
+    // Persist to FastAPI PostgreSQL backend
+    try {
+      const token = typeof window !== "undefined" ? localStorage.getItem("dudos_auth_token") : null;
+      fetch("http://localhost:8000/api/v1/onboarding/draft", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({
+          userId: user?.id,
+          email: email || user?.email,
+          organizationName,
+          businessDomain,
+          contactPerson: contactName,
+          phone: "",
+          referenceSiteUrl: siteUrl,
+          projectScope,
+          techStack: targetStack,
+          budgetExpectation,
+          expectedTimeline,
+          payload: draftRecord,
+        }),
+      }).catch((err) => console.error("FastAPI onboarding draft sync error:", err));
+
+      if (token) {
+        fetch("http://localhost:8000/api/v1/onboarding/active-draft", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ draft: draftRecord }),
+        }).catch((err) => console.error("FastAPI active draft sync error:", err));
+      }
+    } catch {}
   };
 
   const handleConfirmDraft = () => {
@@ -272,6 +309,33 @@ export function CustomerOnboardingWizard({ lang = "en" }: { lang?: string }) {
 
   const handleFinalSpecificationConfirm = () => {
     feedDataToActualDraft("submitted");
+
+    // Also persist project to FastAPI database if authenticated
+    try {
+      const token = typeof window !== "undefined" ? localStorage.getItem("dudos_auth_token") : null;
+      if (token) {
+        fetch("http://localhost:8000/api/v1/projects/from-draft", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            name: `${organizationName || "Custom Project"} — ${businessDomain}`,
+            domain: businessDomain,
+            scopeSummary: projectScope,
+            specs: {
+              stack: targetStack,
+              timeline: expectedTimeline,
+              budget: budgetExpectation,
+            },
+            qaAnswers,
+            srsDocument: `# SRS & Architecture: ${organizationName || "Project"}\n\n## 1. Scope\n${projectScope}\n\n## 2. Architecture\n- Stack: ${targetStack}\n- Multi-Tenancy: ${qaAnswers.multiTenant === "yes" ? "Enabled (Tenant Isolation)" : "Single-Tenant"}\n- Payment: ${qaAnswers.paymentMethods || qaAnswers.paymentGateway}\n- Concurrency Scale: ${qaAnswers.userVolume || qaAnswers.userScale}\n\n## 3. Commercial\n- Timeline: ${expectedTimeline}\n- Budget: ${budgetExpectation}`,
+          }),
+        }).catch((err) => console.error("FastAPI project create error:", err));
+      }
+    } catch {}
+
     showToast.success("Project specifications confirmed!", {
       description: "Dispatched to tech estimation & workspace provisioning.",
     });

@@ -170,7 +170,72 @@ export function CustomerUserPanel({
       if (depStr) {
         setDeploymentTickets(JSON.parse(depStr));
       }
+
+      // 5. Load projects from FastAPI backend
+      const token = typeof window !== "undefined" ? localStorage.getItem("dudos_auth_token") : null;
+      if (token) {
+        fetch("http://localhost:8000/api/v1/projects", {
+          headers: { Authorization: `Bearer ${token}` },
+        })
+          .then((res) => res.json())
+          .then((backendProjects) => {
+            if (Array.isArray(backendProjects) && backendProjects.length > 0) {
+              setAllProjects((prev) => {
+                const combined = [...backendProjects];
+                for (const p of prev) {
+                  if (!combined.some((c) => c.id === p.id)) combined.push(p);
+                }
+                return combined;
+              });
+            }
+          })
+          .catch((err) => console.error("FastAPI projects load error:", err));
+      }
     } catch {}
+  };
+
+  const switchActiveProject = (projectId: string) => {
+    const selected = allProjects.find((p) => p.id === projectId);
+    if (!selected) return;
+
+    const converted: ActiveProjectDraft = {
+      id: selected.id,
+      title: selected.title || selected.name,
+      organizationName: selected.organizationName || selected.domain || "Client Organization",
+      contactName: selected.contactName || user?.displayName || "Customer",
+      email: selected.email || selected.clientEmail || user?.email || "",
+      businessDomain: selected.category || selected.domain || "Custom Solution",
+      projectScope: selected.scopeSummary || selected.businessScope || selected.projectScope || "",
+      siteUrl: selected.referenceUrl || selected.siteUrl || "",
+      targetStack: selected.framework || selected.targetStack || selected.specs?.stack || "Next.js 16 + FastAPI",
+      budgetExpectation: selected.budgetRange || selected.budgetExpectation || "$5,000 - $10,000",
+      expectedTimeline: selected.targetTimeline || selected.expectedTimeline || "4 to 6 Weeks",
+      qaAnswers: selected.qaAnswers || editableQa,
+      status: selected.status || "draft",
+      buildId: selected.buildId,
+      previewUrl: selected.previewUrl,
+      domainName: selected.domainName,
+      liveUrl: selected.liveUrl,
+      vpsIp: selected.vpsIp,
+      savedAt: selected.createdAt || new Date().toISOString(),
+      updatedAt: selected.updatedAt || new Date().toISOString(),
+    };
+
+    setActiveDraft(converted);
+    if (converted.qaAnswers) {
+      setEditableQa({
+        multiTenant: converted.qaAnswers.multiTenant || "yes",
+        paymentGateway: converted.qaAnswers.paymentGateway || "bKash, Nagad & Online Gateway",
+        userScale: converted.qaAnswers.userScale || "10,000 - 50,000 users",
+        databaseChoice: converted.qaAnswers.databaseChoice || "PostgreSQL with Row-Level Security",
+      });
+    }
+
+    try {
+      localStorage.setItem(ACTIVE_DRAFT_KEY, JSON.stringify(converted));
+    } catch {}
+
+    showToast.success(`Switched active view to "${converted.title}"`);
   };
 
   const handleSimulateDeployLive = () => {
@@ -539,7 +604,27 @@ ${draft.projectScope}
           </p>
         </div>
 
-        <div className="flex items-center gap-3 shrink-0">
+        <div className="flex flex-wrap items-center gap-3 shrink-0">
+          {/* Multi-Project Switcher Dropdown */}
+          {allProjects.length > 0 && (
+            <div className="flex items-center gap-1.5 bg-[#f0f4f6] border border-[#dce5e9] rounded-lg px-2.5 py-1.5 shadow-xs">
+              <FolderKanban className="h-3.5 w-3.5 text-[#087f79]" />
+              <span className="text-[11px] text-[#5b6f7b] font-medium hidden sm:inline">Project:</span>
+              <select
+                value={activeDraft?.id || ""}
+                onChange={(e) => switchActiveProject(e.target.value)}
+                className="text-xs font-semibold text-[#162c38] bg-transparent outline-none cursor-pointer pr-1 max-w-[180px] truncate"
+                title="Switch Active Project"
+              >
+                {allProjects.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.title || p.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+
           {/* Clickable Credit Wallet Button */}
           <button
             onClick={() => setShowCreditModal(true)}
