@@ -13,6 +13,10 @@ import {
     Database,
     LifeBuoy,
     UserRound,
+    FileText,
+    CreditCard,
+    Megaphone,
+    type LucideIcon,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -34,6 +38,53 @@ import { useAuth } from "@/context/auth-context";
 import { AdminControlPanel } from "./AdminControlPanel";
 import { AdminUserManagement } from "./AdminUserManagement";
 import { buildSubdomainUrl } from "@/lib/subdomains";
+
+type AdminNavigationItem = {
+    id: string;
+    title: string;
+    bn: string;
+    icon: LucideIcon;
+    badge?: string;
+    comingSoon?: boolean;
+};
+
+function AdminComingSoon({
+    lang,
+    item,
+}: {
+    lang: string;
+    item: AdminNavigationItem;
+}) {
+    const Icon = item.icon;
+
+    return (
+        <section className="rounded-2xl border border-dudos-border bg-white p-8 sm:p-10">
+            <div className="mx-auto max-w-xl text-center">
+                <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-xl bg-[#edf7f4] text-dudos-primary">
+                    <Icon size={22} />
+                </div>
+                <p className="eyebrow mt-5 justify-center">
+                    <span />
+                    {lang === "bn" ? "রোডম্যাপ মডিউল" : "PLATFORM ROADMAP"}
+                </p>
+                <h1 className="mt-2 text-2xl font-bold text-dudos-text">
+                    {lang === "bn" ? item.bn : item.title}
+                </h1>
+                <p className="mt-2 text-sm text-dudos-text-secondary">
+                    {lang === "bn"
+                        ? "এই মডিউলটি ডুডোস প্ল্যাটফর্মের পরিকল্পনায় রয়েছে। ধাপে ধাপে এখানে ফিচার যোগ করা হবে।"
+                        : "This module is part of the DUDOS platform plan. Its workflows will be added incrementally."}
+                </p>
+                <Badge
+                    variant="outline"
+                    className="mt-5 border-slate-200 bg-slate-50 text-slate-600"
+                >
+                    {lang === "bn" ? "শীঘ্রই আসছে" : "Coming soon"}
+                </Badge>
+            </div>
+        </section>
+    );
+}
 
 export default function AdminWorkbench({
     lang = "en",
@@ -116,27 +167,48 @@ export default function AdminWorkbench({
         window.location.href = buildSubdomainUrl("main", "/login");
     };
 
-    // Admin Navigation Sections: 100% Workable Operations Connected to PostgreSQL
-    const adminNavSections = [
+    // Existing operations stay functional; roadmap modules are visible placeholders.
+    const adminNavSections: {
+        group: string;
+        items: AdminNavigationItem[];
+    }[] = [
         {
-            group: "PLATFORM OPERATIONS",
+            group: "PROJECTS & WEB DEVELOPMENT",
             items: [
                 {
-                    id: "users",
-                    title: "User Management",
-                    bn: "ব্যবহারকারী ব্যবস্থাপনা",
-                    icon: UserRound,
-                    badge:
-                        registrations.length > 0
-                            ? String(registrations.length)
-                            : undefined,
+                    id: "projects",
+                    title: "Project Tracking",
+                    bn: "প্রজেক্ট ট্র্যাকিং",
+                    icon: FolderKanban,
+                    comingSoon: true,
                 },
                 {
-                    id: "clients",
-                    title: "Client Intake Queue",
-                    bn: "ক্লায়েন্ট ইনটেক কিউ",
+                    id: "builder",
+                    title: "AI Website Builder",
+                    bn: "এআই ওয়েবসাইট বিল্ডার",
+                    icon: Globe,
+                    comingSoon: true,
+                },
+                {
+                    id: "requirements",
+                    title: "Requirements & AI SRS",
+                    bn: "রিকোয়ারমেন্ট ও এআই এসআরএস",
+                    icon: FileText,
+                    comingSoon: true,
+                },
+                {
+                    id: "templates",
+                    title: "Templates & References",
+                    bn: "টেমপ্লেট ও রেফারেন্স",
+                    icon: FileText,
+                    comingSoon: true,
+                },
+                {
+                    id: "requests",
+                    title: "Custom Project Requests",
+                    bn: "কাস্টম প্রজেক্ট রিকোয়েস্ট",
                     icon: Users,
-                    badge: pendingCount > 0 ? String(pendingCount) : undefined,
+                    comingSoon: true,
                 },
                 {
                     id: "scoping",
@@ -146,6 +218,18 @@ export default function AdminWorkbench({
                     badge:
                         inScopingCount > 0 ? String(inScopingCount) : undefined,
                 },
+                {
+                    id: "assets",
+                    title: "Preview & Source Delivery",
+                    bn: "প্রিভিউ ও সোর্স ডেলিভারি",
+                    icon: FileText,
+                    comingSoon: true,
+                },
+            ],
+        },
+        {
+            group: "DELIVERY & SUPPORT",
+            items: [
                 {
                     id: "deployments",
                     title: "VPS Fleet & Deployments",
@@ -163,15 +247,79 @@ export default function AdminWorkbench({
                     icon: LifeBuoy,
                     badge: supportCount > 0 ? String(supportCount) : undefined,
                 },
+            ],
+        },
+        {
+            group: "BILLING & ERP",
+            items: [
                 {
                     id: "ledger",
-                    title: "Billing & Credit Ledger",
+                    title: "Credits & Billing Ledger",
                     bn: "বিলিং ও ক্রেডিট লেজার",
                     icon: Coins,
+                },
+                {
+                    id: "invoices",
+                    title: "Invoices & Payments",
+                    bn: "ইনভয়েস ও পেমেন্ট",
+                    icon: FileText,
+                    comingSoon: true,
+                },
+                {
+                    id: "finance",
+                    title: "Finance & Accounting",
+                    bn: "ফাইন্যান্স ও অ্যাকাউন্টিং",
+                    icon: CreditCard,
+                    comingSoon: true,
+                },
+            ],
+        },
+        {
+            group: "MARKETING AUTOMATION",
+            items: [
+                {
+                    id: "content-studio",
+                    title: "Digital Content Studio",
+                    bn: "ডিজিটাল কনটেন্ট স্টুডিও",
+                    icon: FileText,
+                    comingSoon: true,
+                },
+                {
+                    id: "marketing",
+                    title: "Social Ad Campaigns",
+                    bn: "সোশ্যাল বিজ্ঞাপন ক্যাম্পেইন",
+                    icon: Megaphone,
+                    comingSoon: true,
+                },
+            ],
+        },
+        {
+            group: "ACCOUNT MANAGEMENT",
+            items: [
+                {
+                    id: "users",
+                    title: "User Management",
+                    bn: "ব্যবহারকারী ব্যবস্থাপনা",
+                    icon: UserRound,
+                    badge:
+                        registrations.length > 0
+                            ? String(registrations.length)
+                            : undefined,
+                },
+                {
+                    id: "clients",
+                    title: "Client Intake Queue",
+                    bn: "ক্লায়েন্ট ইনটেক ও রিকোয়েস্ট",
+                    icon: Users,
+                    badge: pendingCount > 0 ? String(pendingCount) : undefined,
                 },
             ],
         },
     ];
+
+    const activeNavItem = adminNavSections
+        .flatMap((section) => section.items)
+        .find((item) => item.id === view);
 
     return (
         <SidebarProvider>
@@ -250,6 +398,13 @@ export default function AdminWorkbench({
                                                                 }}
                                                             >
                                                                 {item.badge}
+                                                            </span>
+                                                        )}
+                                                        {item.comingSoon && (
+                                                            <span className="ml-auto rounded border border-slate-200 bg-slate-50 px-1.5 py-0.5 text-[9px] font-medium text-slate-500">
+                                                                {lang === "bn"
+                                                                    ? "শীঘ্রই"
+                                                                    : "Soon"}
                                                             </span>
                                                         )}
                                                     </Link>
@@ -351,6 +506,8 @@ export default function AdminWorkbench({
                             onStatusChange={updateRegistrationStatus}
                             onAllocateCredits={allocateCreditsToUser}
                         />
+                    ) : activeNavItem?.comingSoon ? (
+                        <AdminComingSoon lang={lang} item={activeNavItem} />
                     ) : (
                         <AdminControlPanel
                             lang={lang}
