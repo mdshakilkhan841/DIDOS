@@ -21,6 +21,12 @@ export default function LogoutPage() {
       const epoch = "expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax";
       document.cookie = `dudos_session=; path=/; max-age=0; ${epoch}`;
       document.cookie = `dudos_at=; path=/; max-age=0; ${epoch}`;
+      if (typeof window !== "undefined") {
+        document.cookie = `dudos_session=; path=/; domain=${window.location.hostname}; max-age=0; ${epoch}`;
+        document.cookie = `dudos_at=; path=/; domain=${window.location.hostname}; max-age=0; ${epoch}`;
+        document.cookie = `dudos_session=; path=/; domain=.${window.location.hostname}; max-age=0; ${epoch}`;
+        document.cookie = `dudos_at=; path=/; domain=.${window.location.hostname}; max-age=0; ${epoch}`;
+      }
       document.cookie = `dudos_session=; path=/; domain=localhost; max-age=0; ${epoch}`;
       document.cookie = `dudos_at=; path=/; domain=localhost; max-age=0; ${epoch}`;
       document.cookie = `dudos_session=; path=/; domain=.localhost; max-age=0; ${epoch}`;

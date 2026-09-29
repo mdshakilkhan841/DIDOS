@@ -56,92 +56,7 @@ const PREREG_KEY = "dudos_preregistration_draft";
 const TRANSACTIONS_KEY = "dudos_credit_transactions";
 const REGISTRATIONS_KEY = "dudos_registrations_queue";
 
-const SEED_REGISTRATIONS: UserProfile[] = [
-  {
-    id: "usr_acme_health",
-    email: "farhan@acmehealth.com",
-    username: "acme_health",
-    displayName: "Dr. Farhan Ahmed",
-    role: "client",
-    status: "pending_review",
-    credits: 1000,
-    organizationName: "Acme Healthcare Systems Ltd",
-    identifier: "TR-8921-DHK",
-    department: "Clinical Operations",
-    createdAt: new Date(Date.now() - 3600 * 1000 * 5).toISOString(),
-    intake: {
-      businessDomain: "Healthcare & Telemedicine",
-      projectScope: "Multi-hospital patient triage portal with doctor scheduling and prescription generator.",
-      targetStack: "Next.js 16 + FastAPI + PostgreSQL",
-      referenceUrls: "https://health.daffodil.family, https://mayoclinic.org",
-      expectedTimeline: "6 Weeks",
-      budgetRange: "$5,000 - $8,000",
-      submittedAt: new Date(Date.now() - 3600 * 1000 * 5).toISOString(),
-    },
-  },
-  {
-    id: "usr_bengal_logistics",
-    email: "tariq@bengallogistics.com",
-    username: "bengal_logistics",
-    displayName: "Tariqul Islam",
-    role: "client",
-    status: "in_scoping",
-    credits: 1000,
-    organizationName: "Bengal Express Logistics Ltd",
-    identifier: "TL-5512-CTG",
-    department: "Supply Chain",
-    createdAt: new Date(Date.now() - 3600 * 1000 * 24).toISOString(),
-    intake: {
-      businessDomain: "Logistics & Supply Chain",
-      projectScope: "Real-time dispatch dashboard, GPS container tracking, driver mobile PWA, automated delivery receipts.",
-      targetStack: "React + Node.js + PostgreSQL",
-      referenceUrls: "https://dhl.com, https://uberfreight.com",
-      expectedTimeline: "8 Weeks",
-      budgetRange: "$10,000 - $15,000",
-      submittedAt: new Date(Date.now() - 3600 * 1000 * 24).toISOString(),
-      estimationQuote: {
-        manHours: 180,
-        hourlyRate: 45,
-        infraCost: 650,
-        totalQuote: 8750,
-        currency: "USD",
-        approvedAt: new Date(Date.now() - 3600 * 1000 * 12).toISOString(),
-        adminNotes: "Tech architecture approved for container microservices.",
-      },
-    },
-  },
-  {
-    id: "usr_daffodil_agri",
-    email: "shafin@daffodil-agri.com",
-    username: "daffodil_agri",
-    displayName: "Shafin Rahman",
-    role: "client",
-    status: "approved",
-    credits: 5000,
-    organizationName: "Daffodil Agritech Innovations",
-    identifier: "AG-1029-DHK",
-    department: "Research & Development",
-    createdAt: new Date(Date.now() - 3600 * 1000 * 48).toISOString(),
-    intake: {
-      businessDomain: "Agriculture & IoT",
-      projectScope: "Smart farm sensor monitoring, soil moisture telemetry, crop yield AI forecasting.",
-      targetStack: "WordPress Headless + Next.js",
-      referenceUrls: "https://agritech.daffodil.family",
-      expectedTimeline: "4 Weeks",
-      budgetRange: "$3,500 - $5,000",
-      submittedAt: new Date(Date.now() - 3600 * 1000 * 48).toISOString(),
-      estimationQuote: {
-        manHours: 95,
-        hourlyRate: 40,
-        infraCost: 350,
-        totalQuote: 4150,
-        currency: "USD",
-        approvedAt: new Date(Date.now() - 3600 * 1000 * 20).toISOString(),
-        adminNotes: "Ready for live workspace staging.",
-      },
-    },
-  },
-];
+const SEED_REGISTRATIONS: UserProfile[] = [];
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<UserProfile | null>(null);
@@ -170,7 +85,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         } catch {}
       }
 
-      // 2. Fallback to cookies (enables cross-subdomain SSO and session persistence across origins)
+      // 2. Fallback to cookies (enables cross-subdomain SSO)
       if (!restoredUser && typeof document !== "undefined") {
         const getCookie = (name: string) => {
           const match = document.cookie.match(new RegExp("(^|;\\s*)" + name + "=([^;]*)"));
@@ -180,10 +95,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const cookieSessionRaw = getCookie("dudos_session");
         const cookieToken = getCookie("dudos_at");
 
-        if (cookieSessionRaw) {
+        if (cookieSessionRaw && cookieToken && !cookieToken.startsWith("token_")) {
           try {
             const sessionData = safeJsonParse(cookieSessionRaw);
-            if (sessionData) {
+            if (sessionData && sessionData.email) {
               const role = (sessionData.role as StakeholderRole) || "client";
               const config = STAKEHOLDER_CONFIGS[role] || STAKEHOLDER_CONFIGS.client;
               restoredUser = {
@@ -198,37 +113,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 createdAt: new Date().toISOString(),
               };
               restoredRole = role;
-              restoredToken = cookieToken || undefined;
-
-              // Sync to this origin's localStorage
-              localStorage.setItem(STORAGE_KEY, JSON.stringify({ user: restoredUser, activeRole: role, token: restoredToken }));
-              if (restoredToken) {
-                localStorage.setItem("dudos_jwt_token", restoredToken);
-              }
+              restoredToken = cookieToken;
             }
-          } catch {}
-        }
-
-        // If session cookie was missing/corrupted but auth token cookie exists, restore basic session
-        if (!restoredUser && cookieToken) {
-          const role: StakeholderRole = "client";
-          const config = STAKEHOLDER_CONFIGS.client;
-          restoredUser = {
-            id: cookieToken.startsWith("token_") ? cookieToken.replace("token_", "") : "usr_session",
-            email: "",
-            username: "user",
-            displayName: "User",
-            role: role,
-            status: "approved",
-            credits: 1000,
-            organizationName: config.title,
-            createdAt: new Date().toISOString(),
-          };
-          restoredRole = role;
-          restoredToken = cookieToken;
-          try {
-            localStorage.setItem(STORAGE_KEY, JSON.stringify({ user: restoredUser, activeRole: role, token: restoredToken }));
-            localStorage.setItem("dudos_jwt_token", restoredToken);
           } catch {}
         }
       }
@@ -236,11 +122,52 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (restoredUser && restoredRole) {
         setUser(restoredUser);
         setActiveRole(restoredRole);
+
+        // Verify active token against backend database
+        if (restoredToken && !restoredToken.startsWith("token_")) {
+          const apiBase = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8000/api/v1";
+          fetch(`${apiBase}/auth/me`, {
+            headers: { Authorization: `Bearer ${restoredToken}` }
+          })
+            .then(async (res) => {
+              if (!res.ok) {
+                // Backend database was reset or account no longer exists
+                setUser(null);
+                persistSession(null, "client");
+                if (typeof window !== "undefined" && window.location.pathname.includes("/app")) {
+                  window.location.href = "/login";
+                }
+              } else {
+                const liveData = await res.json();
+                if (liveData) {
+                  setUser((prev) => prev ? {
+                    ...prev,
+                    id: liveData.id,
+                    email: liveData.email,
+                    displayName: liveData.displayName || prev.displayName,
+                    role: liveData.role || prev.role,
+                    credits: liveData.credits ?? prev.credits,
+                    status: liveData.status || prev.status,
+                  } : null);
+                }
+              }
+            })
+            .catch(() => {});
+        } else {
+          // Stale legacy mock token -> clear session
+          setUser(null);
+          persistSession(null, "client");
+          if (typeof window !== "undefined" && window.location.pathname.includes("/app")) {
+            window.location.href = "/login";
+          }
+        }
       }
 
       const storedTx = localStorage.getItem(TRANSACTIONS_KEY);
       if (storedTx) {
-        setCreditTransactions(JSON.parse(storedTx));
+        try {
+          setCreditTransactions(JSON.parse(storedTx));
+        } catch {}
       } else {
         const initialTx: CreditTransaction = {
           id: "tx_welcome",
@@ -253,35 +180,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         localStorage.setItem(TRANSACTIONS_KEY, JSON.stringify([initialTx]));
       }
 
-      const storedRegs = localStorage.getItem(REGISTRATIONS_KEY);
-      if (storedRegs) {
-        setRegistrations(JSON.parse(storedRegs));
-      } else {
-        setRegistrations(SEED_REGISTRATIONS);
-        localStorage.setItem(REGISTRATIONS_KEY, JSON.stringify(SEED_REGISTRATIONS));
-      }
-
-      // Fetch dynamic PostgreSQL users asynchronously
+      // Clean load of registrations directly from PostgreSQL
       const apiBase = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8000/api/v1";
       fetch(`${apiBase}/admin/users`)
         .then((res) => res.json())
         .then((data) => {
           if (data?.users && Array.isArray(data.users)) {
-            setRegistrations((prev) => {
-              const combined = [...data.users];
-              for (const p of prev) {
-                if (!combined.some((u) => u.id === p.id || u.email.toLowerCase() === p.email.toLowerCase())) {
-                  combined.push(p);
-                }
-              }
-              try {
-                localStorage.setItem(REGISTRATIONS_KEY, JSON.stringify(combined));
-              } catch {}
-              return combined;
-            });
+            setRegistrations(data.users);
+            try {
+              localStorage.setItem(REGISTRATIONS_KEY, JSON.stringify(data.users));
+            } catch {}
+          } else {
+            setRegistrations([]);
           }
         })
-        .catch(() => {});
+        .catch(() => {
+          setRegistrations([]);
+        });
     } catch {
       // Fallback silently if storage read fails
     } finally {
@@ -462,18 +377,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (res.ok) {
         const data = await res.json();
         if (data?.users && Array.isArray(data.users)) {
-          setRegistrations((prev) => {
-            const combined = [...data.users];
-            for (const p of prev) {
-              if (!combined.some((u) => u.id === p.id || (u.email && p.email && u.email.toLowerCase() === p.email.toLowerCase()))) {
-                combined.push(p);
-              }
-            }
-            try {
-              localStorage.setItem(REGISTRATIONS_KEY, JSON.stringify(combined));
-            } catch {}
-            return combined;
-          });
+          setRegistrations(data.users);
+          try {
+            localStorage.setItem(REGISTRATIONS_KEY, JSON.stringify(data.users));
+          } catch {}
         }
       }
     } catch {}

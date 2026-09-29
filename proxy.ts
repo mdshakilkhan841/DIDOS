@@ -5,10 +5,11 @@ export function proxy(req: NextRequest) {
   const url = req.nextUrl;
   const hostname = req.headers.get("host") || "";
 
-  // Skip static assets, Next.js internal chunks, images, and static files
+  // Skip static assets, Next.js internal chunks, images, API routes, and static files
   if (
     url.pathname.startsWith("/_next") ||
     url.pathname.startsWith("/static") ||
+    url.pathname.startsWith("/api") ||
     url.pathname.includes(".")
   ) {
     return NextResponse.next();

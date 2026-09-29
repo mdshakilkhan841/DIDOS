@@ -39,7 +39,7 @@ export default function ClientWorkbench({
   lang: string;
   section: string[];
 }) {
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
   const [navSearch, setNavSearch] = useState('');
   const [projectCount, setProjectCount] = useState<number>(0);
   const [supportCount, setSupportCount] = useState<number>(0);
@@ -47,7 +47,7 @@ export default function ClientWorkbench({
   const view = section[0] || 'overview';
 
   useEffect(() => {
-    const token = typeof window !== 'undefined' ? localStorage.getItem('dudos_auth_token') : null;
+    const token = typeof window !== 'undefined' ? localStorage.getItem('dudos_jwt_token') || localStorage.getItem('dudos_auth_token') : null;
     if (token) {
       fetch('http://localhost:8000/api/v1/projects', {
         headers: { Authorization: `Bearer ${token}` },
@@ -73,14 +73,24 @@ export default function ClientWorkbench({
   }, [user]);
 
   const handleSignOut = () => {
+    logout();
     try {
-      const epoch = 'Thu, 01 Jan 1970 00:00:00 GMT';
+      localStorage.removeItem('dudos_auth_session');
+      localStorage.removeItem('dudos_jwt_token');
+      sessionStorage.clear();
+      const epoch = 'Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax';
+      document.cookie = `dudos_session=; path=/; max-age=0; expires=${epoch}`;
+      document.cookie = `dudos_at=; path=/; max-age=0; expires=${epoch}`;
+      if (typeof window !== 'undefined') {
+        document.cookie = `dudos_session=; path=/; domain=${window.location.hostname}; max-age=0; expires=${epoch}`;
+        document.cookie = `dudos_at=; path=/; domain=${window.location.hostname}; max-age=0; expires=${epoch}`;
+      }
       document.cookie = `dudos_session=; path=/; domain=localhost; max-age=0; expires=${epoch}`;
       document.cookie = `dudos_at=; path=/; domain=localhost; max-age=0; expires=${epoch}`;
       document.cookie = `dudos_session=; path=/; domain=.localhost; max-age=0; expires=${epoch}`;
       document.cookie = `dudos_at=; path=/; domain=.localhost; max-age=0; expires=${epoch}`;
     } catch {}
-    window.location.href = buildSubdomainUrl('main', '/logout?return_to=/login');
+    window.location.href = '/logout?return_to=/login';
   };
 
   // 100% Workable Customer Navigation Modules (No Dummy Pages)
