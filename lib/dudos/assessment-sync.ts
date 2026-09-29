@@ -151,13 +151,13 @@ export function convertAssessmentRecordToDraft(
   };
 }
 
-export function syncAssessmentToWorkspaceDraft(
+export async function syncAssessmentToWorkspaceDraft(
   record: any,
   data: Record<string, string>,
   workspaceId: string,
   user?: any,
   isSubmitted = false
-): ActiveProjectDraft | null {
+): Promise<ActiveProjectDraft | null> {
   if (typeof window === "undefined") return null;
 
   try {
@@ -197,8 +197,10 @@ export function syncAssessmentToWorkspaceDraft(
         ? "bKash / Nagad / SSLCommerz / Stripe"
         : "Online Gateway";
 
+    const originalRecordId = record?.id || "";
+
     const draftRecord: ActiveProjectDraft = {
-      id: record.id || "draft_" + Date.now().toString(36),
+      id: originalRecordId || "draft_" + Date.now().toString(36),
       workspace: workspaceId,
       title,
       organizationName: org,
@@ -221,20 +223,7 @@ export function syncAssessmentToWorkspaceDraft(
       updatedAt: new Date().toISOString(),
     };
 
-    // 1. Set active draft in localStorage
-    localStorage.setItem(ACTIVE_DRAFT_KEY, JSON.stringify(draftRecord));
-
-    // 2. Append or update in PROJECT_RECORDS_KEY
-    const existingRecords = safeJsonParse(localStorage.getItem(PROJECT_RECORDS_KEY) || "[]") || [];
-    const nextRecords = [
-      draftRecord,
-      ...existingRecords.filter((item: any) => item.id !== draftRecord.id),
-    ];
-    localStorage.setItem(PROJECT_RECORDS_KEY, JSON.stringify(nextRecords));
-
-    // 3. Append or update in CUSTOM_PROJECTS_KEY for ERP & Admin visibility
-    const existingCustom = safeJsonParse(localStorage.getItem(CUSTOM_PROJECTS_KEY) || "[]") || [];
-    const customItem = {
+    const customItem: any = {
       id: draftRecord.id,
       workspace: workspaceId,
       title: draftRecord.title,
@@ -257,14 +246,75 @@ export function syncAssessmentToWorkspaceDraft(
       createdAt: draftRecord.savedAt,
       updatedAt: draftRecord.updatedAt,
     };
+
+    // If submitted, persist authoritative project in PostgreSQL first to unify primary key ID
+    const token = getAuthToken();
+    if (token && (isSubmitted || draftRecord.status === "submitted")) {
+      try {
+        const projRes = await fetch("http://localhost:8000/api/v1/projects/from-draft", {
+          method: "POST",
+          headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+          body: JSON.stringify({
+            projectId: draftRecord.id.startsWith("cproj_") ? draftRecord.id : undefined,
+            recordId: originalRecordId,
+            workspace: workspaceId,
+            name: draftRecord.title,
+            domain: draftRecord.businessDomain,
+            scopeSummary: draftRecord.projectScope,
+            specs: {
+              stack: draftRecord.targetStack,
+              timeline: draftRecord.expectedTimeline,
+              budget: draftRecord.budgetExpectation,
+              workspace: workspaceId,
+              organization: draftRecord.organizationName,
+              recordId: originalRecordId,
+            },
+            qaAnswers: draftRecord.qaAnswers,
+            srsDocument: customItem.srsContent,
+          }),
+        });
+
+        if (projRes.ok) {
+          const savedProj = await projRes.json();
+          if (savedProj?.id) {
+            // Adopt backend authoritative ID so localStorage and PostgreSQL use the identical primary key
+            draftRecord.id = savedProj.id;
+            customItem.id = savedProj.id;
+          }
+        }
+      } catch (projErr) {
+        console.warn("Failed to persist project to PostgreSQL:", projErr);
+      }
+    }
+
+    // 1. Set active draft in localStorage with unified ID
+    localStorage.setItem(ACTIVE_DRAFT_KEY, JSON.stringify(draftRecord));
+
+    // 2. Append or update in PROJECT_RECORDS_KEY
+    const existingRecords = safeJsonParse(localStorage.getItem(PROJECT_RECORDS_KEY) || "[]") || [];
+    const nextRecords = [
+      draftRecord,
+      ...existingRecords.filter((item: any) => 
+        item.id !== draftRecord.id && 
+        item.id !== originalRecordId &&
+        (item.title || "").trim().toLowerCase() !== draftRecord.title.trim().toLowerCase()
+      ),
+    ];
+    localStorage.setItem(PROJECT_RECORDS_KEY, JSON.stringify(nextRecords));
+
+    // 3. Append or update in CUSTOM_PROJECTS_KEY
+    const existingCustom = safeJsonParse(localStorage.getItem(CUSTOM_PROJECTS_KEY) || "[]") || [];
     const nextCustom = [
       customItem,
-      ...existingCustom.filter((item: any) => item.id !== draftRecord.id),
+      ...existingCustom.filter((item: any) => 
+        item.id !== draftRecord.id && 
+        item.id !== originalRecordId &&
+        (item.title || item.name || "").trim().toLowerCase() !== draftRecord.title.trim().toLowerCase()
+      ),
     ];
     localStorage.setItem(CUSTOM_PROJECTS_KEY, JSON.stringify(nextCustom));
 
-    // 4. Asynchronously sync to FastAPI PostgreSQL backend
-    const token = getAuthToken();
+    // 4. Persist onboarding & active draft snapshots in PostgreSQL
     if (token) {
       // a. Save to customer_onboarding_drafts table
       fetch("http://localhost:8000/api/v1/onboarding/draft", {
@@ -283,7 +333,8 @@ export function syncAssessmentToWorkspaceDraft(
           payload: {
             qaAnswers: draftRecord.qaAnswers,
             workspace: workspaceId,
-            recordId: draftRecord.id,
+            recordId: originalRecordId,
+            projectId: draftRecord.id,
             status: draftRecord.status,
           },
         }),
@@ -299,26 +350,6 @@ export function syncAssessmentToWorkspaceDraft(
           stage: isSubmitted ? "submitted" : "draft",
         }),
       }).catch((err) => console.warn("Failed to persist active draft to DB:", err));
-
-      // c. Persist project in customer_projects table in PostgreSQL
-      fetch("http://localhost:8000/api/v1/projects/from-draft", {
-        method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-        body: JSON.stringify({
-          name: draftRecord.title,
-          domain: draftRecord.businessDomain,
-          scopeSummary: draftRecord.projectScope,
-          specs: {
-            stack: draftRecord.targetStack,
-            timeline: draftRecord.expectedTimeline,
-            budget: draftRecord.budgetExpectation,
-            workspace: workspaceId,
-            organization: draftRecord.organizationName,
-          },
-          qaAnswers: draftRecord.qaAnswers,
-          srsDocument: customItem.srsContent,
-        }),
-      }).catch((err) => console.warn("Failed to persist project to DB:", err));
     }
 
     return draftRecord;

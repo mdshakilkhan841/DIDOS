@@ -55,7 +55,7 @@ console.log('  ✅ Passed: Assessment record successfully converted to ActivePro
 
 // 2. Test syncAssessmentToWorkspaceDraft
 console.log('\nTest 2: Sync Assessment to Workspace Draft Storage');
-const synced = syncAssessmentToWorkspaceDraft(mockAssessmentRecord, mockAssessmentRecord.data, 'ws_test_shakil', user, false);
+const synced = await syncAssessmentToWorkspaceDraft(mockAssessmentRecord, mockAssessmentRecord.data, 'ws_test_shakil', user, false);
 assert(synced !== null, 'Synced draft should not be null');
 
 const activeDraftStr = localStorage.getItem('dudos_active_draft');
@@ -78,7 +78,7 @@ console.log('  ✅ Passed: Assessment synced across dudos_active_draft, dudos_pr
 
 // 3. Test submitting the assessment
 console.log('\nTest 3: Submit Assessment via Send to DUDOS');
-const submittedDraft = syncAssessmentToWorkspaceDraft(mockAssessmentRecord, mockAssessmentRecord.data, 'ws_test_shakil', user, true);
+const submittedDraft = await syncAssessmentToWorkspaceDraft(mockAssessmentRecord, mockAssessmentRecord.data, 'ws_test_shakil', user, true);
 assert(submittedDraft.status === 'submitted', 'Status should be submitted');
 const updatedActive = JSON.parse(localStorage.getItem('dudos_active_draft'));
 assert(updatedActive.status === 'submitted', 'Active draft status should be updated to submitted');

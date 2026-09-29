@@ -23,7 +23,7 @@ export function SendRequest({record,workspace,lang}:{record:any;workspace:string
       setReceipt(d);
       setOpen(false);
       setError('');
-      syncAssessmentToWorkspaceDraft({ ...record, status: 'submitted' }, record.data || {}, workspace, user, true);
+      await syncAssessmentToWorkspaceDraft({ ...record, status: 'submitted' }, record.data || {}, workspace, user, true);
     }catch(e){
       setError((e as Error).message);
     }finally{

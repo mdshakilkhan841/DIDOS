@@ -274,11 +274,31 @@ export function CustomerUserPanel({
         setInvoices(list);
       }
 
-      // 3. Load all custom projects
-      const projStr = localStorage.getItem(CUSTOM_PROJECTS_KEY);
-      if (projStr) {
-        setAllProjects(JSON.parse(projStr));
-      }
+      // 3. Load all custom projects & project records (deduplicated by ID and title)
+      try {
+        const projStr = localStorage.getItem(CUSTOM_PROJECTS_KEY);
+        const customList = projStr ? JSON.parse(projStr) : [];
+        const recordsStr = localStorage.getItem(PROJECT_RECORDS_KEY);
+        const recordsList = recordsStr ? JSON.parse(recordsStr) : [];
+        const combined = Array.isArray(customList) ? [...customList] : [];
+        if (Array.isArray(recordsList)) {
+          for (const rec of recordsList) {
+            const recTitle = (rec.title || rec.name || "").trim().toLowerCase();
+            if (
+              !combined.some(
+                (p: any) =>
+                  p.id === rec.id ||
+                  (recTitle && (p.title || p.name || "").trim().toLowerCase() === recTitle)
+              )
+            ) {
+              combined.push(rec);
+            }
+          }
+        }
+        if (combined.length > 0) {
+          setAllProjects(combined);
+        }
+      } catch {}
 
       // 4. Load deployment tickets
       const depStr = localStorage.getItem("dudos_deployment_tickets");
@@ -319,43 +339,37 @@ export function CustomerUserPanel({
         })
           .then((res) => (res.ok ? res.json() : []))
           .then((backendProjects) => {
-            if (Array.isArray(backendProjects) && backendProjects.length > 0) {
-              setAllProjects((prev) => {
-                const combined = [...backendProjects];
-                for (const p of prev) {
-                  if (!combined.some((c) => c.id === p.id)) combined.push(p);
-                }
-                return combined;
-              });
-              // Cache into localStorage so subsequent reloads are instantaneous
+            if (Array.isArray(backendProjects)) {
+              // The backend database is the single authoritative source of truth for projects
+              setAllProjects(backendProjects);
               try {
                 localStorage.setItem(CUSTOM_PROJECTS_KEY, JSON.stringify(backendProjects));
               } catch {}
 
-              // If activeDraft was missing (e.g. after clearing localStorage), auto-hydrate from latest DB project
+              // Auto-hydrate or unify activeDraft with backend authoritative ID
               setActiveDraft((curr) => {
-                if (!curr) {
+                if (!curr && backendProjects.length > 0) {
                   const latest = backendProjects[0];
                   const hydrated: ActiveProjectDraft = {
                     id: latest.id,
                     workspace: latest.specs?.workspace || workspace || "client_ws",
                     title: latest.name,
-                    organizationName: latest.domain || "",
-                    contactName: user?.displayName || "",
+                    organizationName: latest.domain || latest.name.split("—")[0].trim(),
+                    contactName: user?.displayName || user?.username || "Client Stakeholder",
                     email: user?.email || "",
-                    businessDomain: latest.domain || "",
+                    businessDomain: latest.domain || "Enterprise Software",
                     projectScope: latest.scopeSummary || "",
                     siteUrl: "",
                     targetStack: latest.specs?.stack || "Next.js + FastAPI + PostgreSQL",
-                    budgetExpectation: latest.specs?.budget || "",
-                    expectedTimeline: latest.specs?.timeline || "",
+                    budgetExpectation: latest.specs?.budget || "$5,000 USD",
+                    expectedTimeline: latest.specs?.timeline || "4-8 Weeks",
                     qaAnswers: latest.qaAnswers || {
                       multiTenant: "no",
                       paymentGateway: "Standard Online Gateway",
                       userScale: "1,000 - 5,000 Users",
                       databaseChoice: "PostgreSQL 16",
                     },
-                    status: latest.status || "draft",
+                    status: (latest.status as any) || "submitted",
                     savedAt: latest.createdAt || new Date().toISOString(),
                     updatedAt: latest.updatedAt || new Date().toISOString(),
                   };
@@ -363,6 +377,21 @@ export function CustomerUserPanel({
                     localStorage.setItem(ACTIVE_DRAFT_KEY, JSON.stringify(hydrated));
                   } catch {}
                   return hydrated;
+                }
+                if (curr && backendProjects.length > 0) {
+                  const match = backendProjects.find(
+                    (bp) =>
+                      bp.id === curr.id ||
+                      (bp.name && (curr.title || "").trim().toLowerCase() === bp.name.trim().toLowerCase()) ||
+                      (bp.specs?.recordId && bp.specs.recordId === curr.id)
+                  );
+                  if (match && curr.id !== match.id) {
+                    const unified = { ...curr, id: match.id, title: match.name };
+                    try {
+                      localStorage.setItem(ACTIVE_DRAFT_KEY, JSON.stringify(unified));
+                    } catch {}
+                    return unified;
+                  }
                 }
                 return curr;
               });
@@ -711,6 +740,9 @@ export function CustomerUserPanel({
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
         body: JSON.stringify({
+          projectId: confirmed.id.startsWith("cproj_") ? confirmed.id : undefined,
+          recordId: confirmed.id,
+          workspace: confirmed.workspace || workspace,
           name: confirmed.title,
           domain: confirmed.businessDomain,
           scopeSummary: confirmed.projectScope,
@@ -719,6 +751,7 @@ export function CustomerUserPanel({
             timeline: confirmed.expectedTimeline,
             budget: confirmed.budgetExpectation,
             workspace: confirmed.workspace || workspace,
+            recordId: confirmed.id,
           },
           qaAnswers: editableQa,
           srsDocument: generateSrsMarkdown(confirmed),
@@ -727,7 +760,20 @@ export function CustomerUserPanel({
         .then((res) => (res.ok ? res.json() : null))
         .then((savedProj) => {
           if (savedProj?.id) {
-            setAllProjects((prev) => [savedProj, ...prev.filter((p) => p.id !== savedProj.id)]);
+            if (confirmed.id !== savedProj.id) {
+              confirmed.id = savedProj.id;
+              setActiveDraft({ ...confirmed, id: savedProj.id });
+              try {
+                localStorage.setItem(ACTIVE_DRAFT_KEY, JSON.stringify({ ...confirmed, id: savedProj.id }));
+              } catch {}
+            }
+            setAllProjects((prev) => {
+              const exists = prev.some((p) => p.id === savedProj.id);
+              if (exists) {
+                return prev.map((p) => (p.id === savedProj.id ? savedProj : p));
+              }
+              return [savedProj, ...prev.filter((p) => p.id !== confirmed.id)];
+            });
           }
         })
         .catch((err) => console.warn("Failed to persist confirmed project to DB:", err));
@@ -942,8 +988,13 @@ ${draft.projectScope}
       inv.clientEmail === user?.email
   );
 
+  // Natural project list from authoritative store without manual filtering hacks
   const displayedProjects = allProjects.slice();
-  if (activeDraft && !displayedProjects.some((p) => p.id === activeDraft.id)) {
+  if (
+    activeDraft &&
+    activeDraft.status === "draft" &&
+    !displayedProjects.some((p) => p.id === activeDraft.id)
+  ) {
     displayedProjects.unshift(activeDraft as any);
   }
 
@@ -980,7 +1031,7 @@ ${draft.projectScope}
             </div>
           )}
           {/* Multi-Project Switcher Dropdown */}
-          {allProjects.length > 0 && (
+          {displayedProjects.length > 0 && (
             <div className="flex items-center gap-1.5 bg-[#f0f4f6] border border-[#dce5e9] rounded-lg px-2.5 py-1.5 shadow-xs">
               <FolderKanban className="h-3.5 w-3.5 text-[#087f79]" />
               <span className="text-xs text-[#5b6f7b] font-semibold hidden sm:inline">Project:</span>
@@ -990,7 +1041,7 @@ ${draft.projectScope}
                 className="text-xs font-semibold text-[#162c38] bg-transparent outline-none cursor-pointer pr-1 max-w-[180px] truncate"
                 title="Switch Active Project"
               >
-                {allProjects.map((p) => (
+                {displayedProjects.map((p) => (
                   <option key={p.id} value={p.id}>
                     {p.title || p.name}
                   </option>

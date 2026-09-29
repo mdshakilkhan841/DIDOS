@@ -309,7 +309,7 @@ export function CustomerOnboardingWizard({ lang = "en" }: { lang?: string }) {
     setStep("qa_final");
   };
 
-  const handleFinalSpecificationConfirm = () => {
+  const handleFinalSpecificationConfirm = async () => {
     feedDataToActualDraft("submitted");
 
     // Also persist project to FastAPI database if authenticated
@@ -319,7 +319,7 @@ export function CustomerOnboardingWizard({ lang = "en" }: { lang?: string }) {
           ? localStorage.getItem("dudos_jwt_token") || localStorage.getItem("dudos_auth_token")
           : null;
       if (token) {
-        fetch("http://localhost:8000/api/v1/projects/from-draft", {
+        const projRes = await fetch("http://localhost:8000/api/v1/projects/from-draft", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
@@ -337,9 +337,24 @@ export function CustomerOnboardingWizard({ lang = "en" }: { lang?: string }) {
             qaAnswers,
             srsDocument: `# SRS & Architecture: ${organizationName || "Project"}\n\n## 1. Scope\n${projectScope}\n\n## 2. Architecture\n- Stack: ${targetStack}\n- Multi-Tenancy: ${qaAnswers.multiTenant === "yes" ? "Enabled (Tenant Isolation)" : "Single-Tenant"}\n- Payment: ${qaAnswers.paymentMethods || qaAnswers.paymentGateway}\n- Concurrency Scale: ${qaAnswers.userVolume || qaAnswers.userScale}\n\n## 3. Commercial\n- Timeline: ${expectedTimeline}\n- Budget: ${budgetExpectation}`,
           }),
-        }).catch((err) => console.error("FastAPI project create error:", err));
+        });
+        if (projRes.ok) {
+          const savedProj = await projRes.json();
+          if (savedProj?.id) {
+            try {
+              const activeStr = localStorage.getItem("dudos_active_draft");
+              if (activeStr) {
+                const active = JSON.parse(activeStr);
+                active.id = savedProj.id;
+                localStorage.setItem("dudos_active_draft", JSON.stringify(active));
+              }
+            } catch {}
+          }
+        }
       }
-    } catch {}
+    } catch (err) {
+      console.error("FastAPI project create error:", err);
+    }
 
     showToast.success("Project specifications confirmed!", {
       description: "Dispatched to tech estimation & workspace provisioning.",

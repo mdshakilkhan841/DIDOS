@@ -212,7 +212,59 @@ export function WorkspaceGate({lang,children}:{lang:string;children:(w:string)=>
   );
 }
 export function FieldControl({f,value,onChange,lang}:{f:Field;value:string;onChange:(v:string)=>void;lang:string}){const id='input-'+f.key;return <div className={'form-field '+(f.type==='textarea'?'wide':'')}><Label htmlFor={id}>{lang==='bn'?f.bn:f.label}{f.required&&<span className="required"> *</span>}</Label>{f.options?<Choose value={value} onChange={onChange} options={f.options} label={lang==='bn'?f.bn:f.label} id={id}/>:f.type==='textarea'?<Textarea id={id} value={value} onChange={e=>onChange(e.target.value)} maxLength={10000} rows={4}/>:<Input id={id} type={f.type||'text'} value={value} onChange={e=>onChange(e.target.value)} min={f.type==='number'?0:undefined} maxLength={10000}/>}</div>}
-export function RecordForm({kind,workspace,lang,record,initial,onSaved}:{kind:string;workspace:string;lang:string;record?:any;initial?:any;onSaved?:(r:any)=>void}){const mod=moduleById(kind)!;const [title,setTitle]=useState(record?.title||initial?.title||''),[data,setData]=useState<Record<string,string>>(record?.data||initial?.data||{}),[error,setError]=useState(''),[busy,setBusy]=useState(false),[saved,setSaved]=useState<any>(null),[key]=useState(()=>crypto.randomUUID());useEffect(()=>{if(!record&&!initial&&kind==='application'){const p=new URLSearchParams(window.location.search).get('programme');if(p)setData(d=>({...d,programme:p.slice(0,200)}))}},[]);async function save(e:React.FormEvent){e.preventDefault();setBusy(true);setError('');try{const d=await api('/api/records',record?'PATCH':'POST',record?{workspace,id:record.id,version:record.version,title,data,status:'draft'}:{workspace,kind,title,data,idempotency_key:key});setSaved({...d,kind,title,data:JSON.parse(JSON.stringify(data))});onSaved?.(d)}catch(e){setError((e as Error).message)}finally{setBusy(false)}}if(!mod)return null;return <form onSubmit={save} className="record-form">{mod.external&&<Notice>{mod.external}</Notice>}<div className="form-field"><Label htmlFor="record-title">{lang==='bn'?'শিরোনাম':'Record title'} *</Label><Input id="record-title" value={title} onChange={e=>setTitle(e.target.value)} required maxLength={180}/></div><div className="form-grid">{mod.fields.map(f=><FieldControl key={f.key} f={f} lang={lang} value={data[f.key]||''} onChange={v=>setData({...data,[f.key]:v})}/>)}</div><p className="field-help">{lang==='bn'?'পাসওয়ার্ড, API কী বা সংবেদনশীল ব্যক্তিগত তথ্য লিখবেন না। খসড়া জমা দেওয়ার আগে প্রয়োজনীয় তথ্য পূরণ করুন।':'Do not enter passwords, API keys or unnecessary sensitive personal data. Required fields are checked before submission.'}</p>{error&&<Notice tone="error">{error}</Notice>}{saved&&<Notice tone="success">{lang==='bn'?'খসড়া সংরক্ষিত হয়েছে। বাহ্যিক কোনো কাজ সম্পাদিত হয়নি।':'Draft saved. No external action was performed.'} <code>{saved.id}</code></Notice>}<Button type="submit" disabled={busy||!!saved}><Save size={17}/>{busy?'…':lang==='bn'?'খসড়া সংরক্ষণ':'Save draft'}</Button>{saved&&<SendRequest record={saved} workspace={workspace} lang={lang}/>}</form>}
+export function RecordForm({kind,workspace,lang,record,initial,onSaved}:{kind:string;workspace:string;lang:string;record?:any;initial?:any;onSaved?:(r:any)=>void}){
+  const {user}=useAuth();
+  const mod=moduleById(kind)!;
+  const [title,setTitle]=useState(record?.title||initial?.title||''),[data,setData]=useState<Record<string,string>>(record?.data||initial?.data||{}),[error,setError]=useState(''),[busy,setBusy]=useState(false),[saved,setSaved]=useState<any>(null),[key]=useState(()=>crypto.randomUUID());
+  useEffect(()=>{if(!record&&!initial&&kind==='application'){const p=new URLSearchParams(window.location.search).get('programme');if(p)setData(d=>({...d,programme:p.slice(0,200)}))}},[]);
+  async function save(e:React.FormEvent){
+    e.preventDefault();
+    setBusy(true);
+    setError('');
+    try{
+      const d=await api('/api/records',record?'PATCH':'POST',record?{workspace,id:record.id,version:record.version,title,data,status:'draft'}:{workspace,kind,title,data,idempotency_key:key});
+      const savedRec={...d,kind,title,data:JSON.parse(JSON.stringify(data))};
+      setSaved(savedRec);
+      if(kind==='assessment'){
+        syncAssessmentToWorkspaceDraft(savedRec,data,workspace,user,false);
+      }
+      onSaved?.(d);
+    }catch(e){
+      setError((e as Error).message);
+    }finally{
+      setBusy(false);
+    }
+  }
+  if(!mod)return null;
+  return (
+    <form onSubmit={save} className="record-form">
+      {mod.external&&<Notice>{mod.external}</Notice>}
+      <div className="form-field"><Label htmlFor="record-title">{lang==='bn'?'শিরোনাম':'Record title'} *</Label><Input id="record-title" value={title} onChange={e=>setTitle(e.target.value)} required maxLength={180}/></div>
+      <div className="form-grid">{mod.fields.map(f=><FieldControl key={f.key} f={f} lang={lang} value={data[f.key]||''} onChange={v=>setData({...data,[f.key]:v})}/>)}</div>
+      <p className="field-help">{lang==='bn'?'পাসওয়ার্ড, API কী বা সংবেদনশীল ব্যক্তিগত তথ্য লিখবেন না। খসড়া জমা দেওয়ার আগে প্রয়োজনীয় তথ্য পূরণ করুন।':'Do not enter passwords, API keys or unnecessary sensitive personal data. Required fields are checked before submission.'}</p>
+      {error&&<Notice tone="error">{error}</Notice>}
+      {saved&&(
+        <Notice tone="success">
+          <div className="flex flex-wrap items-center justify-between gap-3 w-full">
+            <span>{lang==='bn'?'খসড়া সংরক্ষিত হয়েছে।':'Draft saved.'} <code>{saved.id}</code></span>
+            {kind==='assessment'&&(
+              <Button asChild size="sm" className="bg-[#087f79] hover:bg-[#066560] text-white text-xs">
+                <Link href={`/${lang}/app`}>
+                  {lang==='bn'?'ওয়ার্কস্পেস পোর্টালে যান':'Go to Workspace Portal'}
+                  <ArrowRight size={13} className="ml-1"/>
+                </Link>
+              </Button>
+            )}
+          </div>
+        </Notice>
+      )}
+      <div className="flex items-center gap-2 flex-wrap">
+        <Button type="submit" disabled={busy||!!saved}><Save size={17}/>{busy?'…':lang==='bn'?'খসড়া সংরক্ষণ':'Save draft'}</Button>
+        {saved&&<SendRequest record={saved} workspace={workspace} lang={lang}/>}
+      </div>
+    </form>
+  );
+}
 export function QuickIntake({kind,lang}:{kind:string;lang:string}){return <WorkspaceGate lang={lang}>{w=><RecordForm key={w} kind={kind} workspace={w} lang={lang}/>}</WorkspaceGate>}
 const steps=[['Your goal','আপনার লক্ষ্য',['outcomes']],['Your business','আপনার ব্যবসা',['organization','sector','country','languages','site_url']],['Existing systems','বর্তমান সিস্টেম',['systems']],['Required capabilities','প্রয়োজনীয় সুবিধা',['modules','reporting']],['Brand & content','ব্র্যান্ড ও কনটেন্ট',['brand']],['Rights & access','অধিকার ও প্রবেশাধিকার',['rights']],['Scope & expectations','পরিধি ও প্রত্যাশা',['budget','unknowns']],['Review & save','পর্যালোচনা ও সংরক্ষণ',[]]] as const;
 export function AssessmentWizard({lang}:{lang:string}){return <WorkspaceGate lang={lang}>{w=><Wizard key={w} workspace={w} lang={lang}/>}</WorkspaceGate>}
@@ -237,31 +289,81 @@ function Wizard({workspace,lang}:{workspace:string;lang:string}){
     }
   });
   useEffect(()=>{
-    void api('/api/records?workspace='+workspace+'&kind=assessment').then(d=>setDrafts(d.records)).catch(e=>setError(e.message));
+    void api('/api/records?workspace='+workspace+'&kind=assessment').then(d=>{
+      const records = d.records || [];
+      setDrafts(records);
+      const existing = records.length > 0 ? records[0] : null;
+      if (existing) {
+        setSaved(existing);
+        if (existing.data) {
+          setData(prev => ({ ...existing.data, ...prev }));
+        }
+      }
+    }).catch(e=>setError(e.message));
+
     const params=new URLSearchParams(window.location.search);
-    setData({
-      outcomes:params.get('goal')||'',
-      sector:params.get('sector')||'',
-      modules:params.get('package')||'',
-      languages:lang==='bn'?'bn, en':'en, bn'
-    });
+    setData(prev => ({
+      ...prev,
+      outcomes: params.get('goal') || prev.outcomes || '',
+      sector: params.get('sector') || prev.sector || '',
+      modules: params.get('package') || prev.modules || '',
+      languages: prev.languages || (lang==='bn'?'bn, en':'en, bn'),
+    }));
   },[workspace,lang]);
-  async function save(){
+
+  async function save(isSubmit = false){
     setBusy(true);
     try{
       const b=saved
-        ?{workspace,id:saved.id,version:saved.version,title:data.organization||'Transformation draft',data,status:'draft'}
-        :{workspace,kind:'assessment',title:data.organization||'Transformation draft',data,idempotency_key:key};
+        ?{workspace,id:saved.id,version:saved.version,title:data.organization||'Transformation draft',data,status:isSubmit?'submitted':'draft'}
+        :{workspace,kind:'assessment',title:data.organization||'Transformation draft',data,idempotency_key:key,status:isSubmit?'submitted':'draft'};
       const r=await api('/api/records',saved?'PATCH':'POST',b);
-      setSaved({...r,version:r.version||1,data:JSON.parse(JSON.stringify(data))});
-      syncAssessmentToWorkspaceDraft(r, data, workspace, user, false);
+      const updatedSaved={...r,version:r.version||1,data:JSON.parse(JSON.stringify(data)),status:isSubmit?'submitted':'draft'};
+      setSaved(updatedSaved);
+      await syncAssessmentToWorkspaceDraft(updatedSaved, data, workspace, user, isSubmit);
       setError('');
+      return updatedSaved;
     }catch(e){
       setError((e as Error).message);
+      return null;
     }finally{
       setBusy(false);
     }
   }
+
+  async function submitAndGoToPortal(){
+    setBusy(true);
+    setError('');
+    try {
+      const b = saved
+        ? { workspace, id: saved.id, version: saved.version, title: data.organization || 'Transformation Project', data, status: 'submitted' }
+        : { workspace, kind: 'assessment', title: data.organization || 'Transformation Project', data, idempotency_key: key, status: 'submitted' };
+      const r = await api('/api/records', saved ? 'PATCH' : 'POST', b);
+      const updatedSaved = { ...r, version: r.version || 1, data: JSON.parse(JSON.stringify(data)), status: 'submitted' };
+      setSaved(updatedSaved);
+
+      // Auto-dispatch customer request to requests inbox
+      try {
+        await api('/api/requests', 'POST', {
+          workspace,
+          record_id: updatedSaved.id,
+          version: updatedSaved.version,
+          share_confirmed: true,
+        });
+      } catch {}
+
+      // Sync across localStorage (active draft, custom projects, project records) and FastAPI PostgreSQL
+      await syncAssessmentToWorkspaceDraft(updatedSaved, data, workspace, user, true);
+
+      // Navigate straight to client workspace portal
+      window.location.href = `/${lang}/app`;
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
   async function makePreview(){
     if(!saved)return;
     setBusy(true);
@@ -353,11 +455,11 @@ function Wizard({workspace,lang}:{workspace:string;lang:string}){
             </div>
           </Notice>
         )}
-        <div className="form-actions">
+        <div className="form-actions flex flex-wrap items-center gap-2">
           <Button variant="outline" disabled={step===0} onClick={()=>setStep(step-1)}>
             <ArrowLeft size={16}/>{lang==='bn'?'পূর্ববর্তী':'Back'}
           </Button>
-          <Button variant="outline" disabled={busy} onClick={()=>void save()}>
+          <Button variant="outline" disabled={busy} onClick={()=>void save(false)}>
             <Save size={16}/>{lang==='bn'?'খসড়া সংরক্ষণ':'Save draft'}
           </Button>
           {step<7?(
@@ -365,15 +467,26 @@ function Wizard({workspace,lang}:{workspace:string;lang:string}){
               {lang==='bn'?'পরবর্তী':'Continue'}<ArrowRight size={16}/>
             </Button>
           ):(
-            <Button disabled={busy} onClick={()=>{
-              if(!saved||JSON.stringify(data)!==JSON.stringify(saved.data)){
-                setError(lang==='bn'?'টেমপ্লেট প্রিভিউ খুলতে প্রথমে "খসড়া সংরক্ষণ" চাপুন।':'Click "Save draft" above first — Template preview opens once this exact version is saved.');
-                return;
-              }
-              void makePreview();
-            }}>
-              {lang==='bn'?'টেমপ্লেট প্রিভিউ':'Template preview'}<ArrowUpRight size={16}/>
-            </Button>
+            <div className="flex items-center gap-2 flex-wrap">
+              <Button variant="outline" disabled={busy} onClick={()=>{
+                if(!saved||JSON.stringify(data)!==JSON.stringify(saved.data)){
+                  setError(lang==='bn'?'টেমপ্লেট প্রিভিউ খুলতে প্রথমে "খসড়া সংরক্ষণ" চাপুন।':'Click "Save draft" above first — Template preview opens once this exact version is saved.');
+                  return;
+                }
+                void makePreview();
+              }}>
+                {lang==='bn'?'টেমপ্লেট প্রিভিউ':'Template preview'}<ArrowUpRight size={16}/>
+              </Button>
+              <Button
+                disabled={busy}
+                onClick={()=>void submitAndGoToPortal()}
+                className="bg-[#087f79] hover:bg-[#066560] text-white font-bold px-4 py-2 text-sm flex items-center gap-2 shadow-sm"
+              >
+                <Check size={16} />
+                <span>{lang==='bn'?'অ্যাসেসমেন্ট জমা দিন ও পোর্টাল খুলুন':'Submit Assessment & Open Portal'}</span>
+                <ArrowRight size={14} />
+              </Button>
+            </div>
           )}
         </div>
         {saved&&(
