@@ -121,7 +121,7 @@ function getCurrentSession(): { user: any; activeRole: string } | null {
             displayName: parsed.displayName || parsed.email?.split('@')[0] || 'User',
             role: parsed.role || 'client',
             status: 'approved',
-            credits: 1000,
+            credits: 0,
             organizationName: parsed.organizationName || '',
           },
           activeRole: parsed.role || 'client',
@@ -172,7 +172,7 @@ export async function api(path: string, method = 'GET', data?: any): Promise<any
       email: currentUser.email,
       role: currentUser.role,
       platform_admin: currentUser.role === 'admin',
-      credits: currentUser.credits ?? 1000,
+      credits: currentUser.credits ?? 0,
       organization: currentUser.organizationName || '',
       status: currentUser.status || 'active',
     };

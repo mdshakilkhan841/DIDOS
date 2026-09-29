@@ -88,7 +88,7 @@ export const dudosApi = {
           displayName: profile.displayName || "Customer Client",
           role: profile.role || "client",
           status: profile.status || "approved",
-          credits: profile.credits ?? 1000,
+          credits: profile.credits ?? 0,
           organizationName: profile.organizationName,
           createdAt: new Date().toISOString(),
           ...profile,

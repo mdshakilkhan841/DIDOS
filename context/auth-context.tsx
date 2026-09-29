@@ -108,7 +108,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 displayName: sessionData.displayName || sessionData.email?.split("@")[0] || "User",
                 role: role,
                 status: "approved",
-                credits: 1000,
+                credits: 0,
                 organizationName: sessionData.organizationName || config.title,
                 createdAt: new Date().toISOString(),
               };
@@ -166,18 +166,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const storedTx = localStorage.getItem(TRANSACTIONS_KEY);
       if (storedTx) {
         try {
-          setCreditTransactions(JSON.parse(storedTx));
-        } catch {}
+          const parsed = JSON.parse(storedTx);
+          // Purge legacy mock tx_welcome transaction
+          const cleanTx = Array.isArray(parsed) ? parsed.filter((t: any) => t && t.id !== "tx_welcome") : [];
+          setCreditTransactions(cleanTx);
+          localStorage.setItem(TRANSACTIONS_KEY, JSON.stringify(cleanTx));
+        } catch {
+          setCreditTransactions([]);
+        }
       } else {
-        const initialTx: CreditTransaction = {
-          id: "tx_welcome",
-          amount: 1000,
-          type: "credit",
-          reason: "Welcome bonus (Dudos Platform Activation)",
-          timestamp: new Date().toISOString(),
-        };
-        setCreditTransactions([initialTx]);
-        localStorage.setItem(TRANSACTIONS_KEY, JSON.stringify([initialTx]));
+        setCreditTransactions([]);
       }
 
       // Clean load of registrations directly from PostgreSQL
@@ -273,7 +271,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         displayName: data.user.displayName || data.user.email.split("@")[0],
         role: role,
         status: data.user.status || "approved",
-        credits: data.user.credits ?? 1000,
+        credits: data.user.credits ?? 0,
         organizationName: data.user.organizationName || config.title,
         createdAt: data.user.createdAt || new Date().toISOString(),
       };
@@ -330,7 +328,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         displayName: respData.user.displayName,
         role: "client",
         status: respData.user.status || "approved",
-        credits: respData.user.credits ?? 1000,
+        credits: respData.user.credits ?? 0,
         organizationName: respData.user.organizationName || config.title,
         phone: data.phone,
         createdAt: respData.user.createdAt || new Date().toISOString(),
@@ -357,7 +355,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       clearPreRegistrationDraft();
 
       showToast.success("Registration successful!", {
-        description: `Welcome to DUDOS! 1,000 welcome credits granted.`,
+        description: "Your workspace has been initialized.",
       });
 
       return { user: newUser, token: respData.token };
@@ -498,7 +496,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   // Credits management
-  const credits = user?.credits ?? 1000;
+  const credits = user?.credits ?? 0;
 
   const deductCredits = (amount: number, reason: string): boolean => {
     if (!user) return false;
@@ -533,7 +531,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const addCredits = (amount: number, reason: string) => {
-    const currentCredits = user ? user.credits : 1000;
+    const currentCredits = user ? user.credits : 0;
     const newTotal = currentCredits + amount;
     if (user) {
       const updatedUser = { ...user, credits: newTotal };

@@ -445,12 +445,12 @@ export function AdminControlPanel({
         </div>
 
         <div>
-          <span>{lang === "bn" ? "সিস্টেম ক্রেডিট" : "System credits"}</span>
+          <span>{lang === "bn" ? "বরাদ্দকৃত ক্লায়েন্ট ক্রেডিট" : "Client credits"}</span>
           <strong className="text-[#087f79]">
             {totalCreditsAllocated.toLocaleString()}
           </strong>
           <small>
-            {lang === "bn" ? "সক্রিয় প্ল্যাটফর্ম ওয়ালেট" : "Active platform wallet"}
+            {lang === "bn" ? "সক্রিয় ক্লায়েন্ট ব্যালেন্স" : "Allocated client balances"}
           </small>
         </div>
       </div>
@@ -623,9 +623,21 @@ export function AdminControlPanel({
                   <TableRow>
                     <TableCell
                       colSpan={6}
-                      className="py-8 text-center text-gray-500"
+                      className="py-12 text-center text-[#5b6f7b]"
                     >
-                      No client registrations match your search filters.
+                      <div className="flex flex-col items-center justify-center">
+                        <Users className="h-8 w-8 text-[#8fa0ac] mb-2" />
+                        <span className="font-semibold text-sm text-[#162c38]">
+                          {registrations.length === 0
+                            ? (lang === "bn" ? "কোন ক্লায়েন্ট নিবন্ধন এখনও নেই" : "No client registrations yet")
+                            : (lang === "bn" ? "কোন ফলাফল পাওয়া যায়নি" : "No clients match your filter")}
+                        </span>
+                        <span className="text-xs text-[#5b6f7b] mt-1">
+                          {registrations.length === 0
+                            ? (lang === "bn" ? "নতুন ক্লায়েন্ট নিবন্ধিত হলে এখানে স্বয়ংক্রিয়ভাবে প্রদর্শিত হবে।" : "New client onboarding submissions from the portal will appear here in real-time.")
+                            : (lang === "bn" ? "অন্য ফিল্টার বা অনুসন্ধান শব্দ দিয়ে চেষ্টা করুন।" : "Try clearing your search query or changing the status filter.")}
+                        </span>
+                      </div>
                     </TableCell>
                   </TableRow>
                 ) : (
@@ -848,29 +860,50 @@ export function AdminControlPanel({
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {creditTransactions.map((tx) => (
-                  <TableRow key={tx.id}>
-                    <TableCell className="font-mono text-[11px] text-[#5b6f7b]">{tx.id}</TableCell>
-                    <TableCell>
-                      {tx.type === "credit" ? (
-                        <span className="px-2 py-0.5 rounded text-[10px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
-                          CREDIT
+                {creditTransactions.length === 0 ? (
+                  <TableRow>
+                    <TableCell
+                      colSpan={5}
+                      className="py-12 text-center text-[#5b6f7b]"
+                    >
+                      <div className="flex flex-col items-center justify-center">
+                        <CreditCard className="h-8 w-8 text-[#8fa0ac] mb-2" />
+                        <span className="font-semibold text-sm text-[#162c38]">
+                          {lang === "bn" ? "কোন ক্রেডিট লেনদেন নেই" : "No credit transactions recorded"}
                         </span>
-                      ) : (
-                        <span className="px-2 py-0.5 rounded text-[10px] font-semibold bg-rose-50 text-rose-700 border border-rose-200">
-                          DEBIT
+                        <span className="text-xs text-[#5b6f7b] mt-1">
+                          {lang === "bn"
+                            ? "ক্লায়েন্টদের ক্রেডিট বরাদ্দ এবং সিস্টেম ব্যবহারের রেকর্ড এখানে প্রদর্শিত হবে।"
+                            : "Client credit allocations, top-ups, and AI usage deductions will appear here in real-time."}
                         </span>
-                      )}
-                    </TableCell>
-                    <TableCell className="font-bold text-[#162c38]">
-                      {tx.type === "credit" ? `+${tx.amount.toLocaleString()}` : `-${tx.amount.toLocaleString()}`}
-                    </TableCell>
-                    <TableCell className="text-[#5b6f7b]">{tx.reason}</TableCell>
-                    <TableCell className="text-right text-[#5b6f7b] text-[11px]">
-                      {new Date(tx.timestamp).toLocaleString()}
+                      </div>
                     </TableCell>
                   </TableRow>
-                ))}
+                ) : (
+                  creditTransactions.map((tx) => (
+                    <TableRow key={tx.id}>
+                      <TableCell className="font-mono text-[11px] text-[#5b6f7b]">{tx.id}</TableCell>
+                      <TableCell>
+                        {tx.type === "credit" ? (
+                          <span className="px-2 py-0.5 rounded text-[10px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                            CREDIT
+                          </span>
+                        ) : (
+                          <span className="px-2 py-0.5 rounded text-[10px] font-semibold bg-rose-50 text-rose-700 border border-rose-200">
+                            DEBIT
+                          </span>
+                        )}
+                      </TableCell>
+                      <TableCell className="font-bold text-[#162c38]">
+                        {tx.type === "credit" ? `+${tx.amount.toLocaleString()}` : `-${tx.amount.toLocaleString()}`}
+                      </TableCell>
+                      <TableCell className="text-[#5b6f7b]">{tx.reason}</TableCell>
+                      <TableCell className="text-right text-[#5b6f7b] text-[11px]">
+                        {new Date(tx.timestamp).toLocaleString()}
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
               </TableBody>
             </Table>
           </div>
