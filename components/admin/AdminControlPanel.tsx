@@ -67,12 +67,6 @@ export function AdminControlPanel({
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [isSyncing, setIsSyncing] = useState(false);
 
-  useEffect(() => {
-    if (initialTab) {
-      setActiveTab(initialTab);
-    }
-  }, [initialTab]);
-
   // Deployment Tickets State
   const [deploymentTickets, setDeploymentTickets] = useState<any[]>([]);
   const [editingIpTicketId, setEditingIpTicketId] = useState<string | null>(null);
@@ -92,6 +86,55 @@ export function AdminControlPanel({
   const [creditModalUser, setCreditModalUser] = useState<UserProfile | null>(null);
   const [creditAmount, setCreditAmount] = useState<number>(1000);
   const [creditReason, setCreditReason] = useState<string>("Manual tech admin allocation");
+
+  const loadDeploymentTickets = () => {
+    fetch("http://localhost:8000/api/v1/admin/deployments")
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.tickets && Array.isArray(data.tickets)) {
+          setDeploymentTickets(data.tickets);
+          localStorage.setItem("dudos_deployment_tickets", JSON.stringify(data.tickets));
+        }
+      })
+      .catch(() => {
+        try {
+          const ticketsStr = localStorage.getItem("dudos_deployment_tickets");
+          if (ticketsStr) {
+            setDeploymentTickets(JSON.parse(ticketsStr));
+          }
+        } catch {}
+      });
+  };
+
+  const loadSupportTickets = () => {
+    fetch("http://localhost:8000/api/v1/admin/support/tickets")
+      .then((res) => res.json())
+      .then((data) => {
+        if (Array.isArray(data)) {
+          setSupportTickets(data);
+          localStorage.setItem("dudos_support_tickets_admin", JSON.stringify(data));
+        }
+      })
+      .catch(() => {
+        try {
+          const stored = localStorage.getItem("dudos_support_tickets_admin");
+          if (stored) setSupportTickets(JSON.parse(stored));
+        } catch {}
+      });
+  };
+
+  useEffect(() => {
+    loadDeploymentTickets();
+    loadSupportTickets();
+  }, []);
+
+  useEffect(() => {
+    if (initialTab) {
+      setActiveTab(initialTab);
+      if (initialTab === "deployments") loadDeploymentTickets();
+      if (initialTab === "support") loadSupportTickets();
+    }
+  }, [initialTab]);
 
   // Metrics
   const totalRegistrations = registrations.length;
@@ -129,42 +172,6 @@ export function AdminControlPanel({
     if (!creditModalUser) return;
     allocateCreditsToUser(creditModalUser.id, creditAmount, creditReason);
     setCreditModalUser(null);
-  };
-
-  const loadDeploymentTickets = () => {
-    fetch("http://localhost:8000/api/v1/admin/deployments")
-      .then((res) => res.json())
-      .then((data) => {
-        if (data.tickets && Array.isArray(data.tickets)) {
-          setDeploymentTickets(data.tickets);
-          localStorage.setItem("dudos_deployment_tickets", JSON.stringify(data.tickets));
-        }
-      })
-      .catch(() => {
-        try {
-          const ticketsStr = localStorage.getItem("dudos_deployment_tickets");
-          if (ticketsStr) {
-            setDeploymentTickets(JSON.parse(ticketsStr));
-          }
-        } catch {}
-      });
-  };
-
-  const loadSupportTickets = () => {
-    fetch("http://localhost:8000/api/v1/admin/support/tickets")
-      .then((res) => res.json())
-      .then((data) => {
-        if (Array.isArray(data)) {
-          setSupportTickets(data);
-          localStorage.setItem("dudos_support_tickets_admin", JSON.stringify(data));
-        }
-      })
-      .catch(() => {
-        try {
-          const stored = localStorage.getItem("dudos_support_tickets_admin");
-          if (stored) setSupportTickets(JSON.parse(stored));
-        } catch {}
-      });
   };
 
   const handleUpdateSupportTicket = async (
@@ -448,73 +455,122 @@ export function AdminControlPanel({
         </div>
       </div>
 
-      {/* 3. DUDOS Pill Tabs Navigation */}
-      <div className="flex items-center gap-1.5 p-1 bg-[#f0f4f6] rounded-lg w-fit border border-[#dce5e9] mb-4">
-        <button
-          onClick={() => setActiveTab("queue")}
-          className={`flex items-center gap-2 px-3.5 py-1.5 rounded-md text-xs font-semibold transition-all cursor-pointer ${
-            activeTab === "queue"
-              ? "bg-white text-[#087f79] shadow-xs"
-              : "text-[#5b6f7b] hover:text-[#162c38]"
-          }`}
-        >
-          <Users className="h-3.5 w-3.5" />
-          <span>Client Intakes & Registrations ({registrations.length})</span>
-        </button>
+      {/* 3. Active Platform Operation Context Header (Driven Purely by Sidebar Navigation) */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-3 border-b border-[#dce5e9] gap-3 mb-5">
+        <div className="flex items-center gap-2.5">
+          {activeTab === "queue" && (
+            <>
+              <div className="p-2 rounded-lg bg-[#edf7f4] text-[#087f79]">
+                <Users className="h-5 w-5" />
+              </div>
+              <div>
+                <h2 className="text-base font-bold text-[#162c38]">
+                  {lang === "bn" ? "ক্লায়েন্ট ইনটেক ও নিবন্ধন কিউ" : "Client Intakes & Registrations Queue"}
+                </h2>
+                <p className="text-xs text-[#5b6f7b]">
+                  {lang === "bn"
+                    ? "নতুন ক্লায়েন্ট অনবোর্ডিং খসড়া পর্যালোচনা করুন এবং অনুমোদন দিন।"
+                    : "Review client onboarding submissions, verify organizations, and advance to Gate 02 scoping."}
+                </p>
+              </div>
+            </>
+          )}
 
-        <button
-          onClick={() => setActiveTab("quotes")}
-          className={`flex items-center gap-2 px-3.5 py-1.5 rounded-md text-xs font-semibold transition-all cursor-pointer ${
-            activeTab === "quotes"
-              ? "bg-white text-[#087f79] shadow-xs"
-              : "text-[#5b6f7b] hover:text-[#162c38]"
-          }`}
-        >
-          <Calculator className="h-3.5 w-3.5" />
-          <span>Technical Estimates & Quotes (${totalPipelineValue.toLocaleString()})</span>
-        </button>
+          {activeTab === "quotes" && (
+            <>
+              <div className="p-2 rounded-lg bg-[#edf7f4] text-[#087f79]">
+                <Calculator className="h-5 w-5" />
+              </div>
+              <div>
+                <h2 className="text-base font-bold text-[#162c38]">
+                  {lang === "bn" ? "প্রজেক্ট স্কোপিং ও টেকনিক্যাল কোটেশন" : "Project Scoping & Quotations Engine"}
+                </h2>
+                <p className="text-xs text-[#5b6f7b]">
+                  {lang === "bn"
+                    ? "ইঞ্জিনিয়ারিং ম্যান-আওয়ার হিসাব করুন এবং আনুষ্ঠানিক কোটেশন ইনভয়েস পাঠান।"
+                    : "Formulate technical engineering breakdowns, calculate development hours, and dispatch formal quotation invoices."}
+                </p>
+              </div>
+            </>
+          )}
 
-        <button
-          onClick={() => {
-            setActiveTab("deployments");
-            loadDeploymentTickets();
-          }}
-          className={`flex items-center gap-2 px-3.5 py-1.5 rounded-md text-xs font-semibold transition-all cursor-pointer ${
-            activeTab === "deployments"
-              ? "bg-white text-[#087f79] shadow-xs"
-              : "text-[#5b6f7b] hover:text-[#162c38]"
-          }`}
-        >
-          <Server className="h-3.5 w-3.5" />
-          <span>Managed Deployments ({deploymentTickets.length})</span>
-        </button>
+          {activeTab === "deployments" && (
+            <>
+              <div className="p-2 rounded-lg bg-[#edf7f4] text-[#087f79]">
+                <Server className="h-5 w-5" />
+              </div>
+              <div>
+                <h2 className="text-base font-bold text-[#162c38]">
+                  {lang === "bn" ? "ভিপিএস ফ্লিট ও প্রোডাকশন ডিপ্লয়মেন্ট" : "VPS Fleet & Managed Deployments Queue"}
+                </h2>
+                <p className="text-xs text-[#5b6f7b]">
+                  {lang === "bn"
+                    ? "ডোমেন যাচাইকরণ, ডিএনএস রুট ও ভিপিএস আইপি (103.145.118.42) প্রোডাকশন ম্যানেজমেন্ট।"
+                    : "Domain verification, DNS CNAME routing, VPS IP (103.145.118.42) provisioning, and live TLS activation."}
+                </p>
+              </div>
+            </>
+          )}
 
-        <button
-          onClick={() => setActiveTab("ledger")}
-          className={`flex items-center gap-2 px-3.5 py-1.5 rounded-md text-xs font-semibold transition-all cursor-pointer ${
-            activeTab === "ledger"
-              ? "bg-white text-[#087f79] shadow-xs"
-              : "text-[#5b6f7b] hover:text-[#162c38]"
-          }`}
-        >
-          <History className="h-3.5 w-3.5" />
-          <span>Platform Credit & Billing Ledger</span>
-        </button>
+          {activeTab === "ledger" && (
+            <>
+              <div className="p-2 rounded-lg bg-[#edf7f4] text-[#087f79]">
+                <History className="h-5 w-5" />
+              </div>
+              <div>
+                <h2 className="text-base font-bold text-[#162c38]">
+                  {lang === "bn" ? "প্ল্যাটফর্ম ক্রেডিট ও বিলিং লেজার" : "Platform Credit & Billing Ledger"}
+                </h2>
+                <p className="text-xs text-[#5b6f7b]">
+                  {lang === "bn"
+                    ? "সিস্টেম ক্রেডিট বরাদ্দ, রিচার্জ ও খরচের অপরিবর্তনীয় অডিট ট্রেইল।"
+                    : "Immutable transaction audit log of credit allocations, welcome credits, DevScope builds, and manual top-ups."}
+                </p>
+              </div>
+            </>
+          )}
 
-        <button
-          onClick={() => {
-            setActiveTab("support");
-            loadSupportTickets();
-          }}
-          className={`flex items-center gap-2 px-3.5 py-1.5 rounded-md text-xs font-semibold transition-all cursor-pointer ${
-            activeTab === "support"
-              ? "bg-white text-[#087f79] shadow-xs"
-              : "text-[#5b6f7b] hover:text-[#162c38]"
-          }`}
-        >
-          <LifeBuoy className="h-3.5 w-3.5" />
-          <span>Support Tickets ({supportTickets.length})</span>
-        </button>
+          {activeTab === "support" && (
+            <>
+              <div className="p-2 rounded-lg bg-[#edf7f4] text-[#087f79]">
+                <LifeBuoy className="h-5 w-5" />
+              </div>
+              <div>
+                <h2 className="text-base font-bold text-[#162c38]">
+                  {lang === "bn" ? "গ্রাহক সহায়তা ও সাপোর্ট টিকিট কিউ" : "Customer Support Tickets Queue"}
+                </h2>
+                <p className="text-xs text-[#5b6f7b]">
+                  {lang === "bn"
+                    ? "গ্রাহকদের টিকিট পর্যালোচনা করুন, সমাধানের স্ট্যাটাস দিন এবং টেকনিক্যাল বার্তা পাঠান।"
+                    : "Review incoming customer inquiries, update status, and post technical solutions directly to client workspace."}
+                </p>
+              </div>
+            </>
+          )}
+        </div>
+
+        <div className="flex items-center gap-2">
+          {activeTab === "queue" && (
+            <Badge variant="outline" className="font-semibold text-xs border-[#dce5e9] bg-white">
+              {filteredRegistrations.length} Clients
+            </Badge>
+          )}
+          {activeTab === "quotes" && (
+            <Badge variant="outline" className="font-semibold text-xs border-[#dce5e9] bg-white text-emerald-800">
+              Pipeline: ৳{totalPipelineValue.toLocaleString()}
+            </Badge>
+          )}
+          {activeTab === "deployments" && (
+            <Badge variant="outline" className="font-semibold text-xs border-[#dce5e9] bg-white text-teal-800">
+              {deploymentTickets.length} Deployments
+            </Badge>
+          )}
+          {activeTab === "support" && (
+            <Badge variant="outline" className="font-semibold text-xs border-[#dce5e9] bg-white text-amber-800">
+              {supportTickets.length} Tickets
+            </Badge>
+          )}
+        </div>
       </div>
 
       {/* Tab 1: Client Registrations & Intake Queue */}

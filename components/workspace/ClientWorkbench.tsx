@@ -1,20 +1,12 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from '@/components/dudos-link';
 import {
   LayoutDashboard,
   FolderKanban,
-  FileText,
   Rocket,
-  CreditCard,
-  Coins,
-  Sparkles,
-  Layers3,
-  Search,
-  MessageSquare,
-  Users,
-  Bell,
+  LifeBuoy,
   LogOut,
   Globe,
   ArrowUpRight,
@@ -38,13 +30,6 @@ import {
 import { useAuth } from '@/context/auth-context';
 import { CreditBadgeButton } from '@/components/billing/CreditWalletModal';
 import { CustomerUserPanel } from './CustomerUserPanel';
-import { ProjectDashboard } from '@/components/projects/ProjectDashboard';
-import { RequestsView, Notifications } from '@/components/dudos-requests';
-import { Team } from '@/components/dudos-team';
-import { AssetsView, RecordsView } from '@/components/dudos-records';
-import { ReferenceExplorer } from '@/components/dudos-reference';
-import Studio from '@/components/dudos-studio';
-import modules, { moduleById } from '@/lib/dudos/modules';
 import { buildSubdomainUrl } from '@/lib/subdomains';
 
 export default function ClientWorkbench({
@@ -56,10 +41,36 @@ export default function ClientWorkbench({
 }) {
   const { user } = useAuth();
   const [navSearch, setNavSearch] = useState('');
+  const [projectCount, setProjectCount] = useState<number>(0);
+  const [supportCount, setSupportCount] = useState<number>(0);
 
   const view = section[0] || 'overview';
-  const kind = section[1];
-  const mod = moduleById(kind);
+
+  useEffect(() => {
+    const token = typeof window !== 'undefined' ? localStorage.getItem('dudos_auth_token') : null;
+    if (token) {
+      fetch('http://localhost:8000/api/v1/projects', {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+        .then((res) => res.json())
+        .then((data) => {
+          if (Array.isArray(data)) setProjectCount(data.length);
+        })
+        .catch(() => {});
+
+      fetch('http://localhost:8000/api/v1/support/tickets/my', {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+        .then((res) => res.json())
+        .then((data) => {
+          if (Array.isArray(data)) {
+            const openTickets = data.filter((t: any) => t.status === 'open' || t.status === 'in_progress').length;
+            setSupportCount(openTickets);
+          }
+        })
+        .catch(() => {});
+    }
+  }, [user]);
 
   const handleSignOut = () => {
     try {
@@ -72,42 +83,18 @@ export default function ClientWorkbench({
     window.location.href = buildSubdomainUrl('main', '/logout?return_to=/login');
   };
 
+  // 100% Workable Customer Navigation Modules (No Dummy Pages)
   const clientNavSections = [
     {
-      group: 'WORKSPACE & PROJECTS',
+      group: 'WORKSPACE OPERATIONS',
       items: [
-        { id: 'overview', title: 'Overview & Dashboard', bn: 'সংক্ষিপ্ত চিত্র', icon: LayoutDashboard },
-        { id: 'projects', title: 'My Projects & ERP', bn: 'আমার প্রজেক্ট ও ইআরপি', icon: FolderKanban },
-        { id: 'scoping', title: 'AI Scoping & SRS', bn: 'এআই স্কোপিং ও এসআরএস', icon: Sparkles },
+        { id: 'overview', title: 'Workspace Overview', bn: 'ওয়ার্কস্পেস সংক্ষিপ্ত চিত্র', icon: LayoutDashboard },
+        { id: 'projects', title: 'My Projects', bn: 'আমার প্রজেক্ট', icon: FolderKanban, badge: projectCount > 0 ? String(projectCount) : undefined },
         { id: 'deployments', title: 'Deployments & Domains', bn: 'ডিপ্লয়মেন্ট ও ডোমেন', icon: Rocket },
-      ],
-    },
-    {
-      group: 'FINANCE & BILLING',
-      items: [
-        { id: 'invoices', title: 'Quotes & Invoices', bn: 'কোটেশন ও ইনভয়েস', icon: CreditCard },
-        { id: 'billing', title: 'Credit Wallet', bn: 'ক্রেডিট ওয়ালেট', icon: Coins },
-      ],
-    },
-    {
-      group: 'AI TOOLS & RESOURCES',
-      items: [
-        { id: 'builder', title: 'DevScope AI Builder', bn: 'ডেভস্কোপ এআই বিল্ডার', icon: Sparkles },
-        { id: 'assets', title: 'Source Files & Assets', bn: 'সোর্স ফাইল ও সম্পদ', icon: Layers3 },
-        { id: 'reference', title: 'Requirements & Specs', bn: 'শর্তাবলী ও স্পেসিফিকেশন', icon: Search },
-      ],
-    },
-    {
-      group: 'COLLABORATION',
-      items: [
-        { id: 'requests', title: 'Support & Requests', bn: 'অনুরোধ ও সহায়তা', icon: MessageSquare },
-        { id: 'notifications', title: 'Notifications', bn: 'নোটিফিকেশন', icon: Bell },
-        { id: 'team', title: 'Team Members', bn: 'টিম মেম্বার', icon: Users },
+        { id: 'support', title: 'Support & Helpdesk', bn: 'সাপোর্ট ও সহায়তা', icon: LifeBuoy, badge: supportCount > 0 ? String(supportCount) : undefined },
       ],
     },
   ];
-
-  const groups = [...new Set(modules.map((m) => m.group))];
 
   return (
     <SidebarProvider>
@@ -146,36 +133,16 @@ export default function ClientWorkbench({
                           <Link href={`/${lang}/app/${item.id}`}>
                             <Icon size={16} />
                             <span>{lang === 'bn' ? item.bn : item.title}</span>
+                            {item.badge && (
+                              <span style={{ marginLeft: 'auto', fontSize: '10px', background: '#eaf5f1', color: '#087f79', padding: '2px 6px', borderRadius: '4px', fontWeight: 'bold' }}>
+                                {item.badge}
+                              </span>
+                            )}
                           </Link>
                         </SidebarMenuButton>
                       </SidebarMenuItem>
                     );
                   })}
-                </SidebarMenu>
-              </SidebarGroup>
-            );
-          })}
-
-          {groups.map((g) => {
-            const list = modules.filter(
-              (m) =>
-                m.group === g &&
-                (m.title + ' ' + m.description).toLowerCase().includes(navSearch.toLowerCase())
-            );
-            return !list.length ? null : (
-              <SidebarGroup key={g}>
-                <SidebarGroupLabel>{g}</SidebarGroupLabel>
-                <SidebarMenu>
-                  {list.map((m) => (
-                    <SidebarMenuItem key={m.id}>
-                      <SidebarMenuButton asChild isActive={kind === m.id}>
-                        <Link href={`/${lang}/app/records/${m.id}`}>
-                          <Layers3 size={15} />
-                          <span>{lang === 'bn' ? m.bn : m.title}</span>
-                        </Link>
-                      </SidebarMenuButton>
-                    </SidebarMenuItem>
-                  ))}
                 </SidebarMenu>
               </SidebarGroup>
             );
@@ -219,33 +186,27 @@ export default function ClientWorkbench({
             ) : (
               <Badge variant="outline">Live workspace</Badge>
             )}
-            <Link href={`/${lang}/transform`} className="text-link">
-              {lang === 'bn' ? 'নতুন মূল্যায়ন' : 'New assessment'}
+            <Link href={`/${lang}/onboarding`} className="text-link">
+              {lang === 'bn' ? 'নতুন প্রজেক্ট' : 'New Project'}
               <ArrowUpRight size={15} />
             </Link>
           </div>
         </header>
 
         <main id="main" className="workbench-main">
-          {view === 'projects' ? (
-            <ProjectDashboard lang={lang} />
-          ) : view === 'requests' ? (
-            <RequestsView lang={lang} />
-          ) : view === 'notifications' ? (
-            <Notifications lang={lang} />
-          ) : view === 'team' ? (
-            <Team workspace="client_ws" lang={lang} />
-          ) : view === 'assets' ? (
-            <AssetsView workspace="client_ws" lang={lang} />
-          ) : view === 'reference' ? (
-            <ReferenceExplorer workspace="client_ws" lang={lang} />
-          ) : view === 'builder' ? (
-            <Studio workspace="client_ws" lang={lang} />
-          ) : view === 'records' && mod ? (
-            <RecordsView kind={kind} workspace="client_ws" lang={lang} />
-          ) : (
-            <CustomerUserPanel workspace="client_ws" lang={lang} />
-          )}
+          <CustomerUserPanel
+            workspace="client_ws"
+            lang={lang}
+            activeSection={
+              view === 'projects'
+                ? 'projects'
+                : view === 'deployments'
+                ? 'deployments'
+                : view === 'support'
+                ? 'support'
+                : 'overview'
+            }
+          />
         </main>
       </SidebarInset>
     </SidebarProvider>

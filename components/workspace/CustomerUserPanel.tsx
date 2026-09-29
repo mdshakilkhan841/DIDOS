@@ -33,6 +33,7 @@ import {
   Globe,
   ShieldCheck,
   LifeBuoy,
+  Search,
 } from "lucide-react";
 import { useAuth } from "@/context/auth-context";
 import { Button } from "@/components/ui/button";
@@ -93,9 +94,11 @@ export interface ActiveProjectDraft {
 export function CustomerUserPanel({
   workspace,
   lang = "en",
+  activeSection = "overview",
 }: {
   workspace: string;
   lang?: string;
+  activeSection?: "overview" | "projects" | "deployments" | "support";
 }) {
   const router = useRouter();
   const { user, creditTransactions, deductCredits, addCredits } = useAuth();
@@ -105,6 +108,12 @@ export function CustomerUserPanel({
   const [allProjects, setAllProjects] = useState<any[]>([]);
   const [deploymentTickets, setDeploymentTickets] = useState<any[]>([]);
   const [supportTickets, setSupportTickets] = useState<any[]>([]);
+
+  // Search & Filter state for focused views
+  const [projectSearch, setProjectSearch] = useState("");
+  const [deploymentSearch, setDeploymentSearch] = useState("");
+  const [supportFilter, setSupportFilter] = useState("all");
+  const [supportSearch, setSupportSearch] = useState("");
 
   // Modals state
   const [showQaModal, setShowQaModal] = useState(false);
@@ -212,6 +221,19 @@ export function CustomerUserPanel({
               if (stored) setSupportTickets(JSON.parse(stored));
             } catch {}
           });
+
+        // 7. Load deployments from FastAPI backend
+        fetch("http://localhost:8000/api/v1/deployments/my", {
+          headers: { Authorization: `Bearer ${token}` },
+        })
+          .then((res) => res.json())
+          .then((data) => {
+            if (data.tickets && Array.isArray(data.tickets)) {
+              setDeploymentTickets(data.tickets);
+              localStorage.setItem("dudos_deployment_tickets", JSON.stringify(data.tickets));
+            }
+          })
+          .catch(() => {});
       } else {
         try {
           const stored = localStorage.getItem("dudos_support_tickets");
@@ -612,10 +634,17 @@ ${draft.projectScope}
       inv.clientEmail === user?.email
   );
 
+  const displayedProjects = allProjects.slice();
+  if (activeDraft && !displayedProjects.some((p) => p.id === activeDraft.id)) {
+    displayedProjects.unshift(activeDraft as any);
+  }
+
   return (
     <div className="space-y-6">
-      {/* 1. Client Identity & Workspace Header - Authentic DUDOS Template */}
-      <div className="section-heading">
+      {(!activeSection || activeSection === "overview") && (
+        <>
+          {/* 1. Client Identity & Workspace Header - Authentic DUDOS Template */}
+          <div className="section-heading">
         <div>
           <p className="eyebrow">
             <span />
@@ -1414,6 +1443,592 @@ ${draft.projectScope}
           </div>
         )}
       </div>
+        </>
+      )}
+
+      {/* 2. Focused Section: My Projects */}
+      {activeSection === "projects" && (
+        <div className="space-y-6">
+          <div className="section-heading">
+            <div>
+              <p className="eyebrow">
+                <span />
+                {lang === "bn" ? "পোর্টফোলিও ও প্রজেক্ট" : "PORTFOLIO & SOLUTIONS"}
+              </p>
+              <h1>
+                {lang === "bn" ? "আমার প্রজেক্ট ও ওয়ার্কস্পেস" : "My Projects & Solutions"}
+              </h1>
+              <p>
+                {lang === "bn"
+                  ? "আপনার সমস্ত ক্লায়েন্ট প্রজেক্ট দেখুন, সক্রিয় প্রজেক্ট পরিবর্তন করুন এবং এসআরএস স্পেসিফিকেশন পরিচালনা করুন।"
+                  : "Manage your client projects portfolio, inspect SRS requirements, and launch DevScope AI builds."}
+              </p>
+            </div>
+
+            <div className="flex items-center gap-3 shrink-0">
+              <Link href="/onboarding">
+                <Button
+                  size="sm"
+                  className="bg-[#087f79] hover:bg-[#066762] text-white text-xs font-semibold flex items-center gap-1.5 shadow-xs"
+                >
+                  <Plus className="h-3.5 w-3.5" />
+                  <span>{lang === "bn" ? "নতুন প্রজেক্ট অনবোর্ডিং" : "New Project Onboarding"}</span>
+                </Button>
+              </Link>
+            </div>
+          </div>
+
+          {/* Search Bar */}
+          <div className="flex items-center justify-between gap-3 bg-white p-3 rounded-xl border border-[#dce5e9] shadow-xs">
+            <div className="relative w-full sm:w-80">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-gray-400" />
+              <Input
+                placeholder="Search projects by name, stack, domain..."
+                value={projectSearch}
+                onChange={(e) => setProjectSearch(e.target.value)}
+                className="pl-8 text-xs bg-[#f8fafb] border-[#dce5e9] h-8"
+              />
+            </div>
+            <div className="text-xs text-[#5b6f7b]">
+              Total Projects: <strong>{displayedProjects.length}</strong>
+            </div>
+          </div>
+
+          {/* Projects Grid */}
+          {displayedProjects.length === 0 ? (
+            <div className="p-8 text-center rounded-xl border border-dashed border-[#dce5e9] bg-white space-y-3">
+              <FolderKanban className="h-8 w-8 text-[#5b6f7b] mx-auto" />
+              <p className="text-xs font-medium text-[#162c38]">No projects registered yet.</p>
+              <p className="text-[11px] text-[#5b6f7b] max-w-sm mx-auto">
+                Submit an onboarding draft to launch your first custom software solution.
+              </p>
+              <Link href="/onboarding">
+                <Button size="sm" className="bg-[#087f79] text-white text-xs mt-2">
+                  <Plus className="h-3.5 w-3.5 mr-1" />
+                  Start Onboarding Flow
+                </Button>
+              </Link>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {displayedProjects
+                .filter((p) => {
+                  if (!projectSearch.trim()) return true;
+                  const q = projectSearch.toLowerCase();
+                  return (
+                    (p.title && p.title.toLowerCase().includes(q)) ||
+                    (p.name && p.name.toLowerCase().includes(q)) ||
+                    (p.targetStack && p.targetStack.toLowerCase().includes(q)) ||
+                    (p.target_stack && p.target_stack.toLowerCase().includes(q)) ||
+                    (p.businessDomain && p.businessDomain.toLowerCase().includes(q))
+                  );
+                })
+                .map((p) => {
+                  const isActive = activeDraft?.id === p.id;
+                  const isLive = p.status === "completed" || p.status === "live";
+                  const isDeploying = p.status === "deploying";
+                  const isApproved = p.status === "approved";
+                  const pTitle = p.title || p.name;
+                  const pStack = p.targetStack || p.target_stack || "Next.js 16 + FastAPI";
+                  const pDomain = p.domainName || p.domain_name;
+                  const pBuildId = p.buildId || p.build_id;
+                  const pLiveUrl = p.liveUrl || p.live_url;
+
+                  return (
+                    <div
+                      key={p.id}
+                      className={`p-5 rounded-2xl border transition-all ${
+                        isActive
+                          ? "bg-teal-50/30 border-teal-400 ring-2 ring-teal-200"
+                          : "bg-white border-[#dce5e9] shadow-xs hover:border-slate-300"
+                      }`}
+                    >
+                      <div className="flex items-start justify-between gap-3 pb-3 border-b border-[#eef3f6]">
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <h3 className="font-bold text-sm text-[#162c38]">{pTitle}</h3>
+                            {isActive && (
+                              <Badge className="bg-[#087f79] text-white text-[10px]">
+                                Active Project
+                              </Badge>
+                            )}
+                          </div>
+                          <p className="text-xs text-[#5b6f7b] mt-0.5 font-mono text-[11px]">
+                            ID: {p.id} · {p.businessDomain || p.category || "Custom Software"}
+                          </p>
+                        </div>
+
+                        <Badge
+                          className={
+                            isLive
+                              ? "bg-emerald-100 text-emerald-800 border-emerald-300 text-[10px]"
+                              : isDeploying
+                              ? "bg-teal-100 text-teal-800 border-teal-300 text-[10px]"
+                              : isApproved
+                              ? "bg-emerald-100 text-emerald-800 border-emerald-300 text-[10px]"
+                              : p.status === "quoted"
+                              ? "bg-purple-100 text-purple-800 border-purple-300 text-[10px]"
+                              : "bg-amber-100 text-amber-800 border-amber-300 text-[10px]"
+                          }
+                        >
+                          {isLive
+                            ? "Live in Production 🚀"
+                            : isDeploying
+                            ? "Deploying to VPS"
+                            : isApproved
+                            ? "Approved & Staged"
+                            : p.status === "quoted"
+                            ? "Quotation Dispatched"
+                            : p.status === "submitted"
+                            ? "In Tech Estimation"
+                            : "Draft / Scoping"}
+                        </Badge>
+                      </div>
+
+                      <div className="py-3 space-y-2 text-xs text-[#5b6f7b]">
+                        <div className="flex items-center justify-between">
+                          <span>Target Architecture:</span>
+                          <span className="font-semibold text-[#162c38]">{pStack}</span>
+                        </div>
+                        {pDomain && (
+                          <div className="flex items-center justify-between">
+                            <span>Target Domain:</span>
+                            <span className="font-mono text-[#087f79] font-bold">{pDomain}</span>
+                          </div>
+                        )}
+                        {pBuildId && (
+                          <div className="flex items-center justify-between">
+                            <span>DevScope Build ID:</span>
+                            <span className="font-mono bg-slate-100 px-1.5 py-0.5 rounded text-[11px] font-bold text-slate-800">
+                              {pBuildId}
+                            </span>
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="flex flex-wrap items-center justify-between gap-2 pt-3 border-t border-[#eef3f6]">
+                        <div className="flex items-center gap-1.5">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => {
+                              switchActiveProject(p.id);
+                              setShowSrsModal(true);
+                            }}
+                            className="text-xs h-7 px-2.5 bg-white border-[#dce5e9] text-[#162c38]"
+                          >
+                            <FileText className="h-3 w-3 mr-1 text-[#087f79]" />
+                            SRS Specs
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => {
+                              switchActiveProject(p.id);
+                              setShowQaModal(true);
+                            }}
+                            className="text-xs h-7 px-2.5 bg-white border-[#dce5e9] text-[#162c38]"
+                          >
+                            <Sliders className="h-3 w-3 mr-1 text-[#087f79]" />
+                            AI Q&A
+                          </Button>
+                        </div>
+
+                        <div>
+                          {!isActive ? (
+                            <Button
+                              size="sm"
+                              onClick={() => switchActiveProject(p.id)}
+                              className="text-xs h-7 bg-[#087f79] hover:bg-[#066762] text-white"
+                            >
+                              Switch to this Project
+                            </Button>
+                          ) : isLive && pLiveUrl ? (
+                            <a
+                              href={pLiveUrl}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="inline-flex items-center gap-1 px-3 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold"
+                            >
+                              <span>Visit Live URL</span>
+                              <ExternalLink className="h-3 w-3" />
+                            </a>
+                          ) : isApproved ? (
+                            <Button
+                              size="sm"
+                              onClick={() => {
+                                switchActiveProject(p.id);
+                                setShowDeploymentModal(true);
+                              }}
+                              className="text-xs h-7 bg-emerald-600 hover:bg-emerald-700 text-white"
+                            >
+                              Deploy to VPS
+                            </Button>
+                          ) : (
+                            <span className="text-[11px] text-teal-700 font-semibold">Active Selection</span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* 3. Focused Section: Deployments & Domains */}
+      {activeSection === "deployments" && (
+        <div className="space-y-6">
+          <div className="section-heading">
+            <div>
+              <p className="eyebrow">
+                <span />
+                {lang === "bn" ? "ইনফ্রাস্ট্রাকচার ও ডোমেন" : "INFRASTRUCTURE & FLEET"}
+              </p>
+              <h1>
+                {lang === "bn" ? "প্রোডাকশন ডিপ্লয়মেন্ট ও ডোমেন" : "Production Deployments & Managed Domains"}
+              </h1>
+              <p>
+                {lang === "bn"
+                  ? "আপনার কাস্টম ডোমেন ম্যাপিং, ডিএনএস রুট ও ভিপিএস সার্ভার ডিপ্লয়মেন্ট স্ট্যাটাস পরিচালনা করুন।"
+                  : "Manage custom domain mapping, verify DNS CNAME propagation, and track Daffodil Cloud Linux VPS deployments."}
+              </p>
+            </div>
+
+            <div className="flex items-center gap-3 shrink-0">
+              <Button
+                size="sm"
+                onClick={() => setShowDeploymentModal(true)}
+                className="bg-[#087f79] hover:bg-[#066762] text-white text-xs font-semibold flex items-center gap-1.5 shadow-xs"
+              >
+                <Server className="h-3.5 w-3.5" />
+                <span>{lang === "bn" ? "নতুন ডোমেন ডিপ্লয়মেন্ট টিকিট" : "Request Domain Deployment"}</span>
+              </Button>
+            </div>
+          </div>
+
+          {/* DNS Target Routing Banner */}
+          <div className="p-4 bg-teal-50/70 rounded-2xl border border-teal-200 grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
+            <div>
+              <span className="text-[10px] uppercase font-bold text-teal-800 block mb-0.5">DNS CNAME / A Target</span>
+              <span className="font-mono font-bold text-slate-800">yourdomain.com ➔ 103.145.118.42</span>
+              <p className="text-[10px] text-teal-700 mt-0.5">Daffodil Cloud Linux VPS</p>
+            </div>
+            <div>
+              <span className="text-[10px] uppercase font-bold text-teal-800 block mb-0.5">TLS / SSL Protection</span>
+              <span className="font-bold text-emerald-700 flex items-center gap-1">
+                <ShieldCheck className="h-3.5 w-3.5 text-emerald-600" />
+                <span>Auto 256-bit TLS (Let's Encrypt)</span>
+              </span>
+              <p className="text-[10px] text-teal-700 mt-0.5">Automated Certificate Manager</p>
+            </div>
+            <div>
+              <span className="text-[10px] uppercase font-bold text-teal-800 block mb-0.5">High-Availability Proxy</span>
+              <span className="font-bold text-slate-800">Nginx Reverse Proxy & Load Balancer</span>
+              <p className="text-[10px] text-teal-700 mt-0.5">Ports 80 / 443 with HTTP2</p>
+            </div>
+          </div>
+
+          {/* Search Bar */}
+          <div className="flex items-center justify-between gap-3 bg-white p-3 rounded-xl border border-[#dce5e9] shadow-xs">
+            <div className="relative w-full sm:w-80">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-gray-400" />
+              <Input
+                placeholder="Search deployments by domain or project..."
+                value={deploymentSearch}
+                onChange={(e) => setDeploymentSearch(e.target.value)}
+                className="pl-8 text-xs bg-[#f8fafb] border-[#dce5e9] h-8"
+              />
+            </div>
+            <div className="text-xs text-[#5b6f7b]">
+              Total Deployment Tickets: <strong>{deploymentTickets.length}</strong>
+            </div>
+          </div>
+
+          {/* Deployments List */}
+          {deploymentTickets.length === 0 ? (
+            <div className="p-8 text-center rounded-xl border border-dashed border-[#dce5e9] bg-white space-y-3">
+              <Rocket className="h-8 w-8 text-[#5b6f7b] mx-auto" />
+              <p className="text-xs font-medium text-[#162c38]">No domain deployments requested yet.</p>
+              <p className="text-[11px] text-[#5b6f7b] max-w-sm mx-auto">
+                Once your project specifications are approved, request domain mapping to connect your VPS server.
+              </p>
+              <Button
+                size="sm"
+                onClick={() => setShowDeploymentModal(true)}
+                className="bg-[#087f79] text-white text-xs mt-2"
+              >
+                <Plus className="h-3.5 w-3.5 mr-1" />
+                Submit Deployment Request
+              </Button>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {deploymentTickets
+                .filter((t) => {
+                  if (!deploymentSearch.trim()) return true;
+                  const q = deploymentSearch.toLowerCase();
+                  return (
+                    (t.domainName && t.domainName.toLowerCase().includes(q)) ||
+                    (t.projectTitle && t.projectTitle.toLowerCase().includes(q))
+                  );
+                })
+                .map((t) => {
+                  const isLive = t.status === "live";
+                  const isDnsVerified = t.dnsStatus === "verified" || isLive;
+                  const liveUrl = t.liveUrl || `https://${t.domainName}`;
+
+                  return (
+                    <div
+                      key={t.id}
+                      className={`p-5 rounded-2xl border transition-all ${
+                        isLive
+                          ? "bg-emerald-50/30 border-emerald-300"
+                          : "bg-white border-[#dce5e9] shadow-xs"
+                      }`}
+                    >
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-[#eef3f6]">
+                        <div className="flex items-center gap-3">
+                          <span
+                            className={`p-2.5 rounded-xl ${
+                              isLive ? "bg-emerald-600 text-white" : "bg-slate-100 text-slate-700"
+                            }`}
+                          >
+                            <Globe className="h-5 w-5" />
+                          </span>
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <h4 className="text-sm font-bold text-[#162c38] font-mono">{t.domainName}</h4>
+                              {isLive ? (
+                                <Badge className="bg-emerald-100 text-emerald-800 border-emerald-300 text-[10px]">
+                                  Live in Production 🚀
+                                </Badge>
+                              ) : (
+                                <Badge className="bg-amber-100 text-amber-800 border-amber-300 text-[10px]">
+                                  Pending Tech Review
+                                </Badge>
+                              )}
+                            </div>
+                            <p className="text-xs text-[#5b6f7b] mt-0.5">
+                              Project: <strong>{t.projectTitle}</strong> · Target: <strong>{t.serverTarget || "Daffodil Cloud Linux"}</strong>
+                            </p>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-2">
+                          <span className="text-[11px] text-[#5b6f7b] font-mono">Ticket: #{t.id.slice(-6).toUpperCase()}</span>
+                          {isLive && (
+                            <a
+                              href={liveUrl}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold shadow-xs"
+                            >
+                              <span>Visit Production URL</span>
+                              <ExternalLink className="h-3 w-3" />
+                            </a>
+                          )}
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 py-3 text-xs">
+                        <div className="p-3 bg-white/80 rounded-xl border border-slate-200">
+                          <span className="text-[10px] uppercase font-semibold text-slate-500 block mb-0.5">DNS Status</span>
+                          <div className="flex items-center gap-1.5">
+                            <span className={`w-2 h-2 rounded-full ${isDnsVerified ? "bg-emerald-500" : "bg-amber-500 animate-pulse"}`} />
+                            <span className="font-semibold text-slate-800">
+                              {isDnsVerified ? "CNAME Verified & Routed" : "Pending Propagation"}
+                            </span>
+                          </div>
+                        </div>
+                        <div className="p-3 bg-white/80 rounded-xl border border-slate-200">
+                          <span className="text-[10px] uppercase font-semibold text-slate-500 block mb-0.5">Assigned VPS IP</span>
+                          <span className="font-mono font-bold text-slate-800">{t.assignedIp || "103.145.118.42"}</span>
+                        </div>
+                        <div className="p-3 bg-white/80 rounded-xl border border-slate-200">
+                          <span className="text-[10px] uppercase font-semibold text-slate-500 block mb-0.5">SSL TLS Certificate</span>
+                          <span className="font-semibold text-emerald-700 flex items-center gap-1">
+                            <ShieldCheck className="h-3.5 w-3.5 text-emerald-600" />
+                            <span>{isLive ? "256-bit TLS Active" : "Auto-Provisioning"}</span>
+                          </span>
+                        </div>
+                      </div>
+
+                      {t.specialInstructions && (
+                        <p className="text-[11px] text-amber-900 bg-amber-50/60 p-2.5 rounded-lg border border-amber-200">
+                          <strong>Note:</strong> {t.specialInstructions}
+                        </p>
+                      )}
+                    </div>
+                  );
+                })}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* 4. Focused Section: Customer Support & Helpdesk */}
+      {activeSection === "support" && (
+        <div className="space-y-6">
+          <div className="section-heading">
+            <div>
+              <p className="eyebrow">
+                <span />
+                {lang === "bn" ? "সহায়তা ও গ্রাহক সেবা" : "CUSTOMER CARE & SLA"}
+              </p>
+              <h1>
+                {lang === "bn" ? "গ্রাহক সহায়তা ও সাপোর্ট হেল্পডেস্ক" : "Customer Support & Technical Helpdesk"}
+              </h1>
+              <p>
+                {lang === "bn"
+                  ? "প্রযুক্তিগত সমস্যা, ডেপ্লয়মেন্ট সহায়তা বা বিলিং সংক্রান্ত প্রশ্ন এখানে ট্র্যাক করুন।"
+                  : "Track technical issues, deployment assistance, and communicate directly with the DUDOS engineering team."}
+              </p>
+            </div>
+
+            <div className="flex items-center gap-3 shrink-0">
+              <Button
+                size="sm"
+                onClick={() => setShowSupportModal(true)}
+                className="bg-[#087f79] hover:bg-[#066762] text-white text-xs font-semibold flex items-center gap-1.5 shadow-xs"
+              >
+                <Plus className="h-3.5 w-3.5" />
+                <span>{lang === "bn" ? "নতুন সাপোর্ট টিকিট" : "New Support Ticket"}</span>
+              </Button>
+            </div>
+          </div>
+
+          {/* Search & Filter Toolbar */}
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-3 bg-white p-3 rounded-xl border border-[#dce5e9] shadow-xs">
+            <div className="relative w-full sm:w-80">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-gray-400" />
+              <Input
+                placeholder="Search subject, message, or ticket ID..."
+                value={supportSearch}
+                onChange={(e) => setSupportSearch(e.target.value)}
+                className="pl-8 text-xs bg-[#f8fafb] border-[#dce5e9] h-8"
+              />
+            </div>
+
+            <div className="flex items-center gap-2">
+              <select
+                value={supportFilter}
+                onChange={(e) => setSupportFilter(e.target.value)}
+                className="text-xs h-8 px-2.5 rounded-lg bg-[#f8fafb] border border-[#dce5e9] text-[#162c38] outline-none"
+              >
+                <option value="all">All Statuses</option>
+                <option value="open">Open</option>
+                <option value="in_progress">In Progress</option>
+                <option value="resolved">Resolved</option>
+              </select>
+              <span className="text-xs text-[#5b6f7b]">
+                Total: <strong>{supportTickets.length}</strong> tickets
+              </span>
+            </div>
+          </div>
+
+          {/* Tickets List */}
+          {supportTickets.length === 0 ? (
+            <div className="p-8 text-center rounded-xl border border-dashed border-[#dce5e9] bg-white space-y-3">
+              <LifeBuoy className="h-8 w-8 text-[#5b6f7b] mx-auto" />
+              <p className="text-xs font-medium text-[#162c38]">No active support tickets.</p>
+              <p className="text-[11px] text-[#5b6f7b] max-w-sm mx-auto">
+                Need help with DNS, APIs, billing, or custom modules? Submit a ticket anytime.
+              </p>
+              <Button
+                size="sm"
+                onClick={() => setShowSupportModal(true)}
+                className="bg-[#087f79] text-white text-xs mt-2"
+              >
+                <Plus className="h-3.5 w-3.5 mr-1" />
+                Open Support Ticket
+              </Button>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {supportTickets
+                .filter((t) => {
+                  if (supportFilter !== "all" && t.status !== supportFilter) return false;
+                  if (!supportSearch.trim()) return true;
+                  const q = supportSearch.toLowerCase();
+                  return (
+                    (t.subject && t.subject.toLowerCase().includes(q)) ||
+                    (t.message && t.message.toLowerCase().includes(q)) ||
+                    (t.id && t.id.toLowerCase().includes(q))
+                  );
+                })
+                .map((t) => (
+                  <div
+                    key={t.id}
+                    className="p-5 rounded-2xl border border-[#dce5e9] bg-white shadow-xs space-y-3 text-xs"
+                  >
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2 border-b border-[#eef3f6]">
+                      <div className="flex items-center gap-2">
+                        <span className="font-bold text-[#162c38] text-sm">{t.subject}</span>
+                        <span className="font-mono text-[10px] text-[#5b6f7b]">#{t.id.slice(-6).toUpperCase()}</span>
+                        <Badge variant="outline" className="text-[10px] uppercase font-semibold border-[#dce5e9]">
+                          {t.category}
+                        </Badge>
+                        <Badge
+                          className={`text-[10px] uppercase font-semibold ${
+                            t.priority === "critical"
+                              ? "bg-red-100 text-red-800 border-red-200"
+                              : t.priority === "high"
+                              ? "bg-amber-100 text-amber-800 border-amber-200"
+                              : "bg-slate-100 text-slate-700 border-slate-200"
+                          }`}
+                        >
+                          {t.priority}
+                        </Badge>
+                      </div>
+
+                      <div className="flex items-center gap-2">
+                        <Badge
+                          className={`text-xs font-semibold ${
+                            t.status === "resolved" || t.status === "closed"
+                              ? "bg-emerald-100 text-emerald-800 border-emerald-300"
+                              : t.status === "in_progress"
+                              ? "bg-blue-100 text-blue-800 border-blue-300"
+                              : "bg-amber-100 text-amber-800 border-amber-300"
+                          }`}
+                        >
+                          {t.status === "in_progress" ? "In Progress" : t.status === "resolved" ? "Resolved" : "Open"}
+                        </Badge>
+                        <span className="text-[11px] text-[#5b6f7b]">
+                          {new Date(t.createdAt).toLocaleString()}
+                        </span>
+                      </div>
+                    </div>
+
+                    <p className="text-[#162c38] text-xs leading-relaxed bg-[#f8fafb] p-3 rounded-xl border border-[#eef3f6]">
+                      {t.message}
+                    </p>
+
+                    {t.adminResponse && (
+                      <div className="p-3 bg-[#edf7f4] rounded-xl border border-[#c2e2dc] text-xs space-y-1">
+                        <div className="flex items-center justify-between text-[11px] font-bold text-[#087f79]">
+                          <span>Technical Team Response:</span>
+                          {t.resolvedAt && (
+                            <span className="text-[#5b6f7b] font-normal text-[10px]">
+                              Resolved: {new Date(t.resolvedAt).toLocaleString()}
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-[#162c38] text-xs">{t.adminResponse}</p>
+                      </div>
+                    )}
+
+                    <div className="text-[10px] text-[#5b6f7b] pt-1 border-t border-[#eef3f6] flex items-center justify-between">
+                      <span>Submitted by: <strong>{t.customerEmail || t.userId}</strong></span>
+                      {t.projectId && <span className="font-mono">Project: {t.projectId}</span>}
+                    </div>
+                  </div>
+                ))}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* 5. Phase 3: Quotation Payment Modal Dialog */}
       <Dialog open={showPaymentModal} onOpenChange={setShowPaymentModal}>
