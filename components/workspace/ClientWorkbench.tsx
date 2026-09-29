@@ -64,6 +64,7 @@ import {
     preferredWorkspace,
     rememberWorkspace,
 } from "@/lib/dudos/workspace-preference";
+import { fetchAuthenticatedWorkspaces } from "@/lib/dudos/workspaces";
 import { api } from "@/lib/dudos/client";
 import { showToast } from "@/lib/toast";
 
@@ -173,42 +174,26 @@ export default function ClientWorkbench({
     };
 
     const loadWorkspaces = async () => {
-        const token =
-            typeof window !== "undefined"
-                ? localStorage.getItem("dudos_jwt_token") ||
-                  localStorage.getItem("dudos_auth_token")
-                : null;
-
         try {
-            if (token) {
-                const res = await fetch(
-                    "http://localhost:8000/api/v1/workspaces",
-                    {
-                        headers: { Authorization: `Bearer ${token}` },
-                    },
-                );
-                if (res.ok) {
-                    const list = await res.json();
-                    if (Array.isArray(list) && list.length > 0) {
-                        const sanitized = list.map((w: any) => ({
-                            ...w,
-                            name: getCleanName(w.name),
-                        }));
-                        setWorkspaces(sanitized);
-                        const pref = preferredWorkspace();
-                        const current =
-                            sanitized.find((w: any) => w.id === pref) ||
-                            sanitized[0];
-                        if (current) {
-                            setActiveWorkspaceId(current.id);
-                            rememberWorkspace(current.id);
-                        }
-                        return;
-                    }
+            const backendWorkspaces = await fetchAuthenticatedWorkspaces();
+            if (backendWorkspaces !== null) {
+                const sanitized = backendWorkspaces.map((workspace) => ({
+                    ...workspace,
+                    name: getCleanName(workspace.name),
+                }));
+                setWorkspaces(sanitized);
+                const pref = preferredWorkspace();
+                const current =
+                    sanitized.find((workspace) => workspace.id === pref) ||
+                    sanitized[0];
+                if (current) {
+                    setActiveWorkspaceId(current.id);
+                    rememberWorkspace(current.id);
                 }
+                return;
             }
 
-            // Fallback
+            // Use the same local fallback as the assessment workspace gate.
             const res = await api("/api/workspaces");
             const list = (res.workspaces || []).map((w: any) => ({
                 ...w,

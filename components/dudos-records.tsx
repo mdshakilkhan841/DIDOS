@@ -57,6 +57,7 @@ import {
     download,
 } from "./dudos-ui";
 import { api } from "@/lib/dudos/client";
+import { fetchAuthenticatedWorkspaces } from "@/lib/dudos/workspaces";
 import { useAuth } from "@/context/auth-context";
 import { syncAssessmentToWorkspaceDraft } from "@/lib/dudos/assessment-sync";
 export { api } from "@/lib/dudos/client";
@@ -107,8 +108,12 @@ export function WorkspaceGate({
 
     async function load() {
         try {
-            const d = await api("/api/workspaces");
-            const sanitized = (d.workspaces || []).map((w: any) => ({
+            const backendWorkspaces = await fetchAuthenticatedWorkspaces();
+            const list =
+                backendWorkspaces ??
+                (await api("/api/workspaces")).workspaces ??
+                [];
+            const sanitized = list.map((w: any) => ({
                 ...w,
                 name: getCleanName(w.name),
             }));
