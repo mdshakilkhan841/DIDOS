@@ -124,14 +124,14 @@ export function CustomerUserPanel({
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [isProcessingPayment, setIsProcessingPayment] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState<"bkash" | "card" | "credits" | "bank">("bkash");
-  const [mfsPhone, setMfsPhone] = useState("01711000000");
+  const [mfsPhone, setMfsPhone] = useState(user?.phone || "");
 
   // Editable QA Answers state
   const [editableQa, setEditableQa] = useState({
-    multiTenant: "yes",
-    paymentGateway: "bKash, Nagad & Online Gateway",
-    userScale: "10,000 - 50,000 users",
-    databaseChoice: "PostgreSQL with Row-Level Security",
+    multiTenant: "",
+    paymentGateway: "",
+    userScale: "",
+    databaseChoice: "",
   });
 
   // Load from localStorage on mount
@@ -148,10 +148,10 @@ export function CustomerUserPanel({
         setActiveDraft(parsed);
         if (parsed.qaAnswers) {
           setEditableQa({
-            multiTenant: parsed.qaAnswers.multiTenant || "yes",
-            paymentGateway: parsed.qaAnswers.paymentGateway || "bKash, Nagad & Online Gateway",
-            userScale: parsed.qaAnswers.userScale || "10,000 - 50,000 users",
-            databaseChoice: parsed.qaAnswers.databaseChoice || "PostgreSQL with Row-Level Security",
+            multiTenant: parsed.qaAnswers.multiTenant || "",
+            paymentGateway: parsed.qaAnswers.paymentGateway || parsed.qaAnswers.paymentMethods || "",
+            userScale: parsed.qaAnswers.userScale || parsed.qaAnswers.userVolume || "",
+            databaseChoice: parsed.qaAnswers.databaseChoice || "",
           });
         }
       } else {
@@ -249,16 +249,16 @@ export function CustomerUserPanel({
 
     const converted: ActiveProjectDraft = {
       id: selected.id,
-      title: selected.title || selected.name,
-      organizationName: selected.organizationName || selected.domain || "Client Organization",
-      contactName: selected.contactName || user?.displayName || "Customer",
+      title: selected.title || selected.name || "Custom Engineering Project",
+      organizationName: selected.organizationName || selected.domain || "",
+      contactName: selected.contactName || user?.displayName || "",
       email: selected.email || selected.clientEmail || user?.email || "",
-      businessDomain: selected.category || selected.domain || "Custom Solution",
+      businessDomain: selected.category || selected.domain || "",
       projectScope: selected.scopeSummary || selected.businessScope || selected.projectScope || "",
       siteUrl: selected.referenceUrl || selected.siteUrl || "",
-      targetStack: selected.framework || selected.targetStack || selected.specs?.stack || "Next.js 16 + FastAPI",
-      budgetExpectation: selected.budgetRange || selected.budgetExpectation || "$5,000 - $10,000",
-      expectedTimeline: selected.targetTimeline || selected.expectedTimeline || "4 to 6 Weeks",
+      targetStack: selected.framework || selected.targetStack || selected.specs?.stack || "",
+      budgetExpectation: selected.budgetRange || selected.budgetExpectation || "",
+      expectedTimeline: selected.targetTimeline || selected.expectedTimeline || "",
       qaAnswers: selected.qaAnswers || editableQa,
       status: selected.status || "draft",
       buildId: selected.buildId,
@@ -388,20 +388,18 @@ export function CustomerUserPanel({
       const customItem = {
         id: confirmed.id,
         title: confirmed.title,
-        clientName: confirmed.contactName || user?.displayName || "Customer Client",
-        clientEmail: confirmed.email || user?.email || "customer@domain.com",
-        category: confirmed.businessDomain,
-        referenceUrl: confirmed.siteUrl || "https://daffodil.family",
-        businessScope: confirmed.projectScope,
+        clientName: confirmed.contactName || user?.displayName || "Client",
+        clientEmail: confirmed.email || user?.email || "",
+        category: confirmed.businessDomain || "",
+        referenceUrl: confirmed.siteUrl || "",
+        businessScope: confirmed.projectScope || "",
         selectedFeatures: [
-          "Multi-Role Authentication & Access Control",
-          "Online Payment Gateway (bKash, Nagad, Stripe)",
           editableQa.multiTenant === "yes" ? "Multi-Tenancy Workspace Architecture" : "Single-Tenant Dedicated Instance",
-          `Database: ${editableQa.databaseChoice}`,
-        ],
-        framework: confirmed.targetStack,
-        targetTimeline: confirmed.expectedTimeline,
-        budgetRange: confirmed.budgetExpectation,
+          editableQa.databaseChoice ? `Database: ${editableQa.databaseChoice}` : "",
+        ].filter(Boolean),
+        framework: confirmed.targetStack || "",
+        targetTimeline: confirmed.expectedTimeline || "",
+        budgetRange: confirmed.budgetExpectation || "",
         srsContent: generateSrsMarkdown(confirmed),
         status: "submitted",
         createdAt: confirmed.savedAt || new Date().toISOString(),
@@ -505,7 +503,7 @@ export function CustomerUserPanel({
       id: "inv_" + Date.now().toString(36),
       projectId: activeDraft.id,
       projectTitle: activeDraft.title,
-      clientEmail: activeDraft.email || user?.email || "customer@domain.com",
+      clientEmail: activeDraft.email || user?.email || "",
       framework: activeDraft.targetStack,
       manHours: {
         frontend: 40,
@@ -749,15 +747,15 @@ ${draft.projectScope}
 
         <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-2">
           {[
-            { step: "1", title: "Onboarding Form", desc: "Data Collection", done: true },
-            { step: "2", title: "LocalStorage", desc: "Auto-Saved", done: true },
-            { step: "3", title: "Registration", desc: "Client Account", done: true },
-            { step: "4", title: "Draft Fed", desc: "Workspace Draft", done: true },
+            { step: "1", title: "Onboarding Form", desc: "Data Collection", done: !!activeDraft },
+            { step: "2", title: "LocalStorage", desc: "Auto-Saved", done: !!activeDraft },
+            { step: "3", title: "Registration", desc: "Client Account", done: !!user },
+            { step: "4", title: "Draft Fed", desc: "Workspace Draft", done: !!activeDraft },
             {
               step: "5",
               title: "AI-Guided QA",
               desc: "Scope Refined",
-              done: !!activeDraft?.qaAnswers,
+              done: !!activeDraft?.qaAnswers && Object.values(activeDraft.qaAnswers).some((v) => !!v),
               active: !activeDraft || activeDraft.status === "draft",
             },
             {
@@ -1017,7 +1015,7 @@ ${draft.projectScope}
                   className="text-xs bg-white border-amber-300 text-amber-900 hover:bg-amber-100/80 flex items-center gap-1.5"
                 >
                   <Zap className="h-3.5 w-3.5 text-amber-600" />
-                  <span>Dispatch Technical Quotation (Mock Tech Team)</span>
+                  <span>Request Technical Quotation</span>
                 </Button>
 
                 <Button

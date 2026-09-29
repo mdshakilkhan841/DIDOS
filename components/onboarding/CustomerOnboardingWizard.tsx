@@ -54,12 +54,12 @@ export function CustomerOnboardingWizard({ lang = "en" }: { lang?: string }) {
   const [organizationName, setOrganizationName] = useState("");
   const [contactName, setContactName] = useState("");
   const [email, setEmail] = useState("");
-  const [businessDomain, setBusinessDomain] = useState("E-Commerce & Digital Business");
+  const [businessDomain, setBusinessDomain] = useState("");
   const [projectScope, setProjectScope] = useState("");
   const [siteUrl, setSiteUrl] = useState("");
-  const [targetStack, setTargetStack] = useState("Next.js 16 + FastAPI + PostgreSQL");
-  const [budgetExpectation, setBudgetExpectation] = useState("$5,000 - $10,000");
-  const [expectedTimeline, setExpectedTimeline] = useState("4 to 6 Weeks");
+  const [targetStack, setTargetStack] = useState("");
+  const [budgetExpectation, setBudgetExpectation] = useState("");
+  const [expectedTimeline, setExpectedTimeline] = useState("");
   const [savedTime, setSavedTime] = useState<string>("");
 
   // Step 2: Registration Fields
@@ -70,9 +70,9 @@ export function CustomerOnboardingWizard({ lang = "en" }: { lang?: string }) {
 
   // Step 4: AI Guided Q&A
   const [qaAnswers, setQaAnswers] = useState<Record<string, string>>({
-    multiTenant: "Yes, dedicated tenant isolation required",
-    paymentMethods: "bKash, Nagad, Visa/Mastercard (SSLCommerz)",
-    userVolume: "5,000 - 20,000 active monthly users",
+    multiTenant: "",
+    paymentMethods: "",
+    userVolume: "",
   });
   const [aiClarification, setAiClarification] = useState("");
 
@@ -208,10 +208,12 @@ export function CustomerOnboardingWizard({ lang = "en" }: { lang?: string }) {
     const statusVal = confirmedStatus || "draft";
     const draftRecord = {
       id: "draft_" + Date.now().toString(36),
-      title: `${organizationName || "Custom Project"} — ${businessDomain}`,
-      organizationName: organizationName || "Client Organization",
-      contactName: contactName || "Customer",
-      email: email || user?.email || "customer@domain.com",
+      title: organizationName
+        ? `${organizationName}${businessDomain ? ` — ${businessDomain}` : ""}`
+        : "Custom Engineering Project",
+      organizationName: organizationName || "",
+      contactName: contactName || user?.displayName || "",
+      email: email || user?.email || "",
       businessDomain,
       projectScope,
       siteUrl,
@@ -241,14 +243,11 @@ export function CustomerOnboardingWizard({ lang = "en" }: { lang?: string }) {
         clientName: draftRecord.contactName,
         clientEmail: draftRecord.email,
         category: businessDomain,
-        referenceUrl: siteUrl || "https://daffodil.family",
+        referenceUrl: siteUrl || "",
         businessScope: projectScope,
         selectedFeatures: [
-          "Multi-Role Authentication & Access Control",
-          "Online Payment Gateway (bKash, Nagad, Stripe)",
           qaAnswers.multiTenant === "yes" ? "Multi-Tenancy Workspace Architecture" : "Single-Tenant Instance",
-          `Database: ${qaAnswers.databaseChoice || "PostgreSQL 16"}`,
-        ],
+        ].filter(Boolean),
         framework: targetStack,
         targetTimeline: expectedTimeline,
         budgetRange: budgetExpectation,
@@ -438,6 +437,7 @@ export function CustomerOnboardingWizard({ lang = "en" }: { lang?: string }) {
                     onChange={(e) => setBusinessDomain(e.target.value)}
                     className="mt-1 w-full rounded-md border border-dudos-border bg-white px-3 py-2 text-xs text-dudos-text shadow-xs focus:border-dudos-primary focus:outline-none"
                   >
+                    <option value="">Select Sector / Domain...</option>
                     <option value="E-Commerce & Digital Business">E-Commerce & Retail</option>
                     <option value="Healthcare & Telemedicine">Healthcare & Clinics</option>
                     <option value="Education & Academy">Education & University</option>
@@ -516,6 +516,7 @@ export function CustomerOnboardingWizard({ lang = "en" }: { lang?: string }) {
                     onChange={(e) => setTargetStack(e.target.value)}
                     className="mt-1 w-full rounded-md border border-dudos-border bg-white px-2.5 py-1.5 text-xs text-dudos-text shadow-xs"
                   >
+                    <option value="">Select Preferred Tech Stack...</option>
                     <option value="Next.js 16 + FastAPI + PostgreSQL">Next.js 16 + FastAPI</option>
                     <option value="React 19 + Node.js + PostgreSQL">React 19 + Node.js</option>
                     <option value="WordPress Headless + Next.js">WordPress Headless</option>
@@ -531,6 +532,7 @@ export function CustomerOnboardingWizard({ lang = "en" }: { lang?: string }) {
                     onChange={(e) => setBudgetExpectation(e.target.value)}
                     className="mt-1 w-full rounded-md border border-dudos-border bg-white px-2.5 py-1.5 text-xs text-dudos-text shadow-xs"
                   >
+                    <option value="">Select Budget Expectation...</option>
                     <option value="$2,000 - $5,000">$2,000 – $5,000</option>
                     <option value="$5,000 - $10,000">$5,000 – $10,000</option>
                     <option value="$10,000 - $25,000">$10,000 – $25,000</option>
@@ -546,6 +548,7 @@ export function CustomerOnboardingWizard({ lang = "en" }: { lang?: string }) {
                     onChange={(e) => setExpectedTimeline(e.target.value)}
                     className="mt-1 w-full rounded-md border border-dudos-border bg-white px-2.5 py-1.5 text-xs text-dudos-text shadow-xs"
                   >
+                    <option value="">Select Target Launch Window...</option>
                     <option value="2 to 4 Weeks">2 to 4 Weeks</option>
                     <option value="4 to 6 Weeks">4 to 6 Weeks</option>
                     <option value="2 to 3 Months">2 to 3 Months</option>
@@ -556,7 +559,7 @@ export function CustomerOnboardingWizard({ lang = "en" }: { lang?: string }) {
               <div className="pt-4 flex items-center justify-between border-t border-dudos-border">
                 <span className="text-xs text-dudos-text-secondary flex items-center gap-1.5">
                   <Shield className="h-4 w-4 text-teal-600" />
-                  <span>Free intake submission. 1,000 complimentary credits included.</span>
+                  <span>Engineering intake & technical architecture assessment.</span>
                 </span>
 
                 <Button type="submit" variant="primary" size="default">
@@ -765,7 +768,7 @@ export function CustomerOnboardingWizard({ lang = "en" }: { lang?: string }) {
 
               <div className="flex items-center gap-1.5 px-3 py-1 rounded-xl bg-teal-50 text-teal-900 font-semibold text-xs border border-teal-200">
                 <Coins className="h-4 w-4 text-amber-500" />
-                <span>1,000 Credits Active</span>
+                <span>{user?.credits ?? 0} Credits Active</span>
               </div>
             </div>
 
@@ -776,8 +779,9 @@ export function CustomerOnboardingWizard({ lang = "en" }: { lang?: string }) {
                   <span>Q1: Multi-Tenancy & Data Isolation Model</span>
                 </div>
                 <Input
-                  value={qaAnswers.multiTenant}
+                  value={qaAnswers.multiTenant || ""}
                   onChange={(e) => setQaAnswers({ ...qaAnswers, multiTenant: e.target.value })}
+                  placeholder="Specify tenancy requirement (e.g. Dedicated tenant isolation, single-tenant, or multi-tenant database)"
                   className="text-xs bg-white"
                 />
               </div>
@@ -788,8 +792,9 @@ export function CustomerOnboardingWizard({ lang = "en" }: { lang?: string }) {
                   <span>Q2: Payment Gateways & Banking Integrations</span>
                 </div>
                 <Input
-                  value={qaAnswers.paymentMethods}
+                  value={qaAnswers.paymentMethods || ""}
                   onChange={(e) => setQaAnswers({ ...qaAnswers, paymentMethods: e.target.value })}
+                  placeholder="Specify payment gateways (e.g. bKash, Nagad, cards / SSLCommerz, Stripe)"
                   className="text-xs bg-white"
                 />
               </div>
@@ -800,8 +805,9 @@ export function CustomerOnboardingWizard({ lang = "en" }: { lang?: string }) {
                   <span>Q3: Expected User Volume & Scalability</span>
                 </div>
                 <Input
-                  value={qaAnswers.userVolume}
+                  value={qaAnswers.userVolume || ""}
                   onChange={(e) => setQaAnswers({ ...qaAnswers, userVolume: e.target.value })}
+                  placeholder="Specify expected user volume & concurrency (e.g. 5,000 - 20,000 active monthly users)"
                   className="text-xs bg-white"
                 />
               </div>

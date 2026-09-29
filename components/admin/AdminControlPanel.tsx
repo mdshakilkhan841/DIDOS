@@ -70,7 +70,7 @@ export function AdminControlPanel({
   // Deployment Tickets State
   const [deploymentTickets, setDeploymentTickets] = useState<any[]>([]);
   const [editingIpTicketId, setEditingIpTicketId] = useState<string | null>(null);
-  const [customIpInput, setCustomIpInput] = useState<string>("103.145.118.42");
+  const [customIpInput, setCustomIpInput] = useState<string>("");
   const [deploymentSearch, setDeploymentSearch] = useState<string>("");
 
   // Support Tickets State
@@ -973,34 +973,6 @@ export function AdminControlPanel({
               <p className="text-[11px] text-slate-500 max-w-md mx-auto">
                 Tickets are automatically created when clients submit a domain mapping request from their Project Workspace.
               </p>
-              <Button
-                size="sm"
-                variant="outline"
-                className="text-xs mt-2"
-                onClick={() => {
-                  const sampleTicket = {
-                    id: "dep_" + Date.now().toString(36),
-                    projectId: "proj_demo",
-                    projectTitle: "Enterprise ERP & Portal",
-                    clientEmail: "client@daffodil.family",
-                    domainName: "portal.daffodil.family",
-                    dnsProvider: "Cloudflare",
-                    serverTarget: "Daffodil Cloud Linux VPS",
-                    specialInstructions: "Configure wildcard SSL and HTTP to HTTPS redirection.",
-                    status: "pending_tech_review",
-                    assignedIp: "103.145.118.42",
-                    dnsStatus: "pending",
-                    createdAt: new Date().toISOString(),
-                  };
-                  const nextTickets = [sampleTicket, ...deploymentTickets];
-                  setDeploymentTickets(nextTickets);
-                  localStorage.setItem("dudos_deployment_tickets", JSON.stringify(nextTickets));
-                  showToast.success("Sample deployment ticket created for demonstration!");
-                }}
-              >
-                <Plus className="h-3 w-3 mr-1" />
-                Create Sample Deployment Ticket
-              </Button>
             </div>
           ) : (
             <div className="space-y-4">

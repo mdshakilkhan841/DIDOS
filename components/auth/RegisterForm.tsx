@@ -91,7 +91,7 @@ export function RegisterForm({ onSwitchToLogin, initialRole = "client", returnTo
       username,
       displayName,
       role,
-      organizationName: orgName || STAKEHOLDER_CONFIGS[role]?.sampleOrgPlaceholder || "Daffodil Organization",
+      organizationName: orgName || "",
       identifier,
       department,
       password,

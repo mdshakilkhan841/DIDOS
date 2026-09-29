@@ -51,123 +51,8 @@ import { AdminEstimationModal, QuotationInvoice } from "./AdminEstimationModal";
 import { ManagedDeploymentModal } from "./ManagedDeploymentModal";
 import { showToast } from "@/lib/toast";
 
-const INITIAL_PROJECTS: CustomProjectData[] = [
-  {
-    id: "proj_daffodil_health",
-    title: "Daffodil Health & Telemedicine Portal",
-    clientName: "Dr. Rafiqul Islam",
-    clientEmail: "rafiqul.health@daffodil.family",
-    category: "Healthcare and Social Assistance",
-    referenceUrl: "https://mayoclinic.org",
-    businessScope:
-      "Enterprise patient appointment booking, doctor teleconsultation video rooms, electronic medical records (EMR), and bKash payment gateway integration.",
-    selectedFeatures: [
-      "Multi-Role Authentication & Access Control",
-      "Online Payment Gateway (bKash, Nagad, Stripe)",
-      "Customer Support Ticketing & Chat",
-      "Dynamic ERP / Billing & Quotations",
-    ],
-    framework: "Next.js 16 + FastAPI (Python)",
-    targetTimeline: "4 weeks",
-    budgetRange: "৳150,000 - ৳250,000",
-    srsContent:
-      "# SRS: Daffodil Health Portal\n\n## 1. Objectives\nDeliver secure, HIPAA-compliant patient consultation workflows.\n\n## 2. Technical Stack\n- Frontend: Next.js 16 App Router\n- Backend: FastAPI (Python 3.12)\n- Database: PostgreSQL with Row-Level Security\n\n## 3. Key Modules\n- Patient Portal & Medical Records\n- Doctor Telehealth Video Session\n- Automated Billing & Invoicing",
-    status: "quoted",
-    createdAt: "2026-09-24T10:30:00.000Z",
-    updatedAt: "2026-09-25T14:15:00.000Z",
-  },
-  {
-    id: "proj_diu_smart_canteen",
-    title: "DIU Smart Canteen & Meal Delivery",
-    clientName: "Shakil Khan",
-    clientEmail: "shakil@daffodil.family",
-    category: "Retail and E-commerce",
-    referenceUrl: "https://chaldal.com",
-    businessScope:
-      "Automated campus food ordering, real-time kitchen display system (KDS), student wallet RFID deduction, and daily accounting reconciliation.",
-    selectedFeatures: [
-      "Multi-Role Authentication & Access Control",
-      "Product Catalog & E-Commerce Cart",
-      "Dynamic ERP / Billing & Quotations",
-      "Inventory & Order Tracking",
-    ],
-    framework: "React 19 + Node.js + PostgreSQL",
-    targetTimeline: "3 weeks",
-    budgetRange: "৳80,000 - ৳120,000",
-    srsContent:
-      "# SRS: DIU Smart Canteen\n\n## 1. Objectives\nReduce lunchtime queues by 80% via digital pre-orders.\n\n## 2. Features\n- Student & Faculty mobile meal booking\n- Live order preparation board\n- Automated kitchen ticket printing",
-    status: "approved",
-    createdAt: "2026-09-22T08:00:00.000Z",
-    updatedAt: "2026-09-24T16:00:00.000Z",
-  },
-  {
-    id: "proj_agro_supply",
-    title: "Daffodil Agro Seed Supply Chain",
-    clientName: "Anisur Rahman",
-    clientEmail: "anisur.agro@daffodil.family",
-    category: "Agriculture and Farming",
-    referenceUrl: "https://deere.com",
-    businessScope:
-      "B2B seed catalog, dealer inventory credit limits, batch shipment tracking, and automated invoice dispatching.",
-    selectedFeatures: [
-      "Product Catalog & E-Commerce Cart",
-      "Dynamic ERP / Billing & Quotations",
-      "Admin Analytics & Sales Reporting",
-    ],
-    framework: "Laravel 11 + Livewire / Vue.js",
-    targetTimeline: "6 weeks",
-    budgetRange: "৳200,000 - ৳350,000",
-    srsContent: "# SRS: Agro Supply Chain\n\nComprehensive ERP and distribution management system.",
-    status: "in_estimation",
-    createdAt: "2026-09-26T11:45:00.000Z",
-    updatedAt: "2026-09-26T11:45:00.000Z",
-  },
-];
-
-const INITIAL_INVOICES: QuotationInvoice[] = [
-  {
-    id: "inv_dh_9248",
-    projectId: "proj_daffodil_health",
-    projectTitle: "Daffodil Health & Telemedicine Portal",
-    clientEmail: "rafiqul.health@daffodil.family",
-    framework: "Next.js 16 + FastAPI (Python)",
-    manHours: {
-      frontend: 48,
-      backend: 64,
-      qa: 24,
-      devops: 16,
-    },
-    totalHours: 152,
-    hourlyRate: 1200,
-    laborCost: 182400,
-    infrastructureCost: 18000,
-    profitMarginPercent: 20,
-    totalQuotationBDT: 240480,
-    status: "dispatched",
-    dispatchedAt: "2026-09-25T14:15:00.000Z",
-  },
-  {
-    id: "inv_diu_meal_44",
-    projectId: "proj_diu_smart_canteen",
-    projectTitle: "DIU Smart Canteen & Meal Delivery",
-    clientEmail: "shakil@daffodil.family",
-    framework: "React 19 + Node.js + PostgreSQL",
-    manHours: {
-      frontend: 32,
-      backend: 40,
-      qa: 16,
-      devops: 10,
-    },
-    totalHours: 98,
-    hourlyRate: 1000,
-    laborCost: 98000,
-    infrastructureCost: 12000,
-    profitMarginPercent: 15,
-    totalQuotationBDT: 126500,
-    status: "paid",
-    dispatchedAt: "2026-09-24T16:00:00.000Z",
-  },
-];
+const INITIAL_PROJECTS: CustomProjectData[] = [];
+const INITIAL_INVOICES: QuotationInvoice[] = [];
 
 interface ProjectFeedback {
   id: string;
@@ -207,10 +92,11 @@ export function ProjectDashboard({ lang = "en" }: { lang?: string }) {
       const savedProjects = localStorage.getItem("dudos_custom_projects");
       let projectList: CustomProjectData[] = [];
       if (savedProjects) {
-        projectList = JSON.parse(savedProjects);
-      } else {
-        localStorage.setItem("dudos_custom_projects", JSON.stringify(INITIAL_PROJECTS));
-        projectList = INITIAL_PROJECTS;
+        // Filter out legacy mock data if previously stored in browser
+        const legacyMockIds = new Set(["proj_daffodil_health", "proj_diu_smart_canteen", "proj_agro_supply"]);
+        projectList = (JSON.parse(savedProjects) as CustomProjectData[]).filter(
+          (p) => !legacyMockIds.has(p.id)
+        );
       }
 
       // Auto-merge active onboarding draft if present
@@ -218,24 +104,26 @@ export function ProjectDashboard({ lang = "en" }: { lang?: string }) {
       if (activeDraftStr) {
         try {
           const draft = JSON.parse(activeDraftStr);
-          if (!projectList.some((p) => p.id === draft.id)) {
+          if (draft && draft.id && !projectList.some((p) => p.id === draft.id)) {
             const draftProject: CustomProjectData = {
               id: draft.id,
-              title: draft.title,
-              clientName: draft.contactName || "Customer",
-              clientEmail: draft.email || "customer@domain.com",
-              category: draft.businessDomain || "Enterprise Software",
-              referenceUrl: draft.siteUrl || "https://daffodil.family",
-              businessScope: draft.projectScope || "Standard digital transformation project.",
-              selectedFeatures: [
-                "Multi-Role Authentication & Access Control",
-                "Online Payment Gateway (bKash, Nagad, Stripe)",
-                draft.qaAnswers?.multiTenant === "yes" ? "Multi-Tenancy Workspace Architecture" : "Single Tenant Instance",
-              ],
-              framework: draft.targetStack || "Next.js 16 + FastAPI + PostgreSQL",
-              targetTimeline: draft.expectedTimeline || "4 weeks",
-              budgetRange: draft.budgetExpectation || "৳100,000 - ৳200,000",
-              srsContent: `# SRS: ${draft.organizationName || "Project Architecture"}\n\n${draft.projectScope || ""}`,
+              title: draft.title || "Custom Engineering Project",
+              clientName: draft.contactName || user?.displayName || "Client",
+              clientEmail: draft.email || user?.email || "",
+              category: draft.businessDomain || "",
+              referenceUrl: draft.siteUrl || "",
+              businessScope: draft.projectScope || "",
+              selectedFeatures: Array.isArray(draft.selectedFeatures)
+                ? draft.selectedFeatures
+                : [
+                    draft.qaAnswers?.multiTenant === "yes"
+                      ? "Multi-Tenancy Workspace Architecture"
+                      : "Single Tenant Architecture",
+                  ].filter(Boolean),
+              framework: draft.targetStack || "",
+              targetTimeline: draft.expectedTimeline || "",
+              budgetRange: draft.budgetExpectation || "",
+              srsContent: `# SRS: ${draft.organizationName || draft.title || "Project Specification"}\n\n${draft.projectScope || ""}`,
               status: draft.status || "draft",
               createdAt: draft.savedAt || new Date().toISOString(),
               updatedAt: draft.updatedAt || new Date().toISOString(),
@@ -249,38 +137,36 @@ export function ProjectDashboard({ lang = "en" }: { lang?: string }) {
 
       const savedInvoices = localStorage.getItem("dudos_quotation_invoices");
       if (savedInvoices) {
-        setInvoices(JSON.parse(savedInvoices));
+        const legacyMockInvoiceIds = new Set(["inv_dh_9248", "inv_diu_meal_44"]);
+        const invoiceList = (JSON.parse(savedInvoices) as QuotationInvoice[]).filter(
+          (inv) => !legacyMockInvoiceIds.has(inv.id)
+        );
+        setInvoices(invoiceList);
+        localStorage.setItem("dudos_quotation_invoices", JSON.stringify(invoiceList));
       } else {
-        localStorage.setItem("dudos_quotation_invoices", JSON.stringify(INITIAL_INVOICES));
-        setInvoices(INITIAL_INVOICES);
+        setInvoices([]);
       }
 
       const savedFeedback = localStorage.getItem("dudos_project_feedback");
       if (savedFeedback) {
-        setFeedbacks(JSON.parse(savedFeedback));
+        const legacyMockFb = new Set(["fb_1", "proj_daffodil_health"]);
+        const fbList = (JSON.parse(savedFeedback) as ProjectFeedback[]).filter(
+          (fb) => !legacyMockFb.has(fb.id) && !legacyMockFb.has(fb.projectId)
+        );
+        setFeedbacks(fbList);
+        localStorage.setItem("dudos_project_feedback", JSON.stringify(fbList));
       } else {
-        const initialFb: ProjectFeedback[] = [
-          {
-            id: "fb_1",
-            projectId: "proj_daffodil_health",
-            authorEmail: "rafiqul.health@daffodil.family",
-            authorName: "Dr. Rafiqul Islam",
-            comment: "Please ensure video consultation works smoothly on 4G mobile connections.",
-            createdAt: "2026-09-25T15:00:00.000Z",
-          },
-        ];
-        localStorage.setItem("dudos_project_feedback", JSON.stringify(initialFb));
-        setFeedbacks(initialFb);
+        setFeedbacks([]);
       }
     } catch {}
-  }, []);
+  }, [user]);
 
   // Filter projects
   const filteredProjects = projects.filter((p) => {
-    // If client mode and user is logged in as non-admin, filter by user email if matching
+    // If client mode and user is logged in as non-admin, filter strictly by user email
     if (activeRoleView === "client" && user?.email && !isAdminOrStaff) {
-      if (p.clientEmail !== user.email && p.id !== "proj_diu_smart_canteen") {
-        // show only their own or sample
+      if (p.clientEmail && p.clientEmail.toLowerCase() !== user.email.toLowerCase()) {
+        return false;
       }
     }
     const matchesSearch =
