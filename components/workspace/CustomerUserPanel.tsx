@@ -649,7 +649,9 @@ ${draft.projectScope}
             {lang === "bn" ? "ক্লায়েন্ট ওয়ার্কস্পেস" : "CLIENT WORKSPACE"}
           </p>
           <h1>
-            {activeDraft?.organizationName || user?.organizationName || "Customer Workspace"}
+            {(activeDraft?.organizationName && activeDraft.organizationName !== "Customer / Client") ||
+             (user?.organizationName && user.organizationName !== "Customer / Client" ? user.organizationName : "") ||
+             (user?.displayName ? `${user.displayName}'s Workspace` : "Customer Workspace")}
           </h1>
           <p>
             {lang === "bn"

@@ -160,7 +160,7 @@ export default function ClientWorkbench({
         </SidebarContent>
 
         <SidebarFooter>
-          <p className="sidebar-person">{user?.displayName || user?.organizationName || 'Client'}</p>
+          <p className="sidebar-person">{user?.displayName || (user?.organizationName && user.organizationName !== 'Customer / Client' ? user.organizationName : 'Client')}</p>
           <div className="sidebar-foot-links">
             <Link href={`/${lang === 'bn' ? 'en' : 'bn'}/app/${section.join('/')}`}>
               <Globe size={13} />
@@ -183,7 +183,13 @@ export default function ClientWorkbench({
           <div>
             <SidebarTrigger />
             <span className="header-divider" />
-            <span>{user?.organizationName || (lang === 'bn' ? 'আপনার কর্মপরিসর' : 'Your workspace')}</span>
+            <span>
+              {user?.organizationName && user.organizationName !== 'Customer / Client'
+                ? user.organizationName
+                : user?.displayName
+                ? `${user.displayName}'s Workspace`
+                : (lang === 'bn' ? 'আপনার কর্মপরিসর' : 'Your workspace')}
+            </span>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
             <CreditBadgeButton lang={lang} />

@@ -97,13 +97,51 @@ const SEED_TEAM = [
   { id: 'mem_3', user_id: 'engineer@daffodil.family', role: 'viewer', created_at: new Date(Date.now() - 86400000 * 5).toISOString() },
 ];
 
+function isRoleTitle(val?: string | null): boolean {
+  if (!val) return false;
+  const lower = val.trim().toLowerCase();
+  return (
+    lower === 'customer / client' ||
+    lower === 'client' ||
+    lower.includes('customer / client') ||
+    lower === 'system administrator / tech team' ||
+    lower === 'technical team / operations' ||
+    lower === 'merchant / vendor' ||
+    lower === 'partner / agency' ||
+    lower === 'education & training' ||
+    lower === 'executive / stakeholder'
+  );
+}
+
+function resolveWorkspaceName(user: any): string {
+  if (!user) return 'Daffodil Family Workspace';
+  const org = (user.organizationName || user.organization || '').trim();
+  if (org && !isRoleTitle(org)) {
+    return org;
+  }
+  const display = (user.displayName || user.username || '').trim();
+  if (display && !isRoleTitle(display)) {
+    return `${display}'s Workspace`;
+  }
+  if (user.email && !isRoleTitle(user.email)) {
+    const prefix = user.email.split('@')[0];
+    return `${prefix}'s Workspace`;
+  }
+  return 'Personal Workspace';
+}
+
 function getCurrentSession(): { user: any; activeRole: string } | null {
   if (typeof window === 'undefined') return null;
   try {
     const val = localStorage.getItem('dudos_auth_session');
     if (val) {
       const parsed = safeJsonParse(val);
-      if (parsed?.user) return parsed;
+      if (parsed?.user) {
+        if (parsed.user.organizationName && isRoleTitle(parsed.user.organizationName)) {
+          parsed.user.organizationName = '';
+        }
+        return parsed;
+      }
     }
   } catch {}
 
@@ -113,6 +151,8 @@ function getCurrentSession(): { user: any; activeRole: string } | null {
     if (match) {
       const parsed = safeJsonParse(match[2]);
       if (parsed) {
+        const rawOrg = parsed.organizationName || '';
+        const cleanOrg = isRoleTitle(rawOrg) ? '' : rawOrg;
         return {
           user: {
             id: parsed.userId || parsed.id || 'usr_session',
@@ -122,7 +162,7 @@ function getCurrentSession(): { user: any; activeRole: string } | null {
             role: parsed.role || 'client',
             status: 'approved',
             credits: 0,
-            organizationName: parsed.organizationName || '',
+            organizationName: cleanOrg,
           },
           activeRole: parsed.role || 'client',
         };
@@ -166,6 +206,7 @@ export async function api(path: string, method = 'GET', data?: any): Promise<any
     if (!currentUser) {
       return { id: 'usr_guest', name: 'Guest', email: '', role: 'client', platform_admin: false, credits: 0 };
     }
+    const cleanOrg = currentUser.organizationName && !isRoleTitle(currentUser.organizationName) ? currentUser.organizationName : '';
     return {
       id: currentUser.id,
       name: currentUser.displayName || currentUser.username,
@@ -173,7 +214,7 @@ export async function api(path: string, method = 'GET', data?: any): Promise<any
       role: currentUser.role,
       platform_admin: currentUser.role === 'admin',
       credits: currentUser.credits ?? 0,
-      organization: currentUser.organizationName || '',
+      organization: cleanOrg,
       status: currentUser.status || 'active',
     };
   }
@@ -181,13 +222,12 @@ export async function api(path: string, method = 'GET', data?: any): Promise<any
   // --- WORKSPACES ---
   if (urlPath === '/api/workspaces' || urlPath === 'workspaces') {
     const storeKey = currentUser ? `workspaces_${currentUser.id}` : 'workspaces';
+    const computedName = resolveWorkspaceName(currentUser);
     const defaultWorkspaces = currentUser
       ? [
           {
             id: `ws_${currentUser.id}`,
-            name: currentUser.organizationName
-              ? currentUser.organizationName
-              : `${currentUser.displayName || currentUser.username}'s Workspace`,
+            name: computedName,
             role: 'owner',
             created_at: currentUser.createdAt || new Date().toISOString(),
           },
@@ -198,12 +238,26 @@ export async function api(path: string, method = 'GET', data?: any): Promise<any
     if (!ws || !ws.length) {
       ws = defaultWorkspaces;
       setStore(storeKey, ws);
+    } else {
+      // Migrate / repair any existing workspaces that saved the invalid role title "Customer / Client"
+      let repaired = false;
+      ws = ws.map((w: any) => {
+        if (!w.name || isRoleTitle(w.name)) {
+          repaired = true;
+          return { ...w, name: computedName };
+        }
+        return w;
+      });
+      if (repaired) {
+        setStore(storeKey, ws);
+      }
     }
 
     if (method === 'POST') {
+      const newName = data?.name && !isRoleTitle(data.name) ? data.name : 'New Workspace';
       const newWs = {
         id: 'ws_' + Date.now().toString(36),
-        name: data?.name || 'New Workspace',
+        name: newName,
         role: 'owner',
         created_at: new Date().toISOString(),
       };

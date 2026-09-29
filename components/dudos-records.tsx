@@ -28,13 +28,34 @@ export function WorkspaceGate({lang,children}:{lang:string;children:(w:string)=>
         [workspace,setWorkspace]=useState(''),
         [name,setName]=useState(''),
         [error,setError]=useState(''),
-        [busy,setBusy]=useState(true);
+        [busy,setBusy]=useState(true),
+        [isCreating,setIsCreating]=useState(false);
+
+  const getCleanName = (wName: string) => {
+    if (!wName || wName === 'Customer / Client' || wName.toLowerCase().includes('customer / client') || wName.toLowerCase() === 'client') {
+      if (user?.organizationName && user.organizationName !== 'Customer / Client' && !user.organizationName.toLowerCase().includes('customer / client')) {
+        return user.organizationName;
+      }
+      if (user?.displayName && user.displayName !== 'Customer / Client') {
+        return `${user.displayName}'s Workspace`;
+      }
+      if (user?.username && user.username !== 'Customer / Client') {
+        return `${user.username}'s Workspace`;
+      }
+      return lang === 'bn' ? 'ব্যক্তিগত ওয়ার্কস্পেস' : 'Personal Workspace';
+    }
+    return wName;
+  };
 
   async function load(){
     try{
       const d=await api('/api/workspaces');
-      setWorkspaces(d.workspaces);
-      setWorkspace(d.workspaces.find((w:any)=>w.id===preferredWorkspace())?.id||d.workspaces[0]?.id||'');
+      const sanitized = (d.workspaces || []).map((w: any) => ({
+        ...w,
+        name: getCleanName(w.name),
+      }));
+      setWorkspaces(sanitized);
+      setWorkspace(sanitized.find((w:any)=>w.id===preferredWorkspace())?.id||sanitized[0]?.id||'');
       setError('');
     }catch(e){
       setError((e as Error).message);
@@ -54,10 +75,12 @@ export function WorkspaceGate({lang,children}:{lang:string;children:(w:string)=>
   async function create(){
     setBusy(true);
     try{
-      const d=await api('/api/workspaces','POST',{name});
-      setWorkspaces([...workspaces,d]);
-      setWorkspace(d.id);
-      rememberWorkspace(d.id);
+      const cleanName = getCleanName(name);
+      const d=await api('/api/workspaces','POST',{name: cleanName});
+      const cleanNew = { ...d, name: getCleanName(d.name) };
+      setWorkspaces([...workspaces, cleanNew]);
+      setWorkspace(cleanNew.id);
+      rememberWorkspace(cleanNew.id);
       setName('');
       setError('');
     }catch(e){
@@ -103,17 +126,61 @@ export function WorkspaceGate({lang,children}:{lang:string;children:(w:string)=>
     <>
       {error&&<Notice tone="error">{error}</Notice>}
       {workspaces.length>0?(
-        <div className="workspace-choice">
-          <Label>{lang==='bn'?'ওয়ার্কস্পেস':'Workspace'}</Label>
-          <Choose
-            label="Workspace"
-            value={workspace}
-            onChange={(v)=>{
-              setWorkspace(v);
-              rememberWorkspace(v);
-            }}
-            options={workspaces.map((w)=>({id:w.id,label:w.name}))}
-          />
+        <div className="workspace-choice flex flex-wrap items-center gap-3">
+          <div>
+            <Label>{lang==='bn'?'ওয়ার্কস্পেস':'Workspace'}</Label>
+            <Choose
+              label="Workspace"
+              value={workspace}
+              onChange={(v)=>{
+                setWorkspace(v);
+                rememberWorkspace(v);
+              }}
+              options={workspaces.map((w)=>({id:w.id,label:getCleanName(w.name)}))}
+            />
+          </div>
+          <Dialog open={isCreating} onOpenChange={setIsCreating}>
+            <DialogTrigger asChild>
+              <Button variant="outline" size="sm" className="mt-4 text-xs text-teal-700 hover:text-teal-800 hover:bg-teal-50 border-teal-200">
+                <Plus size={14} className="mr-1" />
+                {lang==='bn'?'নতুন ওয়ার্কস্পেস':'New Workspace'}
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-md">
+              <DialogHeader>
+                <DialogTitle>{lang==='bn'?'নতুন ব্যক্তিগত ওয়ার্কস্পেস তৈরি করুন':'Create Workspace'}</DialogTitle>
+                <DialogDescription>
+                  {lang==='bn'?'আপনার প্রতিষ্ঠান বা প্রকল্পের জন্য পৃথক ওয়ার্কস্পেস তৈরি করুন।':'Create an isolated workspace for your organization or transformation project.'}
+                </DialogDescription>
+              </DialogHeader>
+              <form
+                onSubmit={(e)=>{
+                  e.preventDefault();
+                  void (async () => {
+                    await create();
+                    setIsCreating(false);
+                  })();
+                }}
+                className="space-y-4 pt-2"
+              >
+                <Input
+                  value={name}
+                  onChange={(e)=>setName(e.target.value)}
+                  placeholder={lang==='bn'?'ওয়ার্কস্পেসের নাম':'Workspace name (e.g. Daffodil Labs)'}
+                  maxLength={100}
+                  autoFocus
+                />
+                <div className="flex justify-end gap-2">
+                  <Button type="button" variant="outline" onClick={()=>setIsCreating(false)}>
+                    {lang==='bn'?'বাতিল':'Cancel'}
+                  </Button>
+                  <Button disabled={busy||name.trim().length<2} type="submit">
+                    {busy?'…':lang==='bn'?'তৈরি করুন':'Create'}
+                  </Button>
+                </div>
+              </form>
+            </DialogContent>
+          </Dialog>
         </div>
       ):(
         <div className="workspace-create">

@@ -20,6 +20,28 @@ export interface CreditTransaction {
   timestamp: string;
 }
 
+export function isRoleTitle(val?: string | null): boolean {
+  if (!val) return false;
+  const lower = val.trim().toLowerCase();
+  return (
+    lower === "customer / client" ||
+    lower === "client" ||
+    lower.includes("customer / client") ||
+    lower === "system administrator / tech team" ||
+    lower === "technical team / operations" ||
+    lower === "merchant / vendor" ||
+    lower === "partner / agency" ||
+    lower === "education & training" ||
+    lower === "executive / stakeholder"
+  );
+}
+
+export function cleanOrgName(org?: string | null): string {
+  if (!org) return "";
+  const trimmed = org.trim();
+  return isRoleTitle(trimmed) ? "" : trimmed;
+}
+
 interface AuthContextType {
   user: UserProfile | null;
   activeRole: StakeholderRole;
@@ -78,6 +100,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         try {
           const parsed = JSON.parse(stored);
           if (parsed.user && parsed.activeRole) {
+            if (parsed.user.organizationName) {
+              parsed.user.organizationName = cleanOrgName(parsed.user.organizationName);
+            }
             restoredUser = parsed.user;
             restoredRole = parsed.activeRole;
             restoredToken = parsed.token || localStorage.getItem("dudos_jwt_token") || undefined;
@@ -100,7 +125,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             const sessionData = safeJsonParse(cookieSessionRaw);
             if (sessionData && sessionData.email) {
               const role = (sessionData.role as StakeholderRole) || "client";
-              const config = STAKEHOLDER_CONFIGS[role] || STAKEHOLDER_CONFIGS.client;
               restoredUser = {
                 id: sessionData.userId || sessionData.id || "usr_session",
                 email: sessionData.email || "",
@@ -109,7 +133,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 role: role,
                 status: "approved",
                 credits: 0,
-                organizationName: sessionData.organizationName || config.title,
+                organizationName: cleanOrgName(sessionData.organizationName),
                 createdAt: new Date().toISOString(),
               };
               restoredRole = role;
@@ -148,6 +172,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                     role: liveData.role || prev.role,
                     credits: liveData.credits ?? prev.credits,
                     status: liveData.status || prev.status,
+                    organizationName: liveData.organizationName !== undefined
+                      ? cleanOrgName(liveData.organizationName)
+                      : prev.organizationName,
                   } : null);
                 }
               }
@@ -209,13 +236,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const domainAttr = cookieDomain ? `; domain=${cookieDomain}` : "";
 
       if (u) {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify({ user: u, activeRole: r, token: jwtToken }));
+        const cleanUser = {
+          ...u,
+          organizationName: cleanOrgName(u.organizationName),
+        };
+        localStorage.setItem(STORAGE_KEY, JSON.stringify({ user: cleanUser, activeRole: r, token: jwtToken }));
         if (jwtToken) {
           localStorage.setItem("dudos_jwt_token", jwtToken);
         }
         try {
-          document.cookie = `dudos_session=${encodeURIComponent(JSON.stringify({ userId: u.id, displayName: u.displayName, email: u.email, role: u.role }))}; path=/; max-age=2592000; SameSite=Lax${domainAttr}`;
-          document.cookie = `dudos_at=${jwtToken || `token_${u.id}`}; path=/; max-age=2592000; SameSite=Lax${domainAttr}`;
+          document.cookie = `dudos_session=${encodeURIComponent(JSON.stringify({ userId: cleanUser.id, displayName: cleanUser.displayName, email: cleanUser.email, role: cleanUser.role, organizationName: cleanUser.organizationName || "" }))}; path=/; max-age=2592000; SameSite=Lax${domainAttr}`;
+          document.cookie = `dudos_at=${jwtToken || `token_${cleanUser.id}`}; path=/; max-age=2592000; SameSite=Lax${domainAttr}`;
         } catch {}
       } else {
         localStorage.removeItem(STORAGE_KEY);
@@ -272,7 +303,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         role: role,
         status: data.user.status || "approved",
         credits: data.user.credits ?? 0,
-        organizationName: data.user.organizationName || config.title,
+        organizationName: cleanOrgName(data.user.organizationName),
         createdAt: data.user.createdAt || new Date().toISOString(),
       };
 
@@ -319,7 +350,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       const respData = await res.json();
       const role: StakeholderRole = "client";
-      const config = STAKEHOLDER_CONFIGS.client;
 
       const newUser: UserProfile = {
         id: respData.user.id,
@@ -329,7 +359,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         role: "client",
         status: respData.user.status || "approved",
         credits: respData.user.credits ?? 0,
-        organizationName: respData.user.organizationName || config.title,
+        organizationName: cleanOrgName(respData.user.organizationName || data.organizationName),
         phone: data.phone,
         createdAt: respData.user.createdAt || new Date().toISOString(),
         intake: data.intake || {

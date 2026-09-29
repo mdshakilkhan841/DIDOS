@@ -65,12 +65,14 @@ export function LoginForm({ returnTo, onSwitchToRegister }: LoginFormProps) {
       return;
     }
 
-    const success = await login(email, selectedRole);
-    if (success) {
-      const target = returnTo || STAKEHOLDER_CONFIGS[selectedRole].recommendedRoute;
-      router.push(target);
-    } else {
-      setErrorMsg("Invalid credentials. Please verify your email and password.");
+    try {
+      const result = await login(email, password, selectedRole);
+      if (result && result.user) {
+        const target = returnTo || STAKEHOLDER_CONFIGS[selectedRole].recommendedRoute;
+        router.push(target);
+      }
+    } catch (err: any) {
+      setErrorMsg(err.message || "Invalid credentials. Please verify your email and password.");
     }
   };
 
