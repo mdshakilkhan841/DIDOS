@@ -98,11 +98,19 @@ export interface ActiveProjectDraft {
 export function CustomerUserPanel({
   workspace,
   workspaceName,
+  workspaces = [],
+  activeWorkspaceId,
+  onSelectWorkspace,
+  onCreateWorkspace,
   lang = "en",
   activeSection = "overview",
 }: {
   workspace: string;
   workspaceName?: string;
+  workspaces?: any[];
+  activeWorkspaceId?: string;
+  onSelectWorkspace?: (id: string) => void;
+  onCreateWorkspace?: () => void;
   lang?: string;
   activeSection?: "overview" | "projects" | "deployments" | "support";
 }) {
@@ -1023,12 +1031,44 @@ ${draft.projectScope}
         </div>
 
         <div className="flex flex-wrap items-center gap-3 shrink-0">
-          {/* Active Workspace Pill */}
-          {workspaceName && (
-            <div className="flex items-center gap-1.5 bg-[#edf7f4] border border-[#c2e2dc] rounded-lg px-2.5 py-1.5 shadow-2xs">
-              <Building2 className="h-3.5 w-3.5 text-[#087f79]" />
-              <span className="text-xs text-[#087f79] font-bold max-w-[160px] truncate">{workspaceName}</span>
+          {/* Interactive Multi-Workspace Switcher Dropdown */}
+          {workspaces && workspaces.length > 0 && onSelectWorkspace ? (
+            <div className="flex items-center gap-1.5 bg-[#edf7f4] border border-[#c2e2dc] hover:border-[#087f79] rounded-lg px-2.5 py-1.5 shadow-2xs transition-colors">
+              <Building2 className="h-3.5 w-3.5 text-[#087f79] shrink-0" />
+              <span className="text-xs text-[#087f79] font-bold hidden sm:inline">
+                {lang === "bn" ? "ওয়ার্কস্পেস:" : "Workspace:"}
+              </span>
+              <select
+                value={activeWorkspaceId || workspace}
+                onChange={(e) => {
+                  if (e.target.value === "__NEW_WORKSPACE__") {
+                    onCreateWorkspace?.();
+                  } else {
+                    onSelectWorkspace(e.target.value);
+                  }
+                }}
+                className="text-xs font-bold text-[#087f79] bg-transparent outline-none cursor-pointer pr-1 max-w-[170px] truncate"
+                title={lang === "bn" ? "ওয়ার্কস্পেস পরিবর্তন করুন" : "Switch Active Workspace"}
+              >
+                {workspaces.map((w: any) => (
+                  <option key={w.id} value={w.id} className="text-[#162c38]">
+                    {w.name}
+                  </option>
+                ))}
+                {onCreateWorkspace && (
+                  <option value="__NEW_WORKSPACE__" className="text-[#087f79] font-bold">
+                    {lang === "bn" ? "+ নতুন ওয়ার্কস্পেস..." : "+ New Workspace..."}
+                  </option>
+                )}
+              </select>
             </div>
+          ) : (
+            workspaceName && (
+              <div className="flex items-center gap-1.5 bg-[#edf7f4] border border-[#c2e2dc] rounded-lg px-2.5 py-1.5 shadow-2xs">
+                <Building2 className="h-3.5 w-3.5 text-[#087f79]" />
+                <span className="text-xs text-[#087f79] font-bold max-w-[160px] truncate">{workspaceName}</span>
+              </div>
+            )
           )}
           {/* Multi-Project Switcher Dropdown */}
           {displayedProjects.length > 0 && (

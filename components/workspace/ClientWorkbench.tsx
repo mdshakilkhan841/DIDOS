@@ -103,7 +103,36 @@ export default function ClientWorkbench({
   };
 
   const loadWorkspaces = async () => {
+    const token =
+      typeof window !== 'undefined'
+        ? localStorage.getItem('dudos_jwt_token') || localStorage.getItem('dudos_auth_token')
+        : null;
+
     try {
+      if (token) {
+        const res = await fetch('http://localhost:8000/api/v1/workspaces', {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (res.ok) {
+          const list = await res.json();
+          if (Array.isArray(list) && list.length > 0) {
+            const sanitized = list.map((w: any) => ({
+              ...w,
+              name: getCleanName(w.name),
+            }));
+            setWorkspaces(sanitized);
+            const pref = preferredWorkspace();
+            const current = sanitized.find((w: any) => w.id === pref) || sanitized[0];
+            if (current) {
+              setActiveWorkspaceId(current.id);
+              rememberWorkspace(current.id);
+            }
+            return;
+          }
+        }
+      }
+
+      // Fallback
       const res = await api('/api/workspaces');
       const list = (res.workspaces || []).map((w: any) => ({
         ...w,
@@ -140,16 +169,41 @@ export default function ClientWorkbench({
     setWorkspaceBusy(true);
     try {
       const clean = getCleanName(newWorkspaceName.trim());
-      const res = await api('/api/workspaces', 'POST', { name: clean });
-      const created = { ...res, name: getCleanName(res.name) };
-      const updated = [...workspaces, created];
+      const token =
+        typeof window !== 'undefined'
+          ? localStorage.getItem('dudos_jwt_token') || localStorage.getItem('dudos_auth_token')
+          : null;
+
+      let created: any = null;
+      if (token) {
+        const dbRes = await fetch('http://localhost:8000/api/v1/workspaces', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ name: clean }),
+        });
+        if (dbRes.ok) {
+          created = await dbRes.json();
+        }
+      }
+
+      if (!created) {
+        created = await api('/api/workspaces', 'POST', { name: clean });
+      }
+
+      const formatted = { ...created, name: getCleanName(created.name) };
+      const updated = [...workspaces.filter((w) => w.id !== formatted.id), formatted];
       setWorkspaces(updated);
-      setActiveWorkspaceId(created.id);
-      rememberWorkspace(created.id);
+      setActiveWorkspaceId(formatted.id);
+      rememberWorkspace(formatted.id);
       setNewWorkspaceName('');
       setIsCreatingWorkspace(false);
       showToast.success(
-        lang === 'bn' ? 'ওয়ার্কস্পেস সফলভাবে তৈরি হয়েছে' : 'Workspace created successfully'
+        lang === 'bn'
+          ? 'ওয়ার্কস্পেস সফলভাবে ডেটাবেসে সংরক্ষিত হয়েছে'
+          : 'Workspace saved to database successfully'
       );
     } catch (err: any) {
       showToast.error(err.message || 'Failed to create workspace');
@@ -369,9 +423,12 @@ export default function ClientWorkbench({
                 <button
                   type="button"
                   className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg border border-[#dce5e9] bg-[#f0f4f6]/80 hover:bg-[#e4ebef] text-[#162c38] font-bold text-xs transition-colors cursor-pointer shadow-2xs group"
-                  title="Switch Workspace"
+                  title={lang === 'bn' ? 'ওয়ার্কস্পেস পরিবর্তন করুন' : 'Switch Workspace'}
                 >
                   <Building2 size={14} className="text-[#087f79]" />
+                  <span className="text-[10px] text-[#5b6f7b] font-medium hidden sm:inline uppercase tracking-wider">
+                    {lang === 'bn' ? 'ওয়ার্কস্পেস:' : 'Workspace:'}
+                  </span>
                   <span className="max-w-[190px] truncate text-left">
                     {activeWorkspaceDisplayName}
                   </span>
@@ -447,6 +504,10 @@ export default function ClientWorkbench({
           <CustomerUserPanel
             workspace={activeWorkspaceId || 'client_ws'}
             workspaceName={activeWorkspaceDisplayName}
+            workspaces={workspaces}
+            activeWorkspaceId={activeWorkspaceId}
+            onSelectWorkspace={handleSelectWorkspace}
+            onCreateWorkspace={() => setIsCreatingWorkspace(true)}
             lang={lang}
             activeSection={
               view === 'projects'

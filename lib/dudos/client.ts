@@ -223,6 +223,78 @@ export async function api(path: string, method = 'GET', data?: any): Promise<any
   if (urlPath === '/api/workspaces' || urlPath === 'workspaces') {
     const storeKey = currentUser ? `workspaces_${currentUser.id}` : 'workspaces';
     const computedName = resolveWorkspaceName(currentUser);
+    const token =
+      typeof window !== 'undefined'
+        ? localStorage.getItem('dudos_jwt_token') || localStorage.getItem('dudos_auth_token')
+        : null;
+    const apiBase = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8000/api/v1';
+
+    // 1. If POST and authenticated, persist directly to PostgreSQL database
+    if (method === 'POST') {
+      const newName = data?.name && !isRoleTitle(data.name) ? data.name : 'New Workspace';
+      if (token) {
+        try {
+          const res = await fetch(`${apiBase}/workspaces`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              Authorization: `Bearer ${token}`,
+            },
+            body: JSON.stringify({ name: newName }),
+          });
+          if (res.ok) {
+            const created = await res.json();
+            let ws = getStore<any[]>(storeKey, []);
+            ws = [...ws.filter((w: any) => w.id !== created.id), created];
+            setStore(storeKey, ws);
+            if (currentUser) setStore('workspaces', ws);
+            return created;
+          }
+        } catch (e) {
+          console.warn('[PostgreSQL Sync] Workspace database create failed, fallback to local:', e);
+        }
+      }
+
+      // Offline / fallback storage
+      const newWs = {
+        id: 'ws_' + Date.now().toString(36),
+        name: newName,
+        role: 'owner',
+        created_at: new Date().toISOString(),
+      };
+      let ws = getStore<any[]>(storeKey, []);
+      ws = [...ws.filter((w: any) => w.id !== newWs.id), newWs];
+      setStore(storeKey, ws);
+      if (currentUser) setStore('workspaces', ws);
+      return newWs;
+    }
+
+    // 2. If GET and authenticated, fetch authoritative list from PostgreSQL database
+    if (token) {
+      try {
+        const res = await fetch(`${apiBase}/workspaces`, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+        if (res.ok) {
+          const dbWorkspaces = await res.json();
+          if (Array.isArray(dbWorkspaces) && dbWorkspaces.length > 0) {
+            const cleaned = dbWorkspaces.map((w: any) => ({
+              ...w,
+              name: w.name && !isRoleTitle(w.name) ? w.name : computedName,
+            }));
+            setStore(storeKey, cleaned);
+            if (currentUser) setStore('workspaces', cleaned);
+            return { workspaces: cleaned };
+          }
+        }
+      } catch (e) {
+        console.warn('[PostgreSQL Sync] Workspace database fetch failed, fallback to local:', e);
+      }
+    }
+
+    // 3. Fallback to cached / local storage
     const defaultWorkspaces = currentUser
       ? [
           {
@@ -235,7 +307,6 @@ export async function api(path: string, method = 'GET', data?: any): Promise<any
       : SEED_WORKSPACES;
 
     let ws = getStore<any[]>(storeKey, []);
-    // Merge any workspaces from generic 'workspaces' storage
     if (currentUser) {
       const genericWs = getStore<any[]>('workspaces', []);
       if (Array.isArray(genericWs) && genericWs.length > 0) {
@@ -256,7 +327,6 @@ export async function api(path: string, method = 'GET', data?: any): Promise<any
       setStore(storeKey, ws);
       if (currentUser) setStore('workspaces', ws);
     } else {
-      // Migrate / repair any existing workspaces that saved the invalid role title "Customer / Client"
       let repaired = false;
       ws = ws.map((w: any) => {
         if (!w.name || isRoleTitle(w.name)) {
@@ -271,19 +341,6 @@ export async function api(path: string, method = 'GET', data?: any): Promise<any
       }
     }
 
-    if (method === 'POST') {
-      const newName = data?.name && !isRoleTitle(data.name) ? data.name : 'New Workspace';
-      const newWs = {
-        id: 'ws_' + Date.now().toString(36),
-        name: newName,
-        role: 'owner',
-        created_at: new Date().toISOString(),
-      };
-      ws = [...ws, newWs];
-      setStore(storeKey, ws);
-      if (currentUser) setStore('workspaces', ws);
-      return newWs;
-    }
     return { workspaces: ws };
   }
 
