@@ -265,7 +265,10 @@ export function CustomerOnboardingWizard({ lang = "en" }: { lang?: string }) {
 
     // Persist to FastAPI PostgreSQL backend
     try {
-      const token = typeof window !== "undefined" ? localStorage.getItem("dudos_auth_token") : null;
+      const token =
+        typeof window !== "undefined"
+          ? localStorage.getItem("dudos_jwt_token") || localStorage.getItem("dudos_auth_token")
+          : null;
       fetch("http://localhost:8000/api/v1/onboarding/draft", {
         method: "POST",
         headers: {
@@ -295,7 +298,7 @@ export function CustomerOnboardingWizard({ lang = "en" }: { lang?: string }) {
             "Content-Type": "application/json",
             Authorization: `Bearer ${token}`,
           },
-          body: JSON.stringify({ draft: draftRecord }),
+          body: JSON.stringify({ draft: draftRecord, activeDraft: draftRecord }),
         }).catch((err) => console.error("FastAPI active draft sync error:", err));
       }
     } catch {}
@@ -311,7 +314,10 @@ export function CustomerOnboardingWizard({ lang = "en" }: { lang?: string }) {
 
     // Also persist project to FastAPI database if authenticated
     try {
-      const token = typeof window !== "undefined" ? localStorage.getItem("dudos_auth_token") : null;
+      const token =
+        typeof window !== "undefined"
+          ? localStorage.getItem("dudos_jwt_token") || localStorage.getItem("dudos_auth_token")
+          : null;
       if (token) {
         fetch("http://localhost:8000/api/v1/projects/from-draft", {
           method: "POST",

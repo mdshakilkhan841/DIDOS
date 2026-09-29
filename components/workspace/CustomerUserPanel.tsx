@@ -52,6 +52,7 @@ import { CreditWalletModal } from "@/components/billing/CreditWalletModal";
 import { ManagedDeploymentModal } from "@/components/projects/ManagedDeploymentModal";
 import { CustomerSupportModal } from "@/components/support/CustomerSupportModal";
 import { showToast } from "@/lib/toast";
+import { convertAssessmentRecordToDraft, getAuthToken } from "@/lib/dudos/assessment-sync";
 
 const STORAGE_KEY = "dudos_onboarding_draft";
 const ACTIVE_DRAFT_KEY = "dudos_active_draft";
@@ -61,6 +62,7 @@ const INVOICES_KEY = "dudos_quotation_invoices";
 
 export interface ActiveProjectDraft {
   id: string;
+  workspace?: string;
   title: string;
   organizationName: string;
   contactName: string;
@@ -93,10 +95,12 @@ export interface ActiveProjectDraft {
 
 export function CustomerUserPanel({
   workspace,
+  workspaceName,
   lang = "en",
   activeSection = "overview",
 }: {
   workspace: string;
+  workspaceName?: string;
   lang?: string;
   activeSection?: "overview" | "projects" | "deployments" | "support";
 }) {
@@ -134,35 +138,118 @@ export function CustomerUserPanel({
     databaseChoice: "",
   });
 
-  // Load from localStorage on mount
+  // Load from localStorage on mount & when workspace changes
   useEffect(() => {
     loadWorkspaceData();
-  }, [user]);
+  }, [user, workspace]);
 
   const loadWorkspaceData = () => {
     try {
-      // 1. Load active project draft
+      let resolvedDraft: ActiveProjectDraft | null = null;
+
+      // 1. Try loading active project draft
       const draftStr = localStorage.getItem(ACTIVE_DRAFT_KEY);
       if (draftStr) {
-        const parsed = JSON.parse(draftStr);
-        setActiveDraft(parsed);
-        if (parsed.qaAnswers) {
+        try {
+          const parsed = JSON.parse(draftStr);
+          if (parsed && typeof parsed === "object") {
+            if (!workspace || workspace === "client_ws" || !parsed.workspace || parsed.workspace === workspace) {
+              resolvedDraft = parsed;
+            }
+          }
+        } catch {}
+      }
+
+      // 2. Fallback: check project records list
+      if (!resolvedDraft) {
+        const recordsStr = localStorage.getItem(PROJECT_RECORDS_KEY);
+        if (recordsStr) {
+          try {
+            const list = JSON.parse(recordsStr);
+            if (Array.isArray(list) && list.length > 0) {
+              const matching = list.find((p: any) => p.workspace === workspace) || list[0];
+              if (matching) resolvedDraft = matching;
+            }
+          } catch {}
+        }
+      }
+
+      // 3. Fallback: check custom projects
+      if (!resolvedDraft) {
+        const projStr = localStorage.getItem(CUSTOM_PROJECTS_KEY);
+        if (projStr) {
+          try {
+            const list = JSON.parse(projStr);
+            if (Array.isArray(list) && list.length > 0) {
+              const matching = list.find((p: any) => p.workspace === workspace) || list[0];
+              if (matching) {
+                resolvedDraft = {
+                  id: matching.id,
+                  workspace: matching.workspace || workspace,
+                  title: matching.title || "Custom Engineering Project",
+                  organizationName: matching.organizationName || matching.domain || "",
+                  contactName: matching.clientName || user?.displayName || "",
+                  email: matching.clientEmail || user?.email || "",
+                  businessDomain: matching.category || "",
+                  projectScope: matching.businessScope || "",
+                  siteUrl: matching.referenceUrl || "",
+                  targetStack: matching.framework || "Next.js 16 + FastAPI + PostgreSQL 16",
+                  budgetExpectation: matching.budgetRange || "$2,500 – $5,000 USD",
+                  expectedTimeline: matching.targetTimeline || "4-8 Weeks",
+                  qaAnswers: {
+                    multiTenant: matching.selectedFeatures?.some((f: string) => f.includes("Multi-Tenancy")) ? "yes" : "no",
+                    paymentGateway: "Standard Online Gateway",
+                    userScale: "5,000+ Concurrent Users",
+                    databaseChoice: "PostgreSQL 16",
+                  },
+                  status: matching.status || "draft",
+                  savedAt: matching.createdAt || new Date().toISOString(),
+                  updatedAt: matching.updatedAt || new Date().toISOString(),
+                };
+              }
+            }
+          } catch {}
+        }
+      }
+
+      // 4. Fallback: check saved assessment records in localStorage mock store
+      if (!resolvedDraft) {
+        const userStoreKey = user ? `records_${user.id}` : "records";
+        const rawRecs =
+          localStorage.getItem(`dudos_static_${userStoreKey}`) ||
+          localStorage.getItem("dudos_static_records");
+        if (rawRecs) {
+          try {
+            const recList = JSON.parse(rawRecs);
+            if (Array.isArray(recList) && recList.length > 0) {
+              const assessmentRec =
+                recList.find(
+                  (r: any) =>
+                    r.kind === "assessment" &&
+                    (!workspace || workspace === "client_ws" || r.workspace === workspace)
+                ) || recList.find((r: any) => r.kind === "assessment");
+
+              if (assessmentRec) {
+                resolvedDraft = convertAssessmentRecordToDraft(assessmentRec, user, workspace);
+                localStorage.setItem(ACTIVE_DRAFT_KEY, JSON.stringify(resolvedDraft));
+              }
+            }
+          } catch {}
+        }
+      }
+
+      if (resolvedDraft) {
+        setActiveDraft(resolvedDraft);
+        if (resolvedDraft.qaAnswers) {
           setEditableQa({
-            multiTenant: parsed.qaAnswers.multiTenant || "",
-            paymentGateway: parsed.qaAnswers.paymentGateway || parsed.qaAnswers.paymentMethods || "",
-            userScale: parsed.qaAnswers.userScale || parsed.qaAnswers.userVolume || "",
-            databaseChoice: parsed.qaAnswers.databaseChoice || "",
+            multiTenant: resolvedDraft.qaAnswers.multiTenant || "",
+            paymentGateway: resolvedDraft.qaAnswers.paymentGateway || (resolvedDraft.qaAnswers as any).paymentMethods || "",
+            userScale: resolvedDraft.qaAnswers.userScale || (resolvedDraft.qaAnswers as any).userVolume || "",
+            databaseChoice: resolvedDraft.qaAnswers.databaseChoice || "",
           });
         }
       } else {
-        // Fallback: check project records or custom projects
-        const recordsStr = localStorage.getItem(PROJECT_RECORDS_KEY);
-        if (recordsStr) {
-          const list = JSON.parse(recordsStr);
-          if (list.length > 0) {
-            setActiveDraft(list[0]);
-          }
-        }
+        setActiveDraft(null);
       }
 
       // 2. Load quotation invoices (supports both dudos_quotation_invoices and dudos_invoices)
@@ -184,13 +271,38 @@ export function CustomerUserPanel({
         setDeploymentTickets(JSON.parse(depStr));
       }
 
-      // 5. Load projects from FastAPI backend
-      const token = typeof window !== "undefined" ? localStorage.getItem("dudos_auth_token") : null;
+      // 5. Load projects & active draft from FastAPI PostgreSQL backend
+      const token = getAuthToken();
       if (token) {
+        // Fetch active draft from PostgreSQL
+        fetch("http://localhost:8000/api/v1/onboarding/active-draft", {
+          headers: { Authorization: `Bearer ${token}` },
+        })
+          .then((res) => (res.ok ? res.json() : null))
+          .then((data) => {
+            const draft = data?.activeDraft || (data?.id ? data : null);
+            if (draft) {
+              setActiveDraft(draft);
+              try {
+                localStorage.setItem(ACTIVE_DRAFT_KEY, JSON.stringify(draft));
+              } catch {}
+              if (draft.qaAnswers) {
+                setEditableQa({
+                  multiTenant: draft.qaAnswers.multiTenant || "",
+                  paymentGateway: draft.qaAnswers.paymentGateway || "",
+                  userScale: draft.qaAnswers.userScale || "",
+                  databaseChoice: draft.qaAnswers.databaseChoice || "",
+                });
+              }
+            }
+          })
+          .catch(() => {});
+
+        // Fetch official projects from PostgreSQL
         fetch("http://localhost:8000/api/v1/projects", {
           headers: { Authorization: `Bearer ${token}` },
         })
-          .then((res) => res.json())
+          .then((res) => (res.ok ? res.json() : []))
           .then((backendProjects) => {
             if (Array.isArray(backendProjects) && backendProjects.length > 0) {
               setAllProjects((prev) => {
@@ -199,6 +311,45 @@ export function CustomerUserPanel({
                   if (!combined.some((c) => c.id === p.id)) combined.push(p);
                 }
                 return combined;
+              });
+              // Cache into localStorage so subsequent reloads are instantaneous
+              try {
+                localStorage.setItem(CUSTOM_PROJECTS_KEY, JSON.stringify(backendProjects));
+              } catch {}
+
+              // If activeDraft was missing (e.g. after clearing localStorage), auto-hydrate from latest DB project
+              setActiveDraft((curr) => {
+                if (!curr) {
+                  const latest = backendProjects[0];
+                  const hydrated: ActiveProjectDraft = {
+                    id: latest.id,
+                    workspace: latest.specs?.workspace || workspace || "client_ws",
+                    title: latest.name,
+                    organizationName: latest.domain || "",
+                    contactName: user?.displayName || "",
+                    email: user?.email || "",
+                    businessDomain: latest.domain || "",
+                    projectScope: latest.scopeSummary || "",
+                    siteUrl: "",
+                    targetStack: latest.specs?.stack || "Next.js + FastAPI + PostgreSQL",
+                    budgetExpectation: latest.specs?.budget || "",
+                    expectedTimeline: latest.specs?.timeline || "",
+                    qaAnswers: latest.qaAnswers || {
+                      multiTenant: "no",
+                      paymentGateway: "Standard Online Gateway",
+                      userScale: "1,000 - 5,000 Users",
+                      databaseChoice: "PostgreSQL 16",
+                    },
+                    status: latest.status || "draft",
+                    savedAt: latest.createdAt || new Date().toISOString(),
+                    updatedAt: latest.updatedAt || new Date().toISOString(),
+                  };
+                  try {
+                    localStorage.setItem(ACTIVE_DRAFT_KEY, JSON.stringify(hydrated));
+                  } catch {}
+                  return hydrated;
+                }
+                return curr;
               });
             }
           })
@@ -367,6 +518,16 @@ export function CustomerUserPanel({
     showToast.success("AI Q&A Specifications Updated!", {
       description: "Architecture answers have been synchronized with your project draft.",
     });
+
+    // Persist QA update to PostgreSQL
+    const token = getAuthToken();
+    if (token) {
+      fetch("http://localhost:8000/api/v1/onboarding/active-draft", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ draft: updated, activeDraft: updated }),
+      }).catch((err) => console.warn("Failed to persist updated QA answers to DB:", err));
+    }
   };
 
   const handleConfirmSpecifications = () => {
@@ -422,6 +583,43 @@ export function CustomerUserPanel({
         localStorage.setItem(PROJECT_RECORDS_KEY, JSON.stringify(nextList));
       }
     } catch {}
+
+    // Persist to FastAPI PostgreSQL Database
+    const token = getAuthToken();
+    if (token) {
+      // 1. Update active draft status in PostgreSQL
+      fetch("http://localhost:8000/api/v1/onboarding/active-draft", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ draft: confirmed, activeDraft: confirmed, stage: "submitted" }),
+      }).catch((err) => console.warn("Failed to update active draft status in DB:", err));
+
+      // 2. Persist project in customer_projects PostgreSQL table
+      fetch("http://localhost:8000/api/v1/projects/from-draft", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({
+          name: confirmed.title,
+          domain: confirmed.businessDomain,
+          scopeSummary: confirmed.projectScope,
+          specs: {
+            stack: confirmed.targetStack,
+            timeline: confirmed.expectedTimeline,
+            budget: confirmed.budgetExpectation,
+            workspace: confirmed.workspace || workspace,
+          },
+          qaAnswers: editableQa,
+          srsDocument: generateSrsMarkdown(confirmed),
+        }),
+      })
+        .then((res) => (res.ok ? res.json() : null))
+        .then((savedProj) => {
+          if (savedProj?.id) {
+            setAllProjects((prev) => [savedProj, ...prev.filter((p) => p.id !== savedProj.id)]);
+          }
+        })
+        .catch((err) => console.warn("Failed to persist confirmed project to DB:", err));
+    }
 
     showToast.success("Specifications Confirmed & Locked!", {
       description: "Submitted to DUDOS Tech Team for formal technical estimation and quotation.",
@@ -649,9 +847,10 @@ ${draft.projectScope}
             {lang === "bn" ? "ক্লায়েন্ট ওয়ার্কস্পেস" : "CLIENT WORKSPACE"}
           </p>
           <h1>
-            {(activeDraft?.organizationName && activeDraft.organizationName !== "Customer / Client") ||
+            {workspaceName ||
+             (activeDraft?.organizationName && activeDraft.organizationName !== "Customer / Client" ? activeDraft.organizationName : "") ||
              (user?.organizationName && user.organizationName !== "Customer / Client" ? user.organizationName : "") ||
-             (user?.displayName ? `${user.displayName}'s Workspace` : "Customer Workspace")}
+             (user?.displayName ? `${user.displayName}'s Workspace` : (lang === "bn" ? "ব্যক্তিগত কর্মপরিসর" : "Customer Workspace"))}
           </h1>
           <p>
             {lang === "bn"
@@ -661,6 +860,13 @@ ${draft.projectScope}
         </div>
 
         <div className="flex flex-wrap items-center gap-3 shrink-0">
+          {/* Active Workspace Pill */}
+          {workspaceName && (
+            <div className="flex items-center gap-1.5 bg-[#edf7f4] border border-[#c2e2dc] rounded-lg px-2.5 py-1.5 shadow-2xs">
+              <Building2 className="h-3.5 w-3.5 text-[#087f79]" />
+              <span className="text-[11px] text-[#087f79] font-bold max-w-[150px] truncate">{workspaceName}</span>
+            </div>
+          )}
           {/* Multi-Project Switcher Dropdown */}
           {allProjects.length > 0 && (
             <div className="flex items-center gap-1.5 bg-[#f0f4f6] border border-[#dce5e9] rounded-lg px-2.5 py-1.5 shadow-xs">
@@ -697,7 +903,7 @@ ${draft.projectScope}
             </span>
           </button>
 
-          <Link href="/onboarding">
+          <Link href={lang ? `/${lang}/onboarding` : "/onboarding"}>
             <Button
               size="sm"
               variant="outline"
@@ -1243,12 +1449,19 @@ ${draft.projectScope}
               Your data will be automatically saved and fed into this workspace.
             </p>
           </div>
-          <Link href="/onboarding">
-            <Button size="sm" className="bg-dudos-primary hover:bg-dudos-primary-hover text-white text-xs font-semibold">
-              <Plus className="h-3.5 w-3.5 mr-1" />
-              <span>Start Customer Onboarding Flow</span>
-            </Button>
-          </Link>
+          <div className="flex items-center justify-center gap-3 flex-wrap">
+            <Link href={lang ? `/${lang}/transform` : "/transform"}>
+              <Button size="sm" className="bg-dudos-primary hover:bg-dudos-primary-hover text-white text-xs font-semibold">
+                <Plus className="h-3.5 w-3.5 mr-1" />
+                <span>{lang === "bn" ? "অ্যাসেসমেন্ট শুরু করুন (/transform)" : "Start Assessment Wizard"}</span>
+              </Button>
+            </Link>
+            <Link href={lang ? `/${lang}/onboarding` : "/onboarding"}>
+              <Button size="sm" variant="outline" className="border-[#dce5e9] text-xs font-semibold">
+                <span>{lang === "bn" ? "অনবোর্ডিং ফর্ম" : "Custom Onboarding Flow"}</span>
+              </Button>
+            </Link>
+          </div>
         </div>
       )}
 

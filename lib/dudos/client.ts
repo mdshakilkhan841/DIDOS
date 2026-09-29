@@ -234,10 +234,27 @@ export async function api(path: string, method = 'GET', data?: any): Promise<any
         ]
       : SEED_WORKSPACES;
 
-    let ws = getStore(storeKey, defaultWorkspaces);
+    let ws = getStore<any[]>(storeKey, []);
+    // Merge any workspaces from generic 'workspaces' storage
+    if (currentUser) {
+      const genericWs = getStore<any[]>('workspaces', []);
+      if (Array.isArray(genericWs) && genericWs.length > 0) {
+        if (!ws || !ws.length) {
+          ws = genericWs;
+        } else {
+          for (const gw of genericWs) {
+            if (!ws.some((w: any) => w.id === gw.id || w.name === gw.name)) {
+              ws.push(gw);
+            }
+          }
+        }
+      }
+    }
+
     if (!ws || !ws.length) {
       ws = defaultWorkspaces;
       setStore(storeKey, ws);
+      if (currentUser) setStore('workspaces', ws);
     } else {
       // Migrate / repair any existing workspaces that saved the invalid role title "Customer / Client"
       let repaired = false;
@@ -250,6 +267,7 @@ export async function api(path: string, method = 'GET', data?: any): Promise<any
       });
       if (repaired) {
         setStore(storeKey, ws);
+        if (currentUser) setStore('workspaces', ws);
       }
     }
 
@@ -263,6 +281,7 @@ export async function api(path: string, method = 'GET', data?: any): Promise<any
       };
       ws = [...ws, newWs];
       setStore(storeKey, ws);
+      if (currentUser) setStore('workspaces', ws);
       return newWs;
     }
     return { workspaces: ws };
