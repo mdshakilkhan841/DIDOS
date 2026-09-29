@@ -33,8 +33,8 @@ async function runSprint1EndToEnd() {
   const regData = await regRes.json();
   const token = regData.token;
   const customerId = regData.user.id;
-  assert.strictEqual(regData.user.credits, 1000, 'Customer must start with 1,000 credits');
-  console.log(`  ✅ Passed: Account created (ID: ${customerId}) with 1,000 balance.\n`);
+  assert.strictEqual(regData.user.credits, 0, 'Customer must start with 0 credits (no free credits)');
+  console.log(`  ✅ Passed: Account created (ID: ${customerId}) with 0 credits (no free credits policy).\n`);
 
   // STEP 2: Submit Customer Requirements & Onboarding Draft
   console.log('Step 2: Collect & Persist Customer Requirements (Intake Draft)');
@@ -100,8 +100,21 @@ async function runSprint1EndToEnd() {
   assert(projectId, 'Project ID must be generated');
   console.log(`  ✅ Passed: Project created in PostgreSQL (ID: ${projectId}, Slug: ${project.slug}).\n`);
 
-  // STEP 4: Deduct 1,000 Credits & Courier Specification Payload to DevScope
-  console.log('Step 4: Credit Deduction & DevScope Builder Dispatch');
+  // STEP 4: Purchase Package, Deduct 1,000 Credits & Courier Specification Payload to DevScope
+  console.log('Step 4: Package Purchase, Credit Deduction & DevScope Builder Dispatch');
+  const addRes = await fetch(`${FASTAPI_BASE}/api/v1/credits/add`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify({
+      amount: 1000,
+      reason: 'Starter Builder Pack purchased for project',
+    }),
+  });
+  assert.strictEqual(addRes.status, 200);
+
   const deductRes = await fetch(`${FASTAPI_BASE}/api/v1/credits/deduct`, {
     method: 'POST',
     headers: {

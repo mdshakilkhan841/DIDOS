@@ -30,10 +30,10 @@ async function runTests() {
   const regData = await regRes.json();
   assert(regData.success, 'Registration success flag must be true');
   assert(regData.token, 'Registration must return JWT token');
-  assert.strictEqual(regData.user.credits, 1000, 'New user must receive 1000 welcome credits');
+  assert.strictEqual(regData.user.credits, 0, 'New user must start with 0 credits (no free credits)');
   const authToken = regData.token;
   const userId = regData.user.id;
-  console.log(`  ✅ Passed: Registered customer "${userId}" with 1000 credits. Token received.\n`);
+  console.log(`  ✅ Passed: Registered customer "${userId}" with 0 credits (no free credits policy). Token received.\n`);
 
   // Test 2: Persist Intake Draft (POST /api/v1/onboarding/draft)
   console.log('Test 2: Persist Onboarding Intake Draft (POST /api/v1/onboarding/draft)');
@@ -186,14 +186,28 @@ async function runTests() {
   assert(ids.includes(proj2.id), 'Project 2 must be in list');
   console.log(`  ✅ Passed: Both Project 1 ("${proj1.id}") and Project 2 ("${proj2.id}") retrieved in tenant list.\n`);
 
-  // Test 8: Credit Balance Verification & Build Deduction Simulation
+  // Test 8: Credit Balance Verification (0 Credits) & Purchase & Build Deduction Simulation
   console.log('Test 8: Credits Balance & Deduction (GET /api/v1/credits/balance & POST /api/v1/credits/deduct)');
   const balRes = await fetch(`${FASTAPI_BASE}/api/v1/credits/balance`, {
     headers: { Authorization: `Bearer ${authToken}` },
   });
   assert.strictEqual(balRes.status, 200);
   const balData = await balRes.json();
-  assert.strictEqual(balData.credits, 1000, 'Initial balance must be 1000');
+  assert.strictEqual(balData.credits, 0, 'Initial balance must be 0 (no free credits)');
+
+  // Client purchases package (POST /api/v1/credits/add)
+  const addRes = await fetch(`${FASTAPI_BASE}/api/v1/credits/add`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${authToken}`,
+    },
+    body: JSON.stringify({
+      amount: 1000,
+      reason: 'Starter Builder Pack purchased',
+    }),
+  });
+  assert.strictEqual(addRes.status, 200);
 
   const deductRes = await fetch(`${FASTAPI_BASE}/api/v1/credits/deduct`, {
     method: 'POST',
@@ -209,7 +223,7 @@ async function runTests() {
   assert.strictEqual(deductRes.status, 200);
   const deductData = await deductRes.json();
   assert.strictEqual(deductData.remainingCredits, 0, 'Remaining credits after deducting 1000 must be 0');
-  console.log(`  ✅ Passed: Credits deducted successfully. Remaining balance: ${deductData.remainingCredits}.\n`);
+  console.log(`  ✅ Passed: Initial credits 0, added 1000, and deducted 1000 successfully. Remaining balance: ${deductData.remainingCredits}.\n`);
 
   console.log('🎉 [PHASE 3 ALL PASSED] 8/8 automated test assertions succeeded without error!\n');
 }
