@@ -123,12 +123,22 @@ export function AdminControlPanel({
   };
 
   const loadDeploymentTickets = () => {
-    try {
-      const ticketsStr = localStorage.getItem("dudos_deployment_tickets");
-      if (ticketsStr) {
-        setDeploymentTickets(JSON.parse(ticketsStr));
-      }
-    } catch {}
+    fetch("http://localhost:8000/api/v1/admin/deployments")
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.tickets && Array.isArray(data.tickets)) {
+          setDeploymentTickets(data.tickets);
+          localStorage.setItem("dudos_deployment_tickets", JSON.stringify(data.tickets));
+        }
+      })
+      .catch(() => {
+        try {
+          const ticketsStr = localStorage.getItem("dudos_deployment_tickets");
+          if (ticketsStr) {
+            setDeploymentTickets(JSON.parse(ticketsStr));
+          }
+        } catch {}
+      });
   };
 
   useEffect(() => {
@@ -142,6 +152,13 @@ export function AdminControlPanel({
       );
       setDeploymentTickets(updated);
       localStorage.setItem("dudos_deployment_tickets", JSON.stringify(updated));
+
+      fetch(`http://localhost:8000/api/v1/admin/deployments/${ticketId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ dnsStatus: "verified" }),
+      }).catch(console.error);
+
       showToast.success("DNS Records Verified & Validated!", {
         description: "Target CNAME / A records confirmed pointing to Daffodil Cloud Linux VPS.",
       });
@@ -157,6 +174,13 @@ export function AdminControlPanel({
       setDeploymentTickets(updated);
       localStorage.setItem("dudos_deployment_tickets", JSON.stringify(updated));
       setEditingIpTicketId(null);
+
+      fetch(`http://localhost:8000/api/v1/admin/deployments/${ticketId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ assignedIp: ip.trim() }),
+      }).catch(console.error);
+
       showToast.success(`Target VPS IP updated to ${ip.trim()}`);
     } catch {}
   };
@@ -183,6 +207,17 @@ export function AdminControlPanel({
       );
       setDeploymentTickets(updated);
       localStorage.setItem("dudos_deployment_tickets", JSON.stringify(updated));
+
+      fetch(`http://localhost:8000/api/v1/admin/deployments/${ticket.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          status: "live",
+          dnsStatus: "verified",
+          assignedIp: vpsIp,
+          liveUrl,
+        }),
+      }).catch(console.error);
 
       // Synchronize with dudos_active_draft
       const activeDraftStr = localStorage.getItem("dudos_active_draft");

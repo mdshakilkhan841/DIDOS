@@ -48,6 +48,8 @@ export function ManagedDeploymentModal({
 
     setIsSubmitting(true);
 
+    const token = typeof window !== "undefined" ? localStorage.getItem("dudos_auth_token") : null;
+
     const ticket = {
       id: "dep_" + Date.now().toString(36),
       projectId: project?.id || "proj_self",
@@ -60,6 +62,30 @@ export function ManagedDeploymentModal({
       status: "pending_tech_review",
       createdAt: new Date().toISOString(),
     };
+
+    // Submit ticket to FastAPI backend
+    fetch("http://localhost:8000/api/v1/deployments/request", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+      body: JSON.stringify({
+        projectId: project?.id || "proj_self",
+        projectTitle: project?.name || project?.title || "Website Project",
+        domainName,
+        dnsProvider,
+        hostingTarget: serverTarget,
+        specialInstructions,
+      }),
+    })
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.id) {
+          ticket.id = data.id;
+        }
+      })
+      .catch((err) => console.error("FastAPI deployment ticket submit error:", err));
 
     try {
       const existing = JSON.parse(localStorage.getItem("dudos_deployment_tickets") || "[]");
