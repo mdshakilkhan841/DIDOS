@@ -98,6 +98,10 @@ async function run() {
   assert.strictEqual(projectsList[0].id, project.id, 'Fetched project must match persisted project ID');
   console.log(`  ✅ Step 5: Projects list successfully retrieved from DB: ${projectsList.length} project(s) found!`);
 
+  // Step 6: Clean up test fixture
+  await fetch(`${FASTAPI_BASE}/api/v1/admin/users/${user.id}`, { method: 'DELETE' });
+  console.log(`  🧹 Cleaned up test user ${user.id} (${email}) from database.`);
+
   console.log('\n======================================================');
   console.log('🎉 Database persistence & clean-storage recovery verified!');
   console.log('======================================================');

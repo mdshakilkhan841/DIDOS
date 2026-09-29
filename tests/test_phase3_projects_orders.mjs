@@ -225,6 +225,10 @@ async function runTests() {
   assert.strictEqual(deductData.remainingCredits, 0, 'Remaining credits after deducting 1000 must be 0');
   console.log(`  ✅ Passed: Initial credits 0, added 1000, and deducted 1000 successfully. Remaining balance: ${deductData.remainingCredits}.\n`);
 
+  // Cleanup test user
+  await fetch(`${FASTAPI_BASE}/api/v1/admin/users/${userId}`, { method: 'DELETE' });
+  console.log(`  🧹 Cleaned up test user ${userId} from database.\n`);
+
   console.log('🎉 [PHASE 3 ALL PASSED] 8/8 automated test assertions succeeded without error!\n');
 }
 

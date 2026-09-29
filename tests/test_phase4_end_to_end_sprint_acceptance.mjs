@@ -224,6 +224,10 @@ async function runSprint1EndToEnd() {
   console.log(`- Deployment Ticket: ${ticketId}`);
   console.log(`- Live Production:   ${liveUrl} (VPS: 103.145.118.42)`);
   console.log('========================================================================\n');
+
+  // Cleanup test user
+  await fetch(`${FASTAPI_BASE}/api/v1/admin/users/${customerId}`, { method: 'DELETE' });
+  console.log(`  🧹 Cleaned up test user ${customerId} from database.\n`);
 }
 
 runSprint1EndToEnd().catch((err) => {

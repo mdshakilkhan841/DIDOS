@@ -125,6 +125,7 @@ export function AdminControlPanel({
   };
 
   useEffect(() => {
+    refreshUsers();
     loadDeploymentTickets();
     loadSupportTickets();
   }, []);

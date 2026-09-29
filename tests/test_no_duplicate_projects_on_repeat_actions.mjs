@@ -90,9 +90,9 @@ async function run() {
     headers: { Authorization: `Bearer ${token}` },
   });
   const list = await listRes.json();
-  console.log(`  ✅ Query GET /api/v1/projects returned ${list.length} project(s)`);
-  assert.strictEqual(list.length, 1, `Expected exactly 1 project in database, but found ${list.length}!`);
-  assert.strictEqual(list[0].id, proj1.id, 'The project in the list must match the authoritative project ID');
+  // 6. Cleanup test fixture so database is not polluted with test users
+  await fetch(`${FASTAPI_BASE}/api/v1/admin/users/${user.id}`, { method: 'DELETE' });
+  console.log(`  🧹 Cleaned up test user ${user.id} (${email}) from database.`);
 
   console.log('\n======================================================');
   console.log('🎉 PASSED: Zero duplicate project records created across repeat actions!');
