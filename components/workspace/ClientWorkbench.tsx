@@ -90,7 +90,7 @@ export default function ClientWorkbench({
       document.cookie = `dudos_session=; path=/; domain=.localhost; max-age=0; expires=${epoch}`;
       document.cookie = `dudos_at=; path=/; domain=.localhost; max-age=0; expires=${epoch}`;
     } catch {}
-    window.location.href = '/logout?return_to=/login';
+    window.location.href = buildSubdomainUrl('main', '/login');
   };
 
   // 100% Workable Customer Navigation Modules (No Dummy Pages)

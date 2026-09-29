@@ -65,23 +65,12 @@ export function proxy(req: NextRequest) {
   // ─── 0. Universal Logout Interceptor ──────────────────────────────────────
   if (url.pathname === "/logout" || url.pathname.startsWith("/logout/")) {
     const returnTo = url.searchParams.get("return_to") || "/login";
+    const targetPath = returnTo.startsWith("/") ? returnTo : `/${returnTo}`;
+    const loginDest = isLocalhost
+      ? `${protocol}//localhost${port}${targetPath}`
+      : `${protocol}//${rootDomain}${port}${targetPath}`;
 
-    // If requested on a subdomain (app or admin), clear subdomain cookies and redirect to main domain /logout
-    if (subdomain === "app" || subdomain === "admin") {
-      const mainLogoutUrl = new URL(`${mainOrigin}/logout`);
-      mainLogoutUrl.searchParams.set("return_to", returnTo);
-      const response = new NextResponse(null, {
-        status: 307,
-        headers: {
-          Location: mainLogoutUrl.toString(),
-        },
-      });
-      clearAuthCookies(response);
-      return response;
-    }
-
-    // On main domain: clear main cookies and render LogoutPage to wipe localStorage
-    const response = NextResponse.next();
+    const response = NextResponse.redirect(new URL(loginDest));
     clearAuthCookies(response);
     return response;
   }
