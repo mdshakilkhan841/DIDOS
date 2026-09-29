@@ -79,6 +79,9 @@ export interface ActiveProjectDraft {
   liveUrl?: string;
   vpsIp?: string;
   deployedAt?: string;
+  buildId?: string;
+  devscopeStatus?: string;
+  previewUrl?: string;
   deploymentTicket?: any;
   quotationInvoice?: any;
   savedAt: string;
@@ -345,8 +348,38 @@ export function CustomerUserPanel({
       localStorage.setItem(CUSTOM_PROJECTS_KEY, JSON.stringify(updatedCustom));
     } catch {}
 
+    // Trigger internal DevScope builder bridge
+    fetch('/api/devscope', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        project_id: activeDraft.id,
+        name: activeDraft.title,
+        requirements: activeDraft.projectScope,
+        srs: generateSrsMarkdown(activeDraft),
+        tech_stack: activeDraft.targetStack,
+        database: activeDraft.qaAnswers?.databaseChoice || 'PostgreSQL',
+      }),
+    })
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.success && data.result) {
+          const withBuildId: ActiveProjectDraft = {
+            ...approvedDraft,
+            buildId: data.result.build_id,
+            devscopeStatus: data.result.customer_status,
+            previewUrl: `http://localhost:8000/preview/${data.result.build_id}`,
+          };
+          setActiveDraft(withBuildId);
+          try {
+            localStorage.setItem(ACTIVE_DRAFT_KEY, JSON.stringify(withBuildId));
+          } catch {}
+        }
+      })
+      .catch((err) => console.error('DevScope build trigger error:', err));
+
     showToast.success("Build Phase Activated via Credits!", {
-      description: "1,000 credits deducted. Project approved for repository and VPS staging.",
+      description: "1,000 credits deducted. Project approved and queued in DevScope AI Builder.",
     });
   };
 
@@ -852,11 +885,33 @@ ${draft.projectScope}
                 </span>
                 <div>
                   <h4 className="text-sm font-bold text-emerald-950">
-                    Project Approved · Build Repository Staged
+                    Project Approved · DevScope Builder Staged
                   </h4>
                   <p className="text-xs text-emerald-800 mt-0.5">
-                    Commercial milestone paid and verified. Your project architecture is approved and ready for managed deployment.
+                    Commercial milestone paid and verified. Your project architecture is approved and queued in DevScope AI Builder.
                   </p>
+                  {activeDraft.buildId && (
+                    <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-emerald-900 font-mono">
+                      <span className="px-2 py-0.5 rounded bg-emerald-200/80 font-bold">
+                        Build ID: {activeDraft.buildId}
+                      </span>
+                      {activeDraft.devscopeStatus && (
+                        <span className="px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 uppercase text-[10px] font-bold">
+                          {activeDraft.devscopeStatus}
+                        </span>
+                      )}
+                      {activeDraft.previewUrl && (
+                        <a
+                          href={activeDraft.previewUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-emerald-700 hover:text-emerald-900 underline font-sans font-medium"
+                        >
+                          Open Preview →
+                        </a>
+                      )}
+                    </div>
+                  )}
                 </div>
               </div>
 

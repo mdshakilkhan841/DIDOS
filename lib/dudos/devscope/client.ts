@@ -15,8 +15,8 @@ type Env={
 
 const config=()=>{
  const e=process.env as unknown as Env;
- const baseUrl=(e.DEVSCOPE_BASE_URL||'').trim().replace(/\/+$/,'');
- const token=(e.DEVSCOPE_SERVICE_TOKEN||'').trim();
+ const baseUrl=(e.DEVSCOPE_BASE_URL||'http://127.0.0.1:8000').trim().replace(/\/+$/,'');
+ const token=(e.DEVSCOPE_SERVICE_TOKEN||'dudos_devscope_sec_2026_tok').trim();
  // Clamped: a mis-set value must not hold a Worker request open indefinitely,
  // nor abort before DevScope can accept a large SRS.
  const timeout=Math.min(120000,Math.max(3000,Number(e.DEVSCOPE_REQUEST_TIMEOUT)||30000));
