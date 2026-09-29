@@ -58,6 +58,7 @@ export default async function Page({
     "clients",
     "servers",
     "ledger",
+    "support",
     "studio",
     "cms",
     "inbox",

@@ -16,6 +16,7 @@ import {
   Layers3,
   ArrowUpRight,
   Database,
+  LifeBuoy,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -51,6 +52,7 @@ export default function AdminWorkbench({
 }) {
   const { user, registrations } = useAuth();
   const [navSearch, setNavSearch] = useState('');
+  const [supportCount, setSupportCount] = useState<number>(0);
 
   // Map route section to active view
   const view = section[0] === 'tenant-admin' || section[0] === 'platform-admin'
@@ -59,6 +61,18 @@ export default function AdminWorkbench({
 
   const pendingCount = registrations.filter((r) => r.status === 'pending_review').length;
   const inScopingCount = registrations.filter((r) => r.status === 'in_scoping').length;
+
+  React.useEffect(() => {
+    fetch('http://localhost:8000/api/v1/admin/support/tickets')
+      .then((res) => res.json())
+      .then((data) => {
+        if (Array.isArray(data)) {
+          const openCount = data.filter((t) => t.status === 'open' || t.status === 'in_progress').length;
+          setSupportCount(openCount);
+        }
+      })
+      .catch(() => {});
+  }, []);
 
   const handleSignOut = () => {
     try {
@@ -80,6 +94,7 @@ export default function AdminWorkbench({
         { id: 'scoping', title: 'Project Scoping Queue', bn: 'প্রজেক্ট স্কোপিং কিউ', icon: FolderKanban, badge: inScopingCount > 0 ? String(inScopingCount) : undefined },
         { id: 'deployments', title: 'VPS Fleet & Deployments', bn: 'সার্ভার ও ডিপ্লয়মেন্ট', icon: Server },
         { id: 'ledger', title: 'Billing & Credit Ledger', bn: 'বিলিং ও ক্রেডিট লেজার', icon: Coins },
+        { id: 'support', title: 'Support & Tickets', bn: 'সাপোর্ট ও টিকিট', icon: LifeBuoy, badge: supportCount > 0 ? String(supportCount) : undefined },
       ],
     },
     {
@@ -247,6 +262,8 @@ export default function AdminWorkbench({
                   ? 'deployments'
                   : view === 'ledger'
                   ? 'ledger'
+                  : view === 'support'
+                  ? 'support'
                   : 'queue'
               }
             />

@@ -32,6 +32,7 @@ import {
   Phone,
   Globe,
   ShieldCheck,
+  LifeBuoy,
 } from "lucide-react";
 import { useAuth } from "@/context/auth-context";
 import { Button } from "@/components/ui/button";
@@ -48,6 +49,7 @@ import {
 } from "@/components/ui/dialog";
 import { CreditWalletModal } from "@/components/billing/CreditWalletModal";
 import { ManagedDeploymentModal } from "@/components/projects/ManagedDeploymentModal";
+import { CustomerSupportModal } from "@/components/support/CustomerSupportModal";
 import { showToast } from "@/lib/toast";
 
 const STORAGE_KEY = "dudos_onboarding_draft";
@@ -102,12 +104,14 @@ export function CustomerUserPanel({
   const [invoices, setInvoices] = useState<any[]>([]);
   const [allProjects, setAllProjects] = useState<any[]>([]);
   const [deploymentTickets, setDeploymentTickets] = useState<any[]>([]);
+  const [supportTickets, setSupportTickets] = useState<any[]>([]);
 
   // Modals state
   const [showQaModal, setShowQaModal] = useState(false);
   const [showSrsModal, setShowSrsModal] = useState(false);
   const [showCreditModal, setShowCreditModal] = useState(false);
   const [showDeploymentModal, setShowDeploymentModal] = useState(false);
+  const [showSupportModal, setShowSupportModal] = useState(false);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [isProcessingPayment, setIsProcessingPayment] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState<"bkash" | "card" | "credits" | "bank">("bkash");
@@ -190,6 +194,29 @@ export function CustomerUserPanel({
             }
           })
           .catch((err) => console.error("FastAPI projects load error:", err));
+
+        // 6. Load support tickets from FastAPI backend
+        fetch("http://localhost:8000/api/v1/support/tickets/my", {
+          headers: { Authorization: `Bearer ${token}` },
+        })
+          .then((res) => res.json())
+          .then((data) => {
+            if (Array.isArray(data)) {
+              setSupportTickets(data);
+              localStorage.setItem("dudos_support_tickets", JSON.stringify(data));
+            }
+          })
+          .catch(() => {
+            try {
+              const stored = localStorage.getItem("dudos_support_tickets");
+              if (stored) setSupportTickets(JSON.parse(stored));
+            } catch {}
+          });
+      } else {
+        try {
+          const stored = localStorage.getItem("dudos_support_tickets");
+          if (stored) setSupportTickets(JSON.parse(stored));
+        } catch {}
       }
     } catch {}
   };
@@ -651,6 +678,21 @@ ${draft.projectScope}
               <span>{lang === "bn" ? "নতুন খসড়া" : "New Onboarding Request"}</span>
             </Button>
           </Link>
+
+          {/* Support Ticket Quick Button */}
+          <button
+            onClick={() => setShowSupportModal(true)}
+            className="bg-white hover:bg-[#f4f7f8] border border-[#dce5e9] text-[#162c38] rounded-lg px-3 py-2 flex items-center gap-1.5 text-xs font-semibold cursor-pointer shadow-xs transition-colors"
+            title="Raise Support Ticket"
+          >
+            <LifeBuoy className="h-3.5 w-3.5 text-[#087f79]" />
+            <span>{lang === "bn" ? "সহায়তা" : "Support"}</span>
+            {supportTickets.filter((t) => t.status === "open" || t.status === "in_progress").length > 0 && (
+              <span className="text-[10px] bg-[#087f79] text-white px-1.5 py-0.5 rounded-full font-bold ml-0.5">
+                {supportTickets.filter((t) => t.status === "open" || t.status === "in_progress").length}
+              </span>
+            )}
+          </button>
         </div>
       </div>
 
@@ -1275,6 +1317,104 @@ ${draft.projectScope}
         </div>
       )}
 
+      {/* Support & Assistance Tickets Card */}
+      <div className="bg-white rounded-xl p-5 border border-[#dce5e9] shadow-xs space-y-4">
+        <div className="flex items-center justify-between pb-3 border-b border-[#eef3f6]">
+          <div className="flex items-center gap-2">
+            <div className="p-2 rounded-lg bg-[#edf7f4] text-[#087f79]">
+              <LifeBuoy className="h-4 w-4" />
+            </div>
+            <div>
+              <h3 className="text-sm font-bold text-[#162c38]">
+                {lang === "bn" ? "গ্রাহক সহায়তা ও সাপোর্ট টিকিট" : "Customer Support & Assistance Tickets"}
+              </h3>
+              <p className="text-xs text-[#5b6f7b]">
+                {lang === "bn"
+                  ? "প্রযুক্তিগত সমস্যা, ডেপ্লয়মেন্ট সহায়তা বা বিলিং সংক্রান্ত প্রশ্ন এখানে ট্র্যাক করুন।"
+                  : "Track technical issues, deployment help, or billing questions with our engineering team."}
+              </p>
+            </div>
+          </div>
+          <Button
+            size="sm"
+            onClick={() => setShowSupportModal(true)}
+            className="bg-[#087f79] hover:bg-[#066762] text-white text-xs font-semibold flex items-center gap-1.5 shadow-xs"
+          >
+            <Plus className="h-3.5 w-3.5" />
+            <span>{lang === "bn" ? "নতুন টিকিট" : "New Support Ticket"}</span>
+          </Button>
+        </div>
+
+        {supportTickets.length === 0 ? (
+          <div className="py-6 text-center text-xs text-[#5b6f7b] bg-[#f8fafb] rounded-xl border border-dashed border-[#dce5e9]">
+            <p className="font-medium text-[#162c38]">No active support tickets.</p>
+            <p className="text-[11px] mt-1">Need help with DNS, APIs, or Billing? Submit a ticket anytime and our team will assist you within SLA.</p>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {supportTickets.map((t) => (
+              <div
+                key={t.id}
+                className="p-4 rounded-xl border border-[#dce5e9] bg-[#f8fafb] hover:bg-white transition-colors space-y-2 text-xs"
+              >
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <span className="font-bold text-[#162c38] text-sm">{t.subject}</span>
+                    <span className="text-[10px] font-mono text-[#5b6f7b]">#{t.id.slice(-6).toUpperCase()}</span>
+                    <Badge variant="outline" className="text-[10px] uppercase font-semibold border-[#dce5e9] text-[#5b6f7b]">
+                      {t.category}
+                    </Badge>
+                    <Badge
+                      className={`text-[10px] uppercase font-semibold ${
+                        t.priority === "critical"
+                          ? "bg-red-100 text-red-800 border-red-200"
+                          : t.priority === "high"
+                          ? "bg-amber-100 text-amber-800 border-amber-200"
+                          : "bg-slate-100 text-slate-700 border-slate-200"
+                      }`}
+                    >
+                      {t.priority}
+                    </Badge>
+                  </div>
+                  <Badge
+                    className={`text-xs font-semibold ${
+                      t.status === "resolved" || t.status === "closed"
+                        ? "bg-emerald-100 text-emerald-800 border-emerald-300"
+                        : t.status === "in_progress"
+                        ? "bg-blue-100 text-blue-800 border-blue-300"
+                        : "bg-amber-100 text-amber-800 border-amber-300"
+                    }`}
+                  >
+                    {t.status === "in_progress" ? "In Progress" : t.status === "resolved" ? "Resolved" : "Open"}
+                  </Badge>
+                </div>
+
+                <p className="text-[#5b6f7b] text-xs leading-relaxed">{t.message}</p>
+
+                {t.adminResponse && (
+                  <div className="p-3 bg-[#edf7f4] rounded-lg border border-[#c2e2dc] text-xs space-y-1 mt-2">
+                    <div className="flex items-center justify-between text-[11px] font-bold text-[#087f79]">
+                      <span>Technical Team Response:</span>
+                      {t.resolvedAt && (
+                        <span className="text-[#5b6f7b] font-normal text-[10px]">
+                          Resolved: {new Date(t.resolvedAt).toLocaleString()}
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-[#162c38] text-xs">{t.adminResponse}</p>
+                  </div>
+                )}
+
+                <div className="text-[10px] text-[#5b6f7b] pt-1 border-t border-[#eef3f6] flex items-center justify-between">
+                  <span>Created: {new Date(t.createdAt).toLocaleString()}</span>
+                  {t.projectId && <span className="font-mono">Project: {t.projectId}</span>}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
       {/* 5. Phase 3: Quotation Payment Modal Dialog */}
       <Dialog open={showPaymentModal} onOpenChange={setShowPaymentModal}>
         <DialogContent className="max-w-md">
@@ -1520,6 +1660,16 @@ ${draft.projectScope}
         project={activeDraft}
         open={showDeploymentModal}
         onOpenChange={setShowDeploymentModal}
+        onSubmitted={() => loadWorkspaceData()}
+        lang={lang}
+      />
+
+      {/* 10. Customer Support Modal Integration */}
+      <CustomerSupportModal
+        open={showSupportModal}
+        onOpenChange={setShowSupportModal}
+        projects={allProjects}
+        currentProjectId={activeDraft?.id}
         onSubmitted={() => loadWorkspaceData()}
         lang={lang}
       />
