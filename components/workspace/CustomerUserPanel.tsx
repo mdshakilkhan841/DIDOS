@@ -28,7 +28,6 @@ import {
     Rocket,
     Edit3,
     Server,
-    Zap,
     Phone,
     Globe,
     ShieldCheck,
@@ -114,8 +113,10 @@ export function CustomerUserPanel({
     activeWorkspaceId,
     onSelectWorkspace,
     onCreateWorkspace,
+    onOpenAssessment,
+    refreshKey = 0,
     lang = "en",
-    activeSection = "overview",
+    activeSection = "workflow",
 }: {
     workspace: string;
     workspaceName?: string;
@@ -123,13 +124,17 @@ export function CustomerUserPanel({
     activeWorkspaceId?: string;
     onSelectWorkspace?: (id: string) => void;
     onCreateWorkspace?: () => void;
+    onOpenAssessment?: (mode: "new" | "edit") => void;
+    refreshKey?: number;
     lang?: string;
     activeSection?:
         | "overview"
         | "projects"
         | "deployments"
         | "support"
-        | "billing";
+        | "billing"
+        | "workflow"
+        | "overview-details";
 }) {
     const router = useRouter();
     const { user, creditTransactions, deductCredits, addCredits } = useAuth();
@@ -185,7 +190,7 @@ export function CustomerUserPanel({
     // Load from localStorage on mount & when workspace changes
     useEffect(() => {
         loadWorkspaceData();
-    }, [user, workspace]);
+    }, [user, workspace, refreshKey]);
 
     const loadWorkspaceData = () => {
         try {
@@ -219,7 +224,9 @@ export function CustomerUserPanel({
                             const matching =
                                 list.find(
                                     (p: any) => p.workspace === workspace,
-                                ) || list[0];
+                                ) ||
+                                list.find((p: any) => !p.workspace) ||
+                                (!workspace ? list[0] : null);
                             if (matching) resolvedDraft = matching;
                         }
                     } catch {}
@@ -236,7 +243,9 @@ export function CustomerUserPanel({
                             const matching =
                                 list.find(
                                     (p: any) => p.workspace === workspace,
-                                ) || list[0];
+                                ) ||
+                                list.find((p: any) => !p.workspace) ||
+                                (!workspace ? list[0] : null);
                             if (matching) {
                                 resolvedDraft = {
                                     id: matching.id,
@@ -312,9 +321,11 @@ export function CustomerUserPanel({
                                             workspace === "client_ws" ||
                                             r.workspace === workspace),
                                 ) ||
-                                recList.find(
-                                    (r: any) => r.kind === "assessment",
-                                );
+                                (!workspace
+                                    ? recList.find(
+                                          (r: any) => r.kind === "assessment",
+                                      )
+                                    : null);
 
                             if (assessmentRec) {
                                 resolvedDraft = convertAssessmentRecordToDraft(
@@ -413,22 +424,53 @@ export function CustomerUserPanel({
                         const draft =
                             data?.activeDraft || (data?.id ? data : null);
                         if (draft) {
-                            setActiveDraft(draft);
+                            let localDraft: ActiveProjectDraft | null = null;
                             try {
-                                localStorage.setItem(
-                                    ACTIVE_DRAFT_KEY,
-                                    JSON.stringify(draft),
-                                );
+                                const stored =
+                                    localStorage.getItem(ACTIVE_DRAFT_KEY);
+                                const parsed = stored
+                                    ? JSON.parse(stored)
+                                    : null;
+                                if (
+                                    parsed &&
+                                    (!parsed.workspace ||
+                                        parsed.workspace === workspace)
+                                ) {
+                                    localDraft = parsed;
+                                }
                             } catch {}
-                            if (draft.qaAnswers) {
+
+                            const dashboardDraft = localDraft || draft;
+                            if (!localDraft) {
+                                try {
+                                    localStorage.setItem(
+                                        ACTIVE_DRAFT_KEY,
+                                        JSON.stringify(dashboardDraft),
+                                    );
+                                } catch {}
+                            }
+                            setActiveDraft((current) =>
+                                current &&
+                                (!current.workspace ||
+                                    current.workspace === workspace) &&
+                                current.id !== draft.id
+                                    ? current
+                                    : dashboardDraft,
+                            );
+                            if (dashboardDraft.qaAnswers) {
                                 setEditableQa({
                                     multiTenant:
-                                        draft.qaAnswers.multiTenant || "",
+                                        dashboardDraft.qaAnswers.multiTenant ||
+                                        "",
                                     paymentGateway:
-                                        draft.qaAnswers.paymentGateway || "",
-                                    userScale: draft.qaAnswers.userScale || "",
+                                        dashboardDraft.qaAnswers
+                                            .paymentGateway || "",
+                                    userScale:
+                                        dashboardDraft.qaAnswers.userScale ||
+                                        "",
                                     databaseChoice:
-                                        draft.qaAnswers.databaseChoice || "",
+                                        dashboardDraft.qaAnswers
+                                            .databaseChoice || "",
                                 });
                             }
                         }
@@ -442,19 +484,25 @@ export function CustomerUserPanel({
                     .then((res) => (res.ok ? res.json() : []))
                     .then((backendProjects) => {
                         if (Array.isArray(backendProjects)) {
-                            // The backend database is the single authoritative source of truth for projects
-                            setAllProjects(backendProjects);
+                            const workspaceProjects = backendProjects.filter(
+                                (project) =>
+                                    project.specs?.workspace === workspace ||
+                                    project.workspace === workspace ||
+                                    (!project.specs?.workspace &&
+                                        !project.workspace),
+                            );
+                            setAllProjects(workspaceProjects);
                             try {
                                 localStorage.setItem(
                                     CUSTOM_PROJECTS_KEY,
-                                    JSON.stringify(backendProjects),
+                                    JSON.stringify(workspaceProjects),
                                 );
                             } catch {}
 
                             // Auto-hydrate or unify activeDraft with backend authoritative ID
                             setActiveDraft((curr) => {
-                                if (!curr && backendProjects.length > 0) {
-                                    const latest = backendProjects[0];
+                                if (!curr && workspaceProjects.length > 0) {
+                                    const latest = workspaceProjects[0];
                                     const hydrated: ActiveProjectDraft = {
                                         id: latest.id,
                                         workspace:
@@ -509,8 +557,8 @@ export function CustomerUserPanel({
                                     } catch {}
                                     return hydrated;
                                 }
-                                if (curr && backendProjects.length > 0) {
-                                    const match = backendProjects.find(
+                                if (curr && workspaceProjects.length > 0) {
+                                    const match = workspaceProjects.find(
                                         (bp) =>
                                             bp.id === curr.id ||
                                             (bp.name &&
@@ -1070,153 +1118,6 @@ export function CustomerUserPanel({
         });
     };
 
-    // Phase 3: Standard Credit Package Build Activation
-    const handleActivateViaCredits = () => {
-        if (!activeDraft) return;
-        const currentCredits = user?.credits ?? 0;
-        if (currentCredits < 1000) {
-            showToast.error("Insufficient Credits", {
-                description:
-                    "You need 1,000 credits to activate autonomous build staging. Please top up your wallet.",
-            });
-            setShowCreditModal(true);
-            return;
-        }
-
-        const deducted = deductCredits(
-            1000,
-            `Autonomous Build Staging for "${activeDraft.title}"`,
-        );
-        if (!deducted) return;
-
-        const approvedDraft: ActiveProjectDraft = {
-            ...activeDraft,
-            status: "approved",
-            updatedAt: new Date().toISOString(),
-        };
-        setActiveDraft(approvedDraft);
-
-        try {
-            localStorage.setItem(
-                ACTIVE_DRAFT_KEY,
-                JSON.stringify(approvedDraft),
-            );
-
-            const existingCustom = JSON.parse(
-                localStorage.getItem(CUSTOM_PROJECTS_KEY) || "[]",
-            );
-            const updatedCustom = existingCustom.map((p: any) =>
-                p.id === activeDraft.id ? { ...p, status: "approved" } : p,
-            );
-            localStorage.setItem(
-                CUSTOM_PROJECTS_KEY,
-                JSON.stringify(updatedCustom),
-            );
-        } catch {}
-
-        // Trigger internal DevScope builder bridge
-        fetch("/api/devscope", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-                project_id: activeDraft.id,
-                name: activeDraft.title,
-                requirements: activeDraft.projectScope,
-                srs: generateSrsMarkdown(activeDraft),
-                tech_stack: activeDraft.targetStack,
-                database: activeDraft.qaAnswers?.databaseChoice || "PostgreSQL",
-            }),
-        })
-            .then((res) => res.json())
-            .then((data) => {
-                if (data.success && data.result) {
-                    const withBuildId: ActiveProjectDraft = {
-                        ...approvedDraft,
-                        buildId: data.result.build_id,
-                        devscopeStatus: data.result.customer_status,
-                        previewUrl: `http://localhost:8000/preview/${data.result.build_id}`,
-                    };
-                    setActiveDraft(withBuildId);
-                    try {
-                        localStorage.setItem(
-                            ACTIVE_DRAFT_KEY,
-                            JSON.stringify(withBuildId),
-                        );
-                    } catch {}
-                }
-            })
-            .catch((err) =>
-                console.error("DevScope build trigger error:", err),
-            );
-
-        showToast.success("Build Phase Activated via Credits!", {
-            description:
-                "1,000 credits deducted. Project approved and queued in DevScope AI Builder.",
-        });
-    };
-
-    // Phase 3: Simulate Admin Quotation Dispatch (for testing the 'Pricing if not exist' workflow)
-    const handleSimulateAdminQuotation = () => {
-        if (!activeDraft) return;
-
-        const simulatedInvoice = {
-            id: "inv_" + Date.now().toString(36),
-            projectId: activeDraft.id,
-            projectTitle: activeDraft.title,
-            clientEmail: activeDraft.email || user?.email || "",
-            framework: activeDraft.targetStack,
-            manHours: {
-                frontend: 40,
-                backend: 56,
-                qa: 20,
-                devops: 14,
-            },
-            totalHours: 130,
-            hourlyRate: 1200,
-            laborCost: 156000,
-            infrastructureCost: 14000,
-            profitMarginPercent: 20,
-            totalQuotationBDT: 204000,
-            status: "dispatched",
-            dispatchedAt: new Date().toISOString(),
-        };
-
-        try {
-            const existing = JSON.parse(
-                localStorage.getItem(INVOICES_KEY) || "[]",
-            );
-            const updated = [
-                simulatedInvoice,
-                ...existing.filter((i: any) => i.id !== simulatedInvoice.id),
-            ];
-            localStorage.setItem(INVOICES_KEY, JSON.stringify(updated));
-            setInvoices(updated);
-
-            const quotedDraft: ActiveProjectDraft = {
-                ...activeDraft,
-                status: "quoted",
-                updatedAt: new Date().toISOString(),
-            };
-            setActiveDraft(quotedDraft);
-            localStorage.setItem(ACTIVE_DRAFT_KEY, JSON.stringify(quotedDraft));
-
-            const customExisting = JSON.parse(
-                localStorage.getItem(CUSTOM_PROJECTS_KEY) || "[]",
-            );
-            const customUpdated = customExisting.map((p: any) =>
-                p.id === activeDraft.id ? { ...p, status: "quoted" } : p,
-            );
-            localStorage.setItem(
-                CUSTOM_PROJECTS_KEY,
-                JSON.stringify(customUpdated),
-            );
-
-            showToast.success("Formal Technical Quotation Dispatched!", {
-                description: `Tech Team dispatched Invoice ${simulatedInvoice.id} for ৳204,000 (130 man-hours).`,
-            });
-        } catch {}
-    };
-
     // Phase 3: Confirm Payment for Formal Quotation
     const handleConfirmQuotationPayment = () => {
         if (!relevantInvoice) return;
@@ -1310,12 +1211,103 @@ ${draft.projectScope}
 *DUDOS Platform & ERP · Daffodil Web & E-Commerce Limited*`;
     };
 
-    const relevantInvoice = invoices.find(
-        (inv) =>
-            inv.projectId === activeDraft?.id ||
-            inv.clientEmail === activeDraft?.email ||
-            inv.clientEmail === user?.email,
+    const relevantInvoice =
+        invoices.find((inv) => inv.projectId === activeDraft?.id) ||
+        invoices.find(
+            (inv) =>
+                !inv.projectId &&
+                Boolean(activeDraft?.email) &&
+                inv.clientEmail === activeDraft?.email,
+        );
+
+    const submittedStatuses = [
+        "submitted",
+        "in_estimation",
+        "quoted",
+        "approved",
+        "in_development",
+        "deploying",
+        "completed",
+        "live",
+    ];
+    const hasSubmittedAssessment = Boolean(
+        activeDraft && submittedStatuses.includes(activeDraft.status),
     );
+    const hasPaidQuotation = Boolean(
+        relevantInvoice?.status === "paid" ||
+        [
+            "approved",
+            "in_development",
+            "deploying",
+            "completed",
+            "live",
+        ].includes(activeDraft?.status || ""),
+    );
+    const buildHasStarted = [
+        "in_development",
+        "deploying",
+        "completed",
+        "live",
+    ].includes(activeDraft?.status || "");
+
+    const journeySteps = [
+        {
+            title: lang === "bn" ? "অ্যাসেসমেন্ট জমা" : "Assessment submitted",
+            detail: hasSubmittedAssessment
+                ? lang === "bn"
+                    ? "সম্পন্ন"
+                    : "Complete"
+                : lang === "bn"
+                  ? "প্রয়োজনীয় তথ্য দিন"
+                  : "Add your project details",
+            complete: hasSubmittedAssessment,
+            active: !hasSubmittedAssessment,
+        },
+        {
+            title: lang === "bn" ? "রিভিউ ও কোটেশন" : "Review & quotation",
+            detail: relevantInvoice
+                ? lang === "bn"
+                    ? "কোটেশন প্রস্তুত"
+                    : "Quotation ready"
+                : lang === "bn"
+                  ? "টিমের রিভিউ অপেক্ষমাণ"
+                  : "Waiting for team review",
+            complete: Boolean(relevantInvoice),
+            active: hasSubmittedAssessment && !relevantInvoice,
+        },
+        {
+            title: lang === "bn" ? "বিলিং" : "Billing",
+            detail: hasPaidQuotation
+                ? lang === "bn"
+                    ? "পেমেন্ট সম্পন্ন"
+                    : "Payment complete"
+                : relevantInvoice
+                  ? lang === "bn"
+                      ? "পেমেন্ট বাকি"
+                      : "Payment due"
+                  : lang === "bn"
+                    ? "কোটেশনের পর"
+                    : "After quotation",
+            complete: hasPaidQuotation,
+            active: Boolean(relevantInvoice && !hasPaidQuotation),
+        },
+        {
+            title: lang === "bn" ? "বিল্ডার হ্যান্ডঅফ" : "Builder handoff",
+            detail: buildHasStarted
+                ? lang === "bn"
+                    ? "বিল্ড চলছে"
+                    : "Build in progress"
+                : hasPaidQuotation
+                  ? lang === "bn"
+                      ? "বিল্ড এপিআই সংযোগের অপেক্ষায়"
+                      : "Builder connection is next"
+                  : lang === "bn"
+                    ? "পেমেন্টের পর"
+                    : "After payment",
+            complete: buildHasStarted,
+            active: hasPaidQuotation && !buildHasStarted,
+        },
+    ];
 
     // Natural project list from authoritative store without manual filtering hacks
     const displayedProjects = allProjects.slice();
@@ -1329,9 +1321,188 @@ ${draft.projectScope}
 
     return (
         <div className="space-y-6">
-            {(!activeSection ||
-                activeSection === "overview" ||
-                activeSection === "billing") && (
+            {(activeSection === "workflow" || activeSection === "billing") && (
+                <section
+                    className="space-y-5"
+                    aria-labelledby="workspace-overview-title"
+                >
+                    <div className="section-heading">
+                        <div>
+                            <p className="eyebrow">
+                                <span />
+                                {lang === "bn"
+                                    ? "আপনার ওয়ার্কস্পেস"
+                                    : "YOUR WORKSPACE"}
+                            </p>
+                            <h1 id="workspace-overview-title">
+                                {workspaceName ||
+                                    (lang === "bn"
+                                        ? "ওয়ার্কস্পেস ওভারভিউ"
+                                        : "Workspace overview")}
+                            </h1>
+                            <p>
+                                {lang === "bn"
+                                    ? "অ্যাসেসমেন্ট, কোটেশন, বিলিং—তারপর বিল্ডার। আপনার পরবর্তী ধাপ এখানে দেখুন।"
+                                    : "Assessment, quotation, billing, then builder handoff. Your next step is shown here."}
+                            </p>
+                        </div>
+                        <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() =>
+                                onOpenAssessment?.(activeDraft ? "edit" : "new")
+                            }
+                        >
+                            {activeDraft
+                                ? lang === "bn"
+                                    ? "অ্যাসেসমেন্ট সম্পাদনা"
+                                    : "Edit assessment"
+                                : lang === "bn"
+                                  ? "নতুন অ্যাসেসমেন্ট"
+                                  : "New assessment"}
+                        </Button>
+                    </div>
+
+                    {activeDraft ? (
+                        <div className="space-y-5 rounded-xl border border-dudos-border bg-white p-5 sm:p-6">
+                            <div className="flex flex-wrap items-start justify-between gap-3 border-b border-dudos-border pb-4">
+                                <div>
+                                    <p className="text-xs font-medium text-dudos-text-secondary">
+                                        {lang === "bn"
+                                            ? "বর্তমান প্রজেক্ট"
+                                            : "CURRENT PROJECT"}
+                                    </p>
+                                    <h2 className="mt-1 text-lg font-bold text-dudos-text">
+                                        {activeDraft.title}
+                                    </h2>
+                                    {activeDraft.projectScope && (
+                                        <p className="mt-2 line-clamp-2 max-w-3xl text-sm text-dudos-text-secondary">
+                                            {activeDraft.projectScope}
+                                        </p>
+                                    )}
+                                </div>
+                                <Badge variant="outline" className="capitalize">
+                                    {activeDraft.status.replaceAll("_", " ")}
+                                </Badge>
+                            </div>
+
+                            <ol className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                                {journeySteps.map((item, index) => (
+                                    <li
+                                        key={item.title}
+                                        className={`rounded-lg border p-4 ${
+                                            item.complete
+                                                ? "border-emerald-200 bg-emerald-50"
+                                                : item.active
+                                                  ? "border-dudos-primary/30 bg-[#edf7f4]"
+                                                  : "border-slate-200 bg-slate-50"
+                                        }`}
+                                    >
+                                        <div className="flex items-center gap-2">
+                                            <span
+                                                className={`flex h-6 w-6 items-center justify-center rounded-full text-xs font-bold ${
+                                                    item.complete
+                                                        ? "bg-emerald-600 text-white"
+                                                        : item.active
+                                                          ? "bg-dudos-primary text-white"
+                                                          : "bg-slate-200 text-slate-600"
+                                                }`}
+                                            >
+                                                {item.complete
+                                                    ? "✓"
+                                                    : index + 1}
+                                            </span>
+                                            <strong className="text-sm text-dudos-text">
+                                                {item.title}
+                                            </strong>
+                                        </div>
+                                        <p className="mt-2 pl-8 text-xs text-dudos-text-secondary">
+                                            {item.detail}
+                                        </p>
+                                    </li>
+                                ))}
+                            </ol>
+
+                            <div className="flex flex-wrap items-center justify-between gap-3 border-t border-dudos-border pt-4">
+                                <p className="text-sm text-dudos-text-secondary">
+                                    {!hasSubmittedAssessment
+                                        ? lang === "bn"
+                                            ? "অ্যাসেসমেন্ট সম্পন্ন করে প্রজেক্ট জমা দিন।"
+                                            : "Complete your assessment to submit the project."
+                                        : !relevantInvoice
+                                          ? lang === "bn"
+                                              ? "অ্যাসেসমেন্ট জমা হয়েছে। টিমের কোটেশন এখানে দেখাবে।"
+                                              : "Assessment received. Your team’s quotation will appear here when ready."
+                                          : hasPaidQuotation
+                                            ? lang === "bn"
+                                                ? "পেমেন্ট নথিভুক্ত। বিল্ডার সংযোগ পরবর্তী ধাপ; বিল্ড এপিআই এখনো সংযুক্ত নয়।"
+                                                : "Payment recorded. Builder handoff is next; the build API is not connected yet."
+                                            : lang === "bn"
+                                              ? "কোটেশন প্রস্তুত। পেমেন্ট সম্পন্ন করে পরবর্তী ধাপে যান।"
+                                              : "Your quotation is ready. Complete payment to continue."}
+                                </p>
+                                {!hasSubmittedAssessment ? (
+                                    <Button
+                                        size="sm"
+                                        onClick={() =>
+                                            onOpenAssessment?.(
+                                                activeDraft ? "edit" : "new",
+                                            )
+                                        }
+                                    >
+                                        {activeDraft
+                                            ? lang === "bn"
+                                                ? "অ্যাসেসমেন্ট চালিয়ে যান"
+                                                : "Continue assessment"
+                                            : lang === "bn"
+                                              ? "অ্যাসেসমেন্ট শুরু করুন"
+                                              : "Start assessment"}
+                                    </Button>
+                                ) : relevantInvoice && !hasPaidQuotation ? (
+                                    <Button
+                                        size="sm"
+                                        onClick={() =>
+                                            setShowPaymentModal(true)
+                                        }
+                                    >
+                                        {lang === "bn"
+                                            ? "কোটেশন দেখুন ও পেমেন্ট করুন"
+                                            : "Review & pay quotation"}
+                                    </Button>
+                                ) : hasPaidQuotation && !buildHasStarted ? (
+                                    <Button size="sm" disabled>
+                                        {lang === "bn"
+                                            ? "বিল্ডারে জমা দিন (শীঘ্রই)"
+                                            : "Submit to builder (coming soon)"}
+                                    </Button>
+                                ) : null}
+                            </div>
+                        </div>
+                    ) : (
+                        <div className="rounded-xl border border-dashed border-dudos-border bg-white p-8 text-center">
+                            <h2 className="text-lg font-semibold text-dudos-text">
+                                {lang === "bn"
+                                    ? "এখনও কোনো অ্যাসেসমেন্ট জমা হয়নি"
+                                    : "No assessment submitted yet"}
+                            </h2>
+                            <p className="mx-auto mt-2 max-w-xl text-sm text-dudos-text-secondary">
+                                {lang === "bn"
+                                    ? "একটি প্রজেক্ট অ্যাসেসমেন্ট জমা দিন। রিভিউ, কোটেশন, বিলিং ও বিল্ডার হ্যান্ডঅফ একই ওভারভিউতে দেখবেন।"
+                                    : "Submit a project assessment. Review, quotation, billing, and builder handoff will then appear here in one simple overview."}
+                            </p>
+                            <Button
+                                className="mt-4"
+                                onClick={() => onOpenAssessment?.("new")}
+                            >
+                                {lang === "bn"
+                                    ? "অ্যাসেসমেন্ট শুরু করুন"
+                                    : "Start assessment"}
+                            </Button>
+                        </div>
+                    )}
+                </section>
+            )}
+            {activeSection === "overview-details" && (
                 <>
                     {/* 1. Client Identity & Workspace Header - Authentic DUDOS Template */}
                     <div className="section-heading">
@@ -1934,79 +2105,21 @@ ${draft.projectScope}
                                 </Button>
                             </div>
 
-                            {/* Phase 3: Commercial Gate (Pricing Exists vs Does Not Exist) */}
+                            {/* Wait for the team quotation before requesting payment. */}
                             {activeDraft.status === "submitted" &&
                                 !relevantInvoice && (
                                     <div className="p-5 rounded-xl border border-amber-300 bg-amber-50/60 space-y-3">
-                                        <div className="flex items-start justify-between gap-4">
-                                            <div>
-                                                <h4 className="text-sm font-bold text-amber-950 flex items-center gap-2">
-                                                    <Clock className="h-4 w-4 text-amber-700" />
-                                                    <span>
-                                                        Commercial Phase:
-                                                        Pricing & Technical
-                                                        Estimation Gate
-                                                    </span>
-                                                </h4>
-                                                <p className="text-xs text-amber-800 mt-1">
-                                                    Your specifications are
-                                                    locked. Choose whether to
-                                                    activate standard build
-                                                    staging via
-                                                    <strong>
-                                                        {" "}
-                                                        1,000 Credits
-                                                    </strong>
-                                                    , or await formal custom
-                                                    technical estimation from
-                                                    the Tech Team.
-                                                </p>
-                                            </div>
-                                        </div>
-
-                                        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 pt-2">
-                                            <Button
-                                                size="sm"
-                                                onClick={
-                                                    handleActivateViaCredits
-                                                }
-                                                className="bg-dudos-primary hover:bg-dudos-primary-hover text-white text-xs font-semibold flex items-center gap-1.5 shadow-xs"
-                                            >
-                                                <Coins className="h-3.5 w-3.5" />
-                                                <span>
-                                                    Activate Build via 1,000
-                                                    Credits
-                                                </span>
-                                            </Button>
-
-                                            <Button
-                                                size="sm"
-                                                variant="outline"
-                                                onClick={
-                                                    handleSimulateAdminQuotation
-                                                }
-                                                className="text-xs bg-white border-amber-300 text-amber-900 hover:bg-amber-100/80 flex items-center gap-1.5"
-                                            >
-                                                <Zap className="h-3.5 w-3.5 text-amber-600" />
-                                                <span>
-                                                    Request Technical Quotation
-                                                </span>
-                                            </Button>
-
-                                            <Button
-                                                size="sm"
-                                                variant="ghost"
-                                                onClick={() =>
-                                                    setShowCreditModal(true)
-                                                }
-                                                className="text-xs text-amber-900"
-                                            >
-                                                <span>
-                                                    Purchase Credits / View
-                                                    Packages →
-                                                </span>
-                                            </Button>
-                                        </div>
+                                        <h4 className="text-sm font-bold text-amber-950 flex items-center gap-2">
+                                            <Clock className="h-4 w-4 text-amber-700" />
+                                            {lang === "bn"
+                                                ? "অ্যাসেসমেন্ট জমা হয়েছে"
+                                                : "Assessment received"}
+                                        </h4>
+                                        <p className="text-xs text-amber-800">
+                                            {lang === "bn"
+                                                ? "টিম আপনার প্রজেক্ট রিভিউ করে কোটেশন পাঠাবে। কোটেশন এলে ওভারভিউ থেকে পেমেন্ট করতে পারবেন।"
+                                                : "Your team will review the project and send a quotation. Once it is ready, you can pay from the workspace overview."}
+                                        </p>
                                     </div>
                                 )}
 
@@ -2019,14 +2132,14 @@ ${draft.projectScope}
                                         </span>
                                         <div>
                                             <h4 className="text-sm font-bold text-emerald-950">
-                                                Project Approved · DevScope
-                                                Builder Staged
+                                                Payment received · Builder
+                                                handoff next
                                             </h4>
                                             <p className="text-xs text-emerald-800 mt-0.5">
-                                                Commercial milestone paid and
-                                                verified. Your project
-                                                architecture is approved and
-                                                queued in DevScope AI Builder.
+                                                Payment is recorded. The builder
+                                                API is not connected yet; build
+                                                submission will be available
+                                                when integration is ready.
                                             </p>
                                             {activeDraft.buildId && (
                                                 <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-emerald-900 font-mono">
@@ -2057,19 +2170,6 @@ ${draft.projectScope}
                                             )}
                                         </div>
                                     </div>
-
-                                    <Button
-                                        size="sm"
-                                        onClick={() =>
-                                            setShowDeploymentModal(true)
-                                        }
-                                        className="bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-semibold flex items-center gap-1.5 shadow-xs"
-                                    >
-                                        <Server className="h-3.5 w-3.5" />
-                                        <span>
-                                            Launch Managed Deployment Ticket
-                                        </span>
-                                    </Button>
                                 </div>
                             )}
 
@@ -2300,25 +2400,18 @@ ${draft.projectScope}
                                 </p>
                             </div>
                             <div className="flex items-center justify-center gap-3 flex-wrap">
-                                <Link
-                                    href={
-                                        lang
-                                            ? `/${lang}/transform`
-                                            : "/transform"
-                                    }
+                                <Button
+                                    size="sm"
+                                    onClick={() => onOpenAssessment?.("new")}
+                                    className="bg-dudos-primary text-xs font-semibold text-white hover:bg-dudos-primary-hover"
                                 >
-                                    <Button
-                                        size="sm"
-                                        className="bg-dudos-primary hover:bg-dudos-primary-hover text-white text-xs font-semibold"
-                                    >
-                                        <Plus className="h-3.5 w-3.5 mr-1" />
-                                        <span>
-                                            {lang === "bn"
-                                                ? "অ্যাসেসমেন্ট শুরু করুন (/transform)"
-                                                : "Start Assessment Wizard"}
-                                        </span>
-                                    </Button>
-                                </Link>
+                                    <Plus className="mr-1 h-3.5 w-3.5" />
+                                    <span>
+                                        {lang === "bn"
+                                            ? "অ্যাসেসমেন্ট শুরু করুন"
+                                            : "Start Assessment Wizard"}
+                                    </span>
+                                </Button>
                                 <Link
                                     href={
                                         lang

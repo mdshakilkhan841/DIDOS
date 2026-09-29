@@ -57,6 +57,7 @@ import {
 } from "@/components/ui/sidebar";
 import { useAuth } from "@/context/auth-context";
 import { CreditBadgeButton } from "@/components/billing/CreditWalletModal";
+import { AssessmentWizardInline } from "@/components/dudos-records";
 import { CustomerUserPanel } from "./CustomerUserPanel";
 import { buildSubdomainUrl } from "@/lib/subdomains";
 import {
@@ -73,6 +74,7 @@ type ClientNavigationItem = {
     icon: LucideIcon;
     badge?: string;
     href?: string;
+    onClick?: () => void;
     comingSoon?: boolean;
 };
 
@@ -134,6 +136,10 @@ export default function ClientWorkbench({
     const [isCreatingWorkspace, setIsCreatingWorkspace] = useState(false);
     const [newWorkspaceName, setNewWorkspaceName] = useState("");
     const [workspaceBusy, setWorkspaceBusy] = useState(false);
+    const [assessmentMode, setAssessmentMode] = useState<"new" | "edit" | null>(
+        null,
+    );
+    const [assessmentRefreshKey, setAssessmentRefreshKey] = useState(0);
 
     const view = section[0] || "overview";
 
@@ -385,10 +391,10 @@ export default function ClientWorkbench({
             items: [
                 {
                     id: "new-project",
-                    title: "Submit a Custom Project",
-                    bn: "কাস্টম প্রজেক্ট জমা দিন",
+                    title: "New Project Assessment",
+                    bn: "নতুন প্রজেক্ট অ্যাসেসমেন্ট",
                     icon: Plus,
-                    href: `/${lang}/onboarding`,
+                    onClick: () => setAssessmentMode("new"),
                 },
                 {
                     id: "builder",
@@ -524,54 +530,52 @@ export default function ClientWorkbench({
                                     {list.map((item) => {
                                         const Icon = item.icon;
                                         const isActive = view === item.id;
+                                        const menuItemContents = (
+                                            <>
+                                                <Icon size={16} />
+                                                <span>
+                                                    {lang === "bn"
+                                                        ? item.bn
+                                                        : item.title}
+                                                </span>
+                                                {item.badge && (
+                                                    <span className="ml-auto rounded bg-[#eaf5f1] px-1.5 py-0.5 text-[10px] font-bold text-[#087f79]">
+                                                        {item.badge}
+                                                    </span>
+                                                )}
+                                                {item.comingSoon && (
+                                                    <span className="ml-auto rounded border border-slate-200 bg-slate-50 px-1.5 py-0.5 text-[9px] font-medium text-slate-500">
+                                                        {lang === "bn"
+                                                            ? "শীঘ্রই"
+                                                            : "Soon"}
+                                                    </span>
+                                                )}
+                                            </>
+                                        );
                                         return (
                                             <SidebarMenuItem key={item.id}>
-                                                <SidebarMenuButton
-                                                    asChild
-                                                    isActive={isActive}
-                                                >
-                                                    <Link
-                                                        href={
-                                                            item.href ||
-                                                            `/${lang}/app/${item.id}`
-                                                        }
+                                                {item.onClick ? (
+                                                    <SidebarMenuButton
+                                                        isActive={isActive}
+                                                        onClick={item.onClick}
                                                     >
-                                                        <Icon size={16} />
-                                                        <span>
-                                                            {lang === "bn"
-                                                                ? item.bn
-                                                                : item.title}
-                                                        </span>
-                                                        {item.badge && (
-                                                            <span
-                                                                style={{
-                                                                    marginLeft:
-                                                                        "auto",
-                                                                    fontSize:
-                                                                        "10px",
-                                                                    background:
-                                                                        "#eaf5f1",
-                                                                    color: "#087f79",
-                                                                    padding:
-                                                                        "2px 6px",
-                                                                    borderRadius:
-                                                                        "4px",
-                                                                    fontWeight:
-                                                                        "bold",
-                                                                }}
-                                                            >
-                                                                {item.badge}
-                                                            </span>
-                                                        )}
-                                                        {item.comingSoon && (
-                                                            <span className="ml-auto rounded border border-slate-200 bg-slate-50 px-1.5 py-0.5 text-[9px] font-medium text-slate-500">
-                                                                {lang === "bn"
-                                                                    ? "শীঘ্রই"
-                                                                    : "Soon"}
-                                                            </span>
-                                                        )}
-                                                    </Link>
-                                                </SidebarMenuButton>
+                                                        {menuItemContents}
+                                                    </SidebarMenuButton>
+                                                ) : (
+                                                    <SidebarMenuButton
+                                                        asChild
+                                                        isActive={isActive}
+                                                    >
+                                                        <Link
+                                                            href={
+                                                                item.href ||
+                                                                `/${lang}/app/${item.id}`
+                                                            }
+                                                        >
+                                                            {menuItemContents}
+                                                        </Link>
+                                                    </SidebarMenuButton>
+                                                )}
                                             </SidebarMenuItem>
                                         );
                                     })}
@@ -746,13 +750,16 @@ export default function ClientWorkbench({
                         ) : (
                             <Badge variant="outline">Live workspace</Badge>
                         )}
-                        <Link
-                            href={`/${lang}/onboarding`}
+                        <button
+                            type="button"
+                            onClick={() => setAssessmentMode("new")}
                             className="text-link"
                         >
-                            {lang === "bn" ? "নতুন প্রজেক্ট" : "New Project"}
+                            {lang === "bn"
+                                ? "নতুন অ্যাসেসমেন্ট"
+                                : "New Assessment"}
                             <ArrowUpRight size={15} />
-                        </Link>
+                        </button>
                     </div>
                 </header>
 
@@ -769,22 +776,67 @@ export default function ClientWorkbench({
                             onCreateWorkspace={() =>
                                 setIsCreatingWorkspace(true)
                             }
+                            onOpenAssessment={setAssessmentMode}
+                            refreshKey={assessmentRefreshKey}
                             lang={lang}
                             activeSection={
                                 view === "billing"
                                     ? "billing"
-                                    : view === "projects"
-                                      ? "projects"
-                                      : view === "deployments"
-                                        ? "deployments"
-                                        : view === "support"
-                                          ? "support"
-                                          : "overview"
+                                    : view === "overview"
+                                      ? "workflow"
+                                      : view === "projects"
+                                        ? "projects"
+                                        : view === "deployments"
+                                          ? "deployments"
+                                          : view === "support"
+                                            ? "support"
+                                            : "overview"
                             }
                         />
                     )}
                 </main>
             </SidebarInset>
+
+            <Dialog
+                open={assessmentMode !== null}
+                onOpenChange={(open) => {
+                    if (!open) setAssessmentMode(null);
+                }}
+            >
+                <DialogContent className="max-h-[92vh] w-[calc(100vw-1rem)] max-w-[calc(100%-2rem)] overflow-y-auto bg-white sm:max-w-6xl">
+                    <DialogHeader>
+                        <DialogTitle className="text-dudos-text">
+                            {assessmentMode === "edit"
+                                ? lang === "bn"
+                                    ? "অ্যাসেসমেন্ট সম্পাদনা করুন"
+                                    : "Edit assessment"
+                                : lang === "bn"
+                                  ? "নতুন প্রজেক্ট অ্যাসেসমেন্ট"
+                                  : "New project assessment"}
+                        </DialogTitle>
+                        <DialogDescription className="text-dudos-text-secondary">
+                            {lang === "bn"
+                                ? "ধাপগুলো সরাসরি নির্বাচন করে উত্তর সম্পাদনা করুন।"
+                                : "Select any step to review or edit your answers."}
+                        </DialogDescription>
+                    </DialogHeader>
+                    {assessmentMode && (
+                        <AssessmentWizardInline
+                            workspace={
+                                activeWorkspaceId ||
+                                workspaces[0]?.id ||
+                                "client_ws"
+                            }
+                            lang={lang}
+                            mode={assessmentMode}
+                            onSubmitted={() => {
+                                setAssessmentMode(null);
+                                setAssessmentRefreshKey((key) => key + 1);
+                            }}
+                        />
+                    )}
+                </DialogContent>
+            </Dialog>
 
             {/* Create Workspace Modal */}
             <Dialog
