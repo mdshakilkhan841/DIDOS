@@ -1,8 +1,21 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { Coins, Plus, Check, ArrowUpRight, History, ShieldCheck, Zap } from "lucide-react";
 import { useAuth } from "@/context/auth-context";
+import { getAuthToken } from "@/lib/dudos/assessment-sync";
+import {
+  API_BASE,
+  authHeaders,
+  fetchPackages,
+  formatBdt,
+  formatUsd,
+  packageDescription,
+  packageName,
+  unitLabel,
+  type DudosPackage,
+} from "@/lib/dudos/packages";
+import { showToast } from "@/lib/toast";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -13,36 +26,51 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 
-const CREDIT_PACKAGES = [
+// Used only when the backend is unreachable; admins manage the live packs
+// under Packages & Pricing.
+const FALLBACK_CREDIT_PACKAGES: DudosPackage[] = [
   {
     id: "pkg_1k",
+    kind: "credit",
     name: "Starter Builder Pack",
     credits: 1000,
-    priceBDT: "৳1,500",
-    priceUSD: "$15",
+    priceBdt: 1500,
+    priceUsd: 15,
     description: "Ideal for 10 website generations or 20 AI SRS drafts.",
-    popular: false,
-    perks: ["10 Website Code Generations", "20 AI SRS Requirement Specs", "Standard Deployment Support"],
+    features: ["10 Website Code Generations", "20 AI SRS Requirement Specs", "Standard Deployment Support"],
+    sortOrder: 0,
+    active: true,
+    createdAt: "",
+    updatedAt: "",
   },
   {
     id: "pkg_5k",
+    kind: "credit",
     name: "Growth Agency Pack",
     credits: 5000,
-    priceBDT: "৳6,000",
-    priceUSD: "$60",
+    priceBdt: 6000,
+    priceUsd: 60,
+    badge: "Most popular",
     description: "For active businesses and multi-project teams (20% bonus).",
-    popular: true,
-    perks: ["60 Website Code Generations", "Unlimited AI SRS Specifications", "Priority Technical Estimation", "Domain Mapping Assistance"],
+    features: ["60 Website Code Generations", "Unlimited AI SRS Specifications", "Priority Technical Estimation", "Domain Mapping Assistance"],
+    sortOrder: 1,
+    active: true,
+    createdAt: "",
+    updatedAt: "",
   },
   {
     id: "pkg_15k",
+    kind: "credit",
     name: "Enterprise ERP Pack",
     credits: 15000,
-    priceBDT: "৳15,000",
-    priceUSD: "$150",
+    priceBdt: 15000,
+    priceUsd: 150,
     description: "High-volume operations, Facebook Ad integration & full custom development.",
-    popular: false,
-    perks: ["Full Source Code Downloads", "Direct Tech Team Architecture Review", "Dedicated Deployment Engineer", "Facebook Ad Engine Integration"],
+    features: ["Full Source Code Downloads", "Direct Tech Team Architecture Review", "Dedicated Deployment Engineer", "Facebook Ad Engine Integration"],
+    sortOrder: 2,
+    active: true,
+    createdAt: "",
+    updatedAt: "",
   },
 ];
 
@@ -55,18 +83,62 @@ export function CreditWalletModal({
   onOpenChange: (open: boolean) => void;
   lang?: string;
 }) {
-  const { credits, addCredits, creditTransactions } = useAuth();
+  const { credits, addCredits, applyServerBalance, creditTransactions } = useAuth();
   const [tab, setTab] = useState<"packages" | "history">("packages");
-  const [selectedPkg, setSelectedPkg] = useState<string>("pkg_5k");
-  const [isProcessing, setIsProcessing] = useState(false);
+  const [packages, setPackages] = useState<DudosPackage[]>(FALLBACK_CREDIT_PACKAGES);
+  const [selectedPkg, setSelectedPkg] = useState<string>("");
+  const [processingId, setProcessingId] = useState<string | null>(null);
 
-  const handlePurchase = (pkg: typeof CREDIT_PACKAGES[0]) => {
-    setIsProcessing(true);
-    setTimeout(() => {
-      addCredits(pkg.credits, `Purchased ${pkg.name} (${pkg.priceBDT})`);
-      setIsProcessing(false);
+  // Live packs from Packages & Pricing; keep the fallback if the API is down.
+  useEffect(() => {
+    if (!open) return;
+    let cancelled = false;
+    void fetchPackages("credit").then((live) => {
+      if (!cancelled && live && live.length > 0) setPackages(live);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [open]);
+
+  const selectedId =
+    selectedPkg ||
+    packages.find((pkg) => pkg.badge)?.id ||
+    packages[0]?.id ||
+    "";
+
+  const handlePurchase = async (pkg: DudosPackage) => {
+    const reason = `Purchased ${pkg.name} (${formatBdt(pkg.priceBdt)})`;
+    setProcessingId(pkg.id);
+    try {
+      if (!getAuthToken()) {
+        // Offline mode: no backend session, top up the local wallet.
+        addCredits(pkg.credits || 0, reason);
+        setTab("history");
+        return;
+      }
+      const res = await fetch(`${API_BASE}/credits/purchase`, {
+        method: "POST",
+        headers: authHeaders(true),
+        body: JSON.stringify({ packageId: pkg.id }),
+      });
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        showToast.error(lang === "bn" ? "ক্রয় সম্পন্ন হয়নি" : "Purchase failed", {
+          description: body?.detail,
+        });
+        return;
+      }
+      applyServerBalance(body.totalCredits, body.added, reason);
+      showToast.success(
+        lang === "bn" ? "ক্রেডিট যোগ হয়েছে" : `${Number(body.added).toLocaleString()} ${unitLabel(pkg.unit, lang)} added`,
+      );
       setTab("history");
-    }, 600);
+    } catch {
+      showToast.error(lang === "bn" ? "সার্ভারে সংযোগ হয়নি" : "Could not reach the server");
+    } finally {
+      setProcessingId(null);
+    }
   };
 
   return (
@@ -132,8 +204,8 @@ export function CreditWalletModal({
         {tab === "packages" ? (
           <div className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-3.5">
-              {CREDIT_PACKAGES.map((pkg) => {
-                const isSelected = selectedPkg === pkg.id;
+              {packages.map((pkg) => {
+                const isSelected = selectedId === pkg.id;
                 return (
                   <div
                     key={pkg.id}
@@ -144,26 +216,29 @@ export function CreditWalletModal({
                         : "border-dudos-border bg-white hover:border-dudos-primary/50"
                     }`}
                   >
-                    {pkg.popular && (
+                    {pkg.badge && (
                       <span className="absolute -top-2.5 right-3 px-2 py-0.5 rounded-full bg-dudos-primary text-white text-[10px] font-bold uppercase tracking-wider">
-                        Popular
+                        {pkg.badge}
                       </span>
                     )}
 
                     <div>
-                      <h4 className="font-bold text-sm text-dudos-text">{pkg.name}</h4>
-                      <p className="text-[11px] text-dudos-text-secondary mt-1">{pkg.description}</p>
+                      <h4 className="font-bold text-sm text-dudos-text">{packageName(pkg, lang)}</h4>
+                      <p className="text-[11px] text-dudos-text-secondary mt-1">{packageDescription(pkg, lang)}</p>
 
                       <div className="mt-3 mb-2">
-                        <span className="text-xl font-black text-dudos-text">{pkg.credits.toLocaleString()}</span>
-                        <span className="text-xs text-dudos-text-secondary"> credits</span>
+                        <span className="text-xl font-black text-dudos-text">{(pkg.credits || 0).toLocaleString()}</span>
+                        <span className="text-xs text-dudos-text-secondary"> {unitLabel(pkg.unit, lang)}</span>
                         <div className="text-xs font-semibold text-dudos-primary mt-0.5">
-                          {pkg.priceBDT} <span className="text-[10px] text-dudos-text-secondary">({pkg.priceUSD})</span>
+                          {formatBdt(pkg.priceBdt)}{" "}
+                          {pkg.priceUsd !== null && pkg.priceUsd !== undefined && (
+                            <span className="text-[10px] text-dudos-text-secondary">({formatUsd(pkg.priceUsd)})</span>
+                          )}
                         </div>
                       </div>
 
                       <ul className="space-y-1.5 mt-3 pt-3 border-t border-dudos-border/50 text-[11px] text-dudos-text-secondary">
-                        {pkg.perks.map((p, idx) => (
+                        {pkg.features.map((p, idx) => (
                           <li key={idx} className="flex items-start gap-1.5">
                             <Check className="h-3.5 w-3.5 text-dudos-primary shrink-0 mt-0.5" />
                             <span>{p}</span>
@@ -174,16 +249,16 @@ export function CreditWalletModal({
 
                     <Button
                       size="sm"
-                      disabled={isProcessing}
+                      disabled={processingId !== null}
                       onClick={(e) => {
                         e.stopPropagation();
-                        handlePurchase(pkg);
+                        void handlePurchase(pkg);
                       }}
                       className="mt-4 w-full text-xs"
                       variant={isSelected ? "default" : "outline"}
                     >
                       <Plus className="h-3.5 w-3.5 mr-1" />
-                      {isProcessing ? "Processing..." : `Get ${pkg.credits.toLocaleString()} Credits`}
+                      {processingId === pkg.id ? "Processing..." : `Get ${(pkg.credits || 0).toLocaleString()} ${unitLabel(pkg.unit, lang)}`}
                     </Button>
                   </div>
                 );
@@ -194,7 +269,9 @@ export function CreditWalletModal({
               <div className="flex items-center gap-2">
                 <ShieldCheck className="h-4 w-4 text-teal-600" />
                 <span>
-                  <strong>Usage Rates:</strong> Website Generation: 100 credits · AI SRS Generator: 50 credits · Managed Deployment Ticket: 200 credits
+                  {lang === "bn"
+                    ? "প্রজেক্টের বিল্ড পেমেন্টের সময় ক্রেডিট কাটা হয়।"
+                    : "Credits are charged when you pay for a project build."}
                 </span>
               </div>
               <Badge variant="outline" className="text-[10px]">Instant Credit Top-up</Badge>

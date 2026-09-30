@@ -110,6 +110,7 @@ export default async function Page({
         "content-studio",
         "servers",
         "ledger",
+        "packages",
         "support",
         "feedback",
         "studio",

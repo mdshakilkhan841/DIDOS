@@ -55,6 +55,15 @@ import { CustomerSupportModal } from "@/components/support/CustomerSupportModal"
 import { showToast } from "@/lib/toast";
 import { api } from "@/lib/dudos/client";
 import {
+    API_BASE,
+    fetchPackages,
+    packageDescription,
+    packageName,
+    unitLabel,
+    DEFAULT_UNIT,
+    type DudosPackage,
+} from "@/lib/dudos/packages";
+import {
     convertAssessmentRecordToDraft,
     getAuthToken,
 } from "@/lib/dudos/assessment-sync";
@@ -69,9 +78,20 @@ const BUILD_PAYMENTS_KEY = "dudos_build_payments";
 // Builder handoffs, kept in their own list so backend/project syncs that still
 // report "submitted" can never roll a handed-off project back.
 const BUILDER_SUBMISSIONS_KEY = "dudos_builder_submissions";
+// Used only when the backend is unreachable; admins manage live build
+// packages under Packages & Pricing.
 const BUILD_PACKAGE_CREDITS = 1000;
-const API_BASE =
-    process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8000/api/v1";
+const FALLBACK_BUILD_PACKAGE: DudosPackage = {
+    id: "",
+    kind: "build",
+    name: "Standard build",
+    features: [],
+    credits: BUILD_PACKAGE_CREDITS,
+    sortOrder: 0,
+    active: true,
+    createdAt: "",
+    updatedAt: "",
+};
 
 // Project row returned by the backend, and the pay / submit responses.
 type BackendProject = {
@@ -129,7 +149,12 @@ export interface ActiveProjectDraft {
     quotationInvoice?: any;
     builderSubmittedAt?: string;
     // Set on projects returned by the backend once paid.
-    payment?: { credits?: number | null; paidAt?: string | null };
+    payment?: {
+        credits?: number | null;
+        paidAt?: string | null;
+        packageName?: string | null;
+        unit?: string | null;
+    };
     savedAt: string;
     updatedAt: string;
 }
@@ -614,6 +639,36 @@ export function CustomerUserPanel({
         useState<WorkspaceProject | null>(null);
     const [confirmSubmitProject, setConfirmSubmitProject] =
         useState<WorkspaceProject | null>(null);
+    const [buildPackages, setBuildPackages] = useState<DudosPackage[]>([
+        FALLBACK_BUILD_PACKAGE,
+    ]);
+    const [selectedBuildId, setSelectedBuildId] = useState("");
+
+    useEffect(() => {
+        let cancelled = false;
+        void fetchPackages("build").then((live) => {
+            if (!cancelled && live && live.length > 0) setBuildPackages(live);
+        });
+        return () => {
+            cancelled = true;
+        };
+    }, []);
+
+    const selectedBuild =
+        buildPackages.find((pkg) => pkg.id === selectedBuildId) ||
+        buildPackages[0];
+    const buildPrice = selectedBuild.credits || 0;
+    const lowestBuildPrice = Math.min(
+        ...buildPackages.map((pkg) => pkg.credits || 0),
+    );
+    const buildPriceLabel =
+        buildPackages.length > 1
+            ? lang === "bn"
+                ? `${lowestBuildPrice.toLocaleString()} ক্রেডিট থেকে`
+                : `from ${lowestBuildPrice.toLocaleString()} credits`
+            : lang === "bn"
+              ? `${lowestBuildPrice.toLocaleString()} ক্রেডিট`
+              : `${lowestBuildPrice.toLocaleString()} credits`;
     const [deploymentTickets, setDeploymentTickets] = useState<any[]>([]);
     const [supportTickets, setSupportTickets] = useState<any[]>([]);
 
@@ -1776,8 +1831,8 @@ ${draft.projectScope}
                           ? "টিমের কোটেশন প্রস্তুত"
                           : "Quotation from our team"
                       : lang === "bn"
-                        ? `বিল্ড প্যাকেজ · ${BUILD_PACKAGE_CREDITS.toLocaleString()} ক্রেডিট`
-                        : `Build package · ${BUILD_PACKAGE_CREDITS.toLocaleString()} credits`,
+                        ? `বিল্ড প্যাকেজ · ${buildPriceLabel}`
+                        : `Build package · ${buildPriceLabel}`,
             complete: currentStage === "ready" || currentStage === "submitted",
             active: currentStage === "payment",
         },
@@ -1887,7 +1942,13 @@ ${draft.projectScope}
                     "Content-Type": "application/json",
                     Authorization: `Bearer ${token}`,
                 },
-                body: action === "pay" ? JSON.stringify({ method: "credits" }) : undefined,
+                body:
+                    action === "pay"
+                        ? JSON.stringify({
+                              method: "credits",
+                              packageId: selectedBuild.id || undefined,
+                          })
+                        : undefined,
             });
             const body = await res.json().catch(() => ({}));
             if (!res.ok) {
@@ -1921,7 +1982,7 @@ ${draft.projectScope}
     const handlePayBuildPackage = async () => {
         if (!payingProject || isProcessingPayment) return;
         const project = payingProject;
-        const reason = `Build package for "${project.draft.title}"`;
+        const reason = `${selectedBuild.name} for "${project.draft.title}"`;
 
         setIsProcessingPayment(true);
         const result = await callProjectAction(project, "pay");
@@ -1934,7 +1995,7 @@ ${draft.projectScope}
                 result.charged ?? 0,
                 reason,
             );
-        } else if (!deductCredits(BUILD_PACKAGE_CREDITS, reason)) {
+        } else if (!deductCredits(buildPrice, reason)) {
             // Offline mode: no backend session, charge the local wallet.
             return;
         }
@@ -1950,7 +2011,9 @@ ${draft.projectScope}
             clientEmail: user?.email || "",
             workspace,
             method: "credits",
-            credits: BUILD_PACKAGE_CREDITS,
+            credits: result?.charged || buildPrice,
+            packageName: selectedBuild.name,
+            unit: selectedBuild.unit || DEFAULT_UNIT,
             status: "paid",
             paidAt: now,
         };
@@ -3676,7 +3739,7 @@ ${draft.projectScope}
                                                     ? "পেমেন্ট"
                                                     : "Payment",
                                                 project.payment ? (
-                                                    `${Number(project.payment.credits || BUILD_PACKAGE_CREDITS).toLocaleString()} ${lang === "bn" ? "ক্রেডিট" : "credits"} · ${formatDate(project.payment.paidAt)}`
+                                                    `${project.payment.packageName ? `${project.payment.packageName} · ` : ""}${Number(project.payment.credits || BUILD_PACKAGE_CREDITS).toLocaleString()} ${unitLabel(project.payment.unit, lang)} · ${formatDate(project.payment.paidAt)}`
                                                 ) : project.invoice?.status ===
                                                   "paid" ? (
                                                     `৳${Number(project.invoice.totalQuotationBDT || 0).toLocaleString()} ${lang === "bn" ? "পরিশোধিত" : "paid"}`
@@ -4478,16 +4541,64 @@ ${draft.projectScope}
                             {payingProject?.draft.title}
                         </DialogDescription>
                     </DialogHeader>
+                    {buildPackages.length > 1 && (
+                        <div
+                            className="space-y-2"
+                            role="radiogroup"
+                            aria-label={lang === "bn" ? "বিল্ড প্যাকেজ" : "Build package"}
+                        >
+                            {buildPackages.map((pkg) => {
+                                const isChosen = pkg.id === selectedBuild.id;
+                                return (
+                                    <button
+                                        key={pkg.id}
+                                        type="button"
+                                        role="radio"
+                                        aria-checked={isChosen}
+                                        onClick={() => setSelectedBuildId(pkg.id)}
+                                        className={`w-full cursor-pointer rounded-xl border p-3 text-left transition-colors ${
+                                            isChosen
+                                                ? "border-dudos-primary bg-[#edf7f4] ring-1 ring-dudos-primary"
+                                                : "border-[#dce5e9] bg-white hover:border-dudos-primary/50"
+                                        }`}
+                                    >
+                                        <span className="flex items-center justify-between gap-2">
+                                            <strong className="text-sm text-dudos-text">
+                                                {packageName(pkg, lang)}
+                                                {pkg.badge && (
+                                                    <span className="ml-2 rounded-full bg-dudos-primary px-2 py-0.5 text-[10px] font-bold text-white">
+                                                        {pkg.badge}
+                                                    </span>
+                                                )}
+                                            </strong>
+                                            <span className="text-sm font-semibold text-dudos-text">
+                                                {(pkg.credits || 0).toLocaleString()}{" "}
+                                                {unitLabel(pkg.unit, lang)}
+                                            </span>
+                                        </span>
+                                        {packageDescription(pkg, lang) && (
+                                            <span className="mt-1 block text-xs text-dudos-text-secondary">
+                                                {packageDescription(pkg, lang)}
+                                            </span>
+                                        )}
+                                        {pkg.features.length > 0 && (
+                                            <span className="mt-1.5 block text-[11px] text-dudos-text-secondary">
+                                                {pkg.features.join(" · ")}
+                                            </span>
+                                        )}
+                                    </button>
+                                );
+                            })}
+                        </div>
+                    )}
                     <div className="space-y-2 rounded-xl border border-[#dce5e9] bg-[#f8fafb] p-4 text-sm">
                         <div className="flex items-center justify-between">
                             <span className="text-dudos-text-secondary">
-                                {lang === "bn"
-                                    ? "স্ট্যান্ডার্ড বিল্ড প্যাকেজ"
-                                    : "Standard build package"}
+                                {packageName(selectedBuild, lang)}
                             </span>
                             <strong className="text-dudos-text">
-                                {BUILD_PACKAGE_CREDITS.toLocaleString()}{" "}
-                                {lang === "bn" ? "ক্রেডিট" : "credits"}
+                                {buildPrice.toLocaleString()}{" "}
+                                {unitLabel(selectedBuild.unit, lang)}
                             </strong>
                         </div>
                         <div className="flex items-center justify-between">
@@ -4498,15 +4609,15 @@ ${draft.projectScope}
                             </span>
                             <strong className="text-dudos-text">
                                 {(user?.credits ?? 0).toLocaleString()}{" "}
-                                {lang === "bn" ? "ক্রেডিট" : "credits"}
+                                {unitLabel(selectedBuild.unit, lang)}
                             </strong>
                         </div>
                     </div>
-                    {(user?.credits ?? 0) < BUILD_PACKAGE_CREDITS && (
+                    {(user?.credits ?? 0) < buildPrice && (
                         <p className="text-xs text-amber-700">
                             {lang === "bn"
                                 ? "পর্যাপ্ত ক্রেডিট নেই। আগে একটি ক্রেডিট প্যাকেজ কিনুন।"
-                                : "Not enough credits. Buy a credit package first."}
+                                : `Not enough ${unitLabel(selectedBuild.unit, lang)}. Top up your wallet first.`}
                         </p>
                     )}
                     <div className="flex justify-end gap-2 pt-2">
@@ -4517,7 +4628,7 @@ ${draft.projectScope}
                         >
                             {lang === "bn" ? "বাতিল" : "Cancel"}
                         </Button>
-                        {(user?.credits ?? 0) < BUILD_PACKAGE_CREDITS ? (
+                        {(user?.credits ?? 0) < buildPrice ? (
                             <Button
                                 size="sm"
                                 onClick={() => {
@@ -4527,7 +4638,7 @@ ${draft.projectScope}
                             >
                                 {lang === "bn"
                                     ? "ক্রেডিট কিনুন"
-                                    : "Buy credits"}
+                                    : `Buy ${unitLabel(selectedBuild.unit, lang)}`}
                             </Button>
                         ) : (
                             <Button
@@ -4537,8 +4648,8 @@ ${draft.projectScope}
                             >
                                 <Check className="mr-1 h-4 w-4" />
                                 {lang === "bn"
-                                    ? `${BUILD_PACKAGE_CREDITS.toLocaleString()} ক্রেডিট দিয়ে পেমেন্ট`
-                                    : `Pay ${BUILD_PACKAGE_CREDITS.toLocaleString()} credits`}
+                                    ? `${buildPrice.toLocaleString()} ক্রেডিট দিয়ে পেমেন্ট`
+                                    : `Pay ${buildPrice.toLocaleString()} credits`}
                             </Button>
                         )}
                     </div>

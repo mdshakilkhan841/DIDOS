@@ -55,7 +55,8 @@ interface AuthContextType {
   credits: number;
   deductCredits: (amount: number, reason: string) => boolean;
   addCredits: (amount: number, reason: string) => void;
-  // Apply a balance the server already charged, logging the debit locally.
+  // Apply a balance the server already changed, logging the change locally.
+  applyServerBalance: (balance: number, change: number, reason: string) => void;
   applyServerCharge: (remainingCredits: number, charged: number, reason: string) => void;
   creditTransactions: CreditTransaction[];
   // Pre-registration persistence
@@ -563,16 +564,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   // Credits management
   const credits = user?.credits ?? 0;
 
-  const applyServerCharge = (remainingCredits: number, charged: number, reason: string) => {
+  const applyServerBalance = (balance: number, change: number, reason: string) => {
     if (!user) return;
-    const updatedUser = { ...user, credits: remainingCredits };
+    const updatedUser = { ...user, credits: balance };
     setUser(updatedUser);
     persistSession(updatedUser, activeRole);
-    if (charged <= 0) return;
+    if (change === 0) return;
     const tx: CreditTransaction = {
       id: "tx_" + Date.now().toString(36),
-      amount: charged,
-      type: "debit",
+      amount: Math.abs(change),
+      type: change > 0 ? "credit" : "debit",
       reason,
       timestamp: new Date().toISOString(),
     };
@@ -582,6 +583,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       localStorage.setItem(TRANSACTIONS_KEY, JSON.stringify(updatedTx));
     } catch {}
   };
+
+  const applyServerCharge = (remainingCredits: number, charged: number, reason: string) =>
+    applyServerBalance(remainingCredits, -Math.max(0, charged), reason);
 
   const deductCredits = (amount: number, reason: string): boolean => {
     if (!user) return false;
@@ -681,6 +685,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         credits,
         deductCredits,
         addCredits,
+        applyServerBalance,
         applyServerCharge,
         creditTransactions,
         savePreRegistrationDraft,

@@ -16,6 +16,7 @@ import {
     FileText,
     CreditCard,
     Megaphone,
+    Package,
     type LucideIcon,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
@@ -39,6 +40,7 @@ import { AdminControlPanel } from "./AdminControlPanel";
 import { AdminUserManagement } from "./AdminUserManagement";
 import { AdminProjectTracking } from "./AdminProjectTracking";
 import { AdminSupportTickets } from "./AdminSupportTickets";
+import { AdminPackages } from "./AdminPackages";
 import { getAuthToken } from "@/lib/dudos/assessment-sync";
 
 type AdminNavigationItem = {
@@ -254,6 +256,12 @@ export default function AdminWorkbench({
         {
             group: "BILLING & ERP",
             items: [
+                {
+                    id: "packages",
+                    title: "Packages & Pricing",
+                    bn: "প্যাকেজ ও মূল্য",
+                    icon: Package,
+                },
                 {
                     id: "ledger",
                     title: "Credits & Billing Ledger",
@@ -492,6 +500,8 @@ export default function AdminWorkbench({
                 <main id="main" className="workbench-main">
                     {view === "projects" ? (
                         <AdminProjectTracking />
+                    ) : view === "packages" ? (
+                        <AdminPackages />
                     ) : view === "support" ? (
                         <AdminSupportTickets
                             clients={registrations.filter(
