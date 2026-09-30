@@ -820,8 +820,8 @@ export default function ClientWorkbench({
                         <DialogTitle className="text-dudos-text">
                             {assessmentMode === "edit"
                                 ? lang === "bn"
-                                    ? "অ্যাসেসমেন্ট সম্পাদনা করুন"
-                                    : "Edit assessment"
+                                    ? "অ্যাসেসমেন্ট চালিয়ে যান"
+                                    : "Continue assessment"
                                 : lang === "bn"
                                   ? "নতুন প্রজেক্ট অ্যাসেসমেন্ট"
                                   : "New project assessment"}

@@ -908,7 +908,9 @@ function Wizard({
                 </small>
             </aside>
             <div className="wizard-main">
-                {drafts.length > 0 && (
+                {/* In the portal the project is chosen from the overview list, so the
+                    resume picker only belongs to the standalone wizard page. */}
+                {!onSubmitted && drafts.length > 0 && (
                     <div className="resume-row">
                         <Choose
                             label="Resume saved assessment"
