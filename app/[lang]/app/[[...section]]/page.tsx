@@ -87,6 +87,7 @@ export default async function Page({
     const allowed = [
         "overview",
         "projects",
+        "new-project",
         "scoping",
         "deployments",
         "invoices",

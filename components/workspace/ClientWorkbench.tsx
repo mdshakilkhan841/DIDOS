@@ -164,9 +164,24 @@ export default function ClientWorkbench({
         setAssessmentOrganizationName(organizationName);
         setAssessmentSeed(assessment);
         setAssessmentMode(mode);
+        // The assessment has its own page, like every other section.
+        router.push(`/${lang}/app/new-project`);
     };
 
     const view = section[0] || "overview";
+
+    // Leaving the assessment page: forget the draft being edited and refresh
+    // the lists, since answers are saved as the client goes.
+    const [previousView, setPreviousView] = useState(view);
+    if (view !== previousView) {
+        setPreviousView(view);
+        if (previousView === "new-project") {
+            setAssessmentMode(null);
+            setAssessmentSeed(undefined);
+            setAssessmentOrganizationName(undefined);
+            setAssessmentRefreshKey((key) => key + 1);
+        }
+    }
 
     const getCleanName = (wName: string) => {
         if (
@@ -791,6 +806,49 @@ export default function ClientWorkbench({
                         <ClientInvoices lang={lang} />
                     ) : view === "billing" ? (
                         <ClientWallet lang={lang} />
+                    ) : view === "new-project" ? (
+                        <section className="space-y-5" aria-labelledby="assessment-title">
+                            <div className="section-heading">
+                                <div>
+                                    <p className="eyebrow">
+                                        <span />
+                                        {lang === "bn" ? "আমার ওয়ার্কস্পেস" : "MY WORKSPACE"}
+                                    </p>
+                                    <h1 id="assessment-title">
+                                        {assessmentMode === "edit"
+                                            ? lang === "bn"
+                                                ? "অ্যাসেসমেন্ট চালিয়ে যান"
+                                                : "Continue assessment"
+                                            : lang === "bn"
+                                              ? "নতুন প্রজেক্ট অ্যাসেসমেন্ট"
+                                              : "New project assessment"}
+                                    </h1>
+                                    <p>
+                                        {lang === "bn"
+                                            ? "ধাপগুলো সরাসরি নির্বাচন করে উত্তর সম্পাদনা করুন।"
+                                            : "Select any step to review or edit your answers."}
+                                    </p>
+                                </div>
+                            </div>
+                            <div className="rounded-xl border border-dudos-border bg-white p-4 sm:p-6">
+                                <AssessmentWizardInline
+                                    key={`${assessmentMode || "new"}:${assessmentSeed?.assessmentRecordId || ""}`}
+                                    workspace={
+                                        activeWorkspaceId ||
+                                        workspaces[0]?.id ||
+                                        "client_ws"
+                                    }
+                                    lang={lang}
+                                    mode={assessmentMode || "new"}
+                                    organizationName={assessmentOrganizationName}
+                                    assessment={assessmentSeed}
+                                    onSubmitted={() => {
+                                        // Submitted projects are tracked on the overview.
+                                        router.push(`/${lang}/app/overview`);
+                                    }}
+                                />
+                            </div>
+                        </section>
                     ) : (
                         <CustomerUserPanel
                             workspace={activeWorkspaceId || "client_ws"}
@@ -821,60 +879,6 @@ export default function ClientWorkbench({
                     )}
                 </main>
             </SidebarInset>
-
-            <Dialog
-                open={assessmentMode !== null}
-                onOpenChange={(open) => {
-                    if (!open) {
-                        setAssessmentMode(null);
-                        setAssessmentSeed(undefined);
-                        setAssessmentOrganizationName(undefined);
-                        // Drafts may have been saved without submitting.
-                        setAssessmentRefreshKey((key) => key + 1);
-                    }
-                }}
-            >
-                <DialogContent className="max-h-[92vh] w-[calc(100vw-1rem)] max-w-[calc(100%-2rem)] overflow-y-auto bg-white sm:max-w-6xl">
-                    <DialogHeader>
-                        <DialogTitle className="text-dudos-text">
-                            {assessmentMode === "edit"
-                                ? lang === "bn"
-                                    ? "অ্যাসেসমেন্ট চালিয়ে যান"
-                                    : "Continue assessment"
-                                : lang === "bn"
-                                  ? "নতুন প্রজেক্ট অ্যাসেসমেন্ট"
-                                  : "New project assessment"}
-                        </DialogTitle>
-                        <DialogDescription className="text-dudos-text-secondary">
-                            {lang === "bn"
-                                ? "ধাপগুলো সরাসরি নির্বাচন করে উত্তর সম্পাদনা করুন।"
-                                : "Select any step to review or edit your answers."}
-                        </DialogDescription>
-                    </DialogHeader>
-                    {assessmentMode && (
-                        <AssessmentWizardInline
-                            workspace={
-                                activeWorkspaceId ||
-                                workspaces[0]?.id ||
-                                "client_ws"
-                            }
-                            lang={lang}
-                            mode={assessmentMode}
-                            organizationName={assessmentOrganizationName}
-                            assessment={assessmentSeed}
-                            onSubmitted={() => {
-                                setAssessmentMode(null);
-                                setAssessmentSeed(undefined);
-                                setAssessmentOrganizationName(undefined);
-                                setAssessmentRefreshKey((key) => key + 1);
-                                // Submitted projects are tracked on the overview.
-                                if (view !== "overview")
-                                    router.push(`/${lang}/app/overview`);
-                            }}
-                        />
-                    )}
-                </DialogContent>
-            </Dialog>
 
             {/* Create Workspace Modal */}
             <Dialog
