@@ -104,6 +104,43 @@ export function AdminUserManagement({
         }
     };
 
+    const [isPurging, setIsPurging] = useState(false);
+
+    // Removes accounts created by the automated test suites.
+    const purgeTestData = async () => {
+        const confirmed = window.confirm(
+            lang === "bn"
+                ? "আপনি কি সব টেস্ট ডেটা মুছে ফেলতে চান?"
+                : "Purge all automated test accounts and their records from the database?",
+        );
+        if (!confirmed) return;
+        setIsPurging(true);
+        try {
+            const apiBase =
+                process.env.NEXT_PUBLIC_API_BASE_URL ||
+                "http://localhost:8000/api/v1";
+            const response = await fetch(`${apiBase}/admin/test-data`, {
+                method: "DELETE",
+            });
+            const data = await response.json();
+            if (!response.ok || !data.success) throw new Error("Purge failed");
+            showToast.success(
+                lang === "bn"
+                    ? `${data.deletedCount} টেস্ট একাউন্ট মুছে ফেলা হয়েছে`
+                    : `Purged ${data.deletedCount} test accounts.`,
+            );
+            await onRefresh();
+        } catch {
+            showToast.error(
+                lang === "bn"
+                    ? "টেস্ট ডেটা মুছতে ব্যর্থ"
+                    : "Failed to purge test data.",
+            );
+        } finally {
+            setIsPurging(false);
+        }
+    };
+
     const deleteUser = async (user: UserProfile) => {
         const confirmed = window.confirm(
             lang === "bn"
@@ -168,20 +205,31 @@ export function AdminUserManagement({
                     <p className="mt-1 max-w-2xl text-sm text-dudos-text-secondary">
                         {lang === "bn"
                             ? "ব্যবহারকারীর অ্যাকাউন্ট, ভূমিকা, অবস্থা এবং ক্রেডিট এক জায়গায় পরিচালনা করুন।"
-                            : "Manage user accounts, roles, status, and credits in one place. Project details stay in the intake queue."}
+                            : "Manage user accounts, roles, status, and credits in one place. Client projects are in Project Tracking."}
                     </p>
                 </div>
-                <Button
-                    variant="outline"
-                    onClick={refresh}
-                    disabled={isRefreshing}
-                    className="shrink-0 bg-white"
-                >
-                    <RefreshCw
-                        className={`mr-2 h-4 w-4 ${isRefreshing ? "animate-spin" : ""}`}
-                    />
-                    {lang === "bn" ? "রিফ্রেশ" : "Refresh users"}
-                </Button>
+                <div className="flex shrink-0 flex-wrap gap-2">
+                    <Button
+                        variant="outline"
+                        onClick={purgeTestData}
+                        disabled={isPurging}
+                        className="bg-white text-dudos-text-secondary hover:border-rose-200 hover:bg-rose-50 hover:text-rose-700"
+                    >
+                        <Trash2 className="mr-2 h-4 w-4" />
+                        {lang === "bn" ? "টেস্ট ডেটা মুছুন" : "Purge test data"}
+                    </Button>
+                    <Button
+                        variant="outline"
+                        onClick={refresh}
+                        disabled={isRefreshing}
+                        className="bg-white"
+                    >
+                        <RefreshCw
+                            className={`mr-2 h-4 w-4 ${isRefreshing ? "animate-spin" : ""}`}
+                        />
+                        {lang === "bn" ? "রিফ্রেশ" : "Refresh users"}
+                    </Button>
+                </div>
             </div>
 
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">

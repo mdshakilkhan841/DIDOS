@@ -15,7 +15,6 @@ import {
   ExternalLink,
   Calculator,
   Sliders,
-  Download,
   RefreshCw,
   AlertCircle,
   ArrowUpRight,
@@ -66,7 +65,6 @@ export function AdminControlPanel({
   const [activeTab, setActiveTab] = useState<"queue" | "quotes" | "deployments" | "ledger" | "support">(initialTab);
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
-  const [isSyncing, setIsSyncing] = useState(false);
 
   // Deployment Tickets State
   const [deploymentTickets, setDeploymentTickets] = useState<any[]>([]);
@@ -139,11 +137,9 @@ export function AdminControlPanel({
   }, [initialTab]);
 
   // Metrics
-  const totalRegistrations = registrations.length;
   const pendingCount = registrations.filter((r) => r.status === "pending_review").length;
   const inScopingCount = registrations.filter((r) => r.status === "in_scoping").length;
   const activeCount = registrations.filter((r) => r.status === "approved" || r.status === "active").length;
-  const totalCreditsAllocated = registrations.reduce((sum, r) => sum + (r.credits || 0), 0);
   const totalPipelineValue = registrations.reduce(
     (sum, r) => sum + (r.intake?.estimationQuote?.totalQuote || 0),
     0
@@ -338,164 +334,7 @@ export function AdminControlPanel({
 
   return (
     <div className="space-y-6">
-      {/* 1. Authentic DUDOS Section Heading (No boxed whiteboard card) */}
-      <div className="section-heading">
-        <div>
-          <p className="eyebrow">
-            <span />
-            {lang === "bn" ? "প্ল্যাটফর্ম গভর্নেন্স" : "PLATFORM GOVERNANCE"}
-          </p>
-          <h1>
-            {lang === "bn"
-              ? "সিস্টেম অ্যাডমিন ও টেক কন্ট্রোল প্যানেল"
-              : "System Administration & Tech Control Plane"}
-          </h1>
-          <p>
-            {lang === "bn"
-              ? "ক্লায়েন্ট ইনটেক কিউ, টেকনিক্যাল এস্টিমেশন, ক্রেডিট বরাদ্দ ও ওয়ার্কস্পেস প্রভিশনিং।"
-              : "Client intake queue, technical estimations, credit allocations & workspace provisioning."}
-          </p>
-        </div>
-
-        <div className="flex items-center gap-2 shrink-0">
-          <Badge
-            variant="outline"
-            className="bg-[#edf7f4] text-[#087f79] border-[#c2e2dc] py-1 text-xs"
-          >
-            Admin Authority: Full Control
-          </Badge>
-          <Button
-            size="sm"
-            variant="outline"
-            className="text-xs bg-white border-[#dce5e9] hover:bg-[#f4f7f8] text-[#162c38]"
-            disabled={isSyncing}
-            onClick={async () => {
-              setIsSyncing(true);
-              try {
-                if (refreshUsers) {
-                  await refreshUsers();
-                }
-                showToast.success("Synchronized with PostgreSQL database!");
-              } catch {
-                showToast.error("Failed to sync with database.");
-              } finally {
-                setIsSyncing(false);
-              }
-            }}
-          >
-            <RefreshCw
-              className={`h-3.5 w-3.5 mr-1 ${isSyncing ? "animate-spin" : ""}`}
-            />
-            Sync DB
-          </Button>
-          <Button
-            size="sm"
-            variant="outline"
-            className="text-xs bg-white border-[#dce5e9] hover:bg-[#f4f7f8] text-[#162c38]"
-            onClick={() => {
-              const dataStr =
-                "data:text/json;charset=utf-8," +
-                encodeURIComponent(JSON.stringify(registrations, null, 2));
-              const downloadAnchor = document.createElement("a");
-              downloadAnchor.setAttribute("href", dataStr);
-              downloadAnchor.setAttribute(
-                "download",
-                `dudos_registrations_${Date.now()}.json`
-              );
-              document.body.appendChild(downloadAnchor);
-              downloadAnchor.click();
-              downloadAnchor.remove();
-              showToast.info("Exported client intake registry JSON.");
-            }}
-          >
-            <Download className="h-3.5 w-3.5 mr-1" />
-            Export Data
-          </Button>
-          <Button
-            size="sm"
-            variant="outline"
-            className="text-xs bg-white border-[#dce5e9] hover:bg-rose-50 hover:text-rose-700 hover:border-rose-200 text-[#5b6f7b]"
-            title="Purge automated test records from test suite runs"
-            onClick={async () => {
-              if (
-                !confirm(
-                  lang === "bn"
-                    ? "আপনি কি সব টেস্ট ডেটা মুছে ফেলতে চান?"
-                    : "Purge all automated test accounts and generated test records from the database?"
-                )
-              ) {
-                return;
-              }
-              try {
-                const res = await fetch("http://localhost:8000/api/v1/admin/test-data", {
-                  method: "DELETE",
-                });
-                const data = await res.json();
-                if (data.success) {
-                  showToast.success(
-                    lang === "bn"
-                      ? `${data.deletedCount} টেস্ট একাউন্ট মুছে ফেলা হয়েছে`
-                      : `Purged ${data.deletedCount} test accounts successfully.`
-                  );
-                  await refreshUsers();
-                  loadDeploymentTickets();
-                  loadSupportTickets();
-                }
-              } catch (err) {
-                showToast.error("Failed to purge test data.");
-              }
-            }}
-          >
-            <Trash2 className="h-3.5 w-3.5 mr-1" />
-            {lang === "bn" ? "টেস্ট ডেটা মুছুন" : "Purge Test Data"}
-          </Button>
-        </div>
-      </div>
-
-      {/* 2. Workspace Stats - Authentic DUDOS CSS (.workspace-stats) */}
-      <div
-        className="workspace-stats"
-        style={{
-          gridTemplateColumns: "repeat(auto-fit, minmax(190px, 1fr))",
-          margin: "20px 0 28px",
-        }}
-      >
-        <div>
-          <span>{lang === "bn" ? "মোট নিবন্ধন" : "Total registrations"}</span>
-          <strong>{totalRegistrations}</strong>
-          <small>{lang === "bn" ? "ডাটাবেস ও কিউ" : "In platform queue"}</small>
-        </div>
-
-        <div>
-          <span>{lang === "bn" ? "স্কোপিং অপেক্ষমাণ" : "Awaiting scoping"}</span>
-          <strong className="text-amber-700">{pendingCount}</strong>
-          <small>{lang === "bn" ? "গেট ০১ অপেক্ষমাণ" : "Gate 01 pending"}</small>
-        </div>
-
-        <div>
-          <span>{lang === "bn" ? "এস্টিমেশনে রয়েছে" : "In estimation"}</span>
-          <strong className="text-blue-700">{inScopingCount}</strong>
-          <small>{lang === "bn" ? "টেক আওয়ার্স খসড়া" : "Tech hours draft"}</small>
-        </div>
-
-        <div>
-          <span>{lang === "bn" ? "সক্রিয় ওয়ার্কস্পেস" : "Active workspaces"}</span>
-          <strong className="text-[#087f79]">{activeCount}</strong>
-          <small>{lang === "bn" ? "গেট ০৪ প্রভিশনড" : "Gate 04 provisioned"}</small>
-        </div>
-
-        <div>
-          <span>{lang === "bn" ? "বরাদ্দকৃত ক্লায়েন্ট ক্রেডিট" : "Client credits"}</span>
-          <strong className="text-[#087f79]">
-            {totalCreditsAllocated.toLocaleString()}
-          </strong>
-          <small>
-            {lang === "bn" ? "সক্রিয় ক্লায়েন্ট ব্যালেন্স" : "Allocated client balances"}
-          </small>
-        </div>
-      </div>
-
-      {/* 3. Active Platform Operation Context Header (Driven Purely by Sidebar Navigation) */}
+      {/* Page title for the section chosen in the sidebar */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-3 border-b border-[#dce5e9] gap-3 mb-5">
         <div className="flex items-center gap-2.5">
           {activeTab === "queue" && (
@@ -504,9 +343,9 @@ export function AdminControlPanel({
                 <Users className="h-5 w-5" />
               </div>
               <div>
-                <h2 className="text-base font-bold text-[#162c38]">
+                <h1 className="text-xl font-bold text-[#162c38]">
                   {lang === "bn" ? "ক্লায়েন্ট ইনটেক ও নিবন্ধন কিউ" : "Client Intakes & Registrations Queue"}
-                </h2>
+                </h1>
                 <p className="text-xs text-[#5b6f7b]">
                   {lang === "bn"
                     ? "নতুন ক্লায়েন্ট অনবোর্ডিং খসড়া পর্যালোচনা করুন এবং অনুমোদন দিন।"
@@ -522,9 +361,9 @@ export function AdminControlPanel({
                 <Calculator className="h-5 w-5" />
               </div>
               <div>
-                <h2 className="text-base font-bold text-[#162c38]">
+                <h1 className="text-xl font-bold text-[#162c38]">
                   {lang === "bn" ? "প্রজেক্ট স্কোপিং ও টেকনিক্যাল কোটেশন" : "Project Scoping & Quotations Engine"}
-                </h2>
+                </h1>
                 <p className="text-xs text-[#5b6f7b]">
                   {lang === "bn"
                     ? "ইঞ্জিনিয়ারিং ম্যান-আওয়ার হিসাব করুন এবং আনুষ্ঠানিক কোটেশন ইনভয়েস পাঠান।"
@@ -540,9 +379,9 @@ export function AdminControlPanel({
                 <Server className="h-5 w-5" />
               </div>
               <div>
-                <h2 className="text-base font-bold text-[#162c38]">
+                <h1 className="text-xl font-bold text-[#162c38]">
                   {lang === "bn" ? "ভিপিএস ফ্লিট ও প্রোডাকশন ডিপ্লয়মেন্ট" : "VPS Fleet & Managed Deployments Queue"}
-                </h2>
+                </h1>
                 <p className="text-xs text-[#5b6f7b]">
                   {lang === "bn"
                     ? "ডোমেন যাচাইকরণ, ডিএনএস রুট ও ভিপিএস আইপি (103.145.118.42) প্রোডাকশন ম্যানেজমেন্ট।"
@@ -558,9 +397,9 @@ export function AdminControlPanel({
                 <History className="h-5 w-5" />
               </div>
               <div>
-                <h2 className="text-base font-bold text-[#162c38]">
+                <h1 className="text-xl font-bold text-[#162c38]">
                   {lang === "bn" ? "প্ল্যাটফর্ম ক্রেডিট ও বিলিং লেজার" : "Platform Credit & Billing Ledger"}
-                </h2>
+                </h1>
                 <p className="text-xs text-[#5b6f7b]">
                   {lang === "bn"
                     ? "সিস্টেম ক্রেডিট বরাদ্দ, রিচার্জ ও খরচের অপরিবর্তনীয় অডিট ট্রেইল।"
@@ -576,9 +415,9 @@ export function AdminControlPanel({
                 <LifeBuoy className="h-5 w-5" />
               </div>
               <div>
-                <h2 className="text-base font-bold text-[#162c38]">
+                <h1 className="text-xl font-bold text-[#162c38]">
                   {lang === "bn" ? "গ্রাহক সহায়তা ও সাপোর্ট টিকিট কিউ" : "Customer Support Tickets Queue"}
-                </h2>
+                </h1>
                 <p className="text-xs text-[#5b6f7b]">
                   {lang === "bn"
                     ? "গ্রাহকদের টিকিট পর্যালোচনা করুন, সমাধানের স্ট্যাটাস দিন এবং টেকনিক্যাল বার্তা পাঠান।"

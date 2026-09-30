@@ -106,17 +106,13 @@ export default function AdminWorkbench({
     const [deploymentCount, setDeploymentCount] = useState<number>(0);
 
     // Map route section to active view
-    const view =
+    // Project Tracking is the admin home; the retired intake queue ("clients")
+    // redirects there too.
+    const requestedView =
         section[0] === "tenant-admin" || section[0] === "platform-admin"
-            ? section[1] || "clients"
-            : section[0] || "clients";
-
-    const pendingCount = registrations.filter(
-        (r) => r.status === "pending_review",
-    ).length;
-    const inScopingCount = registrations.filter(
-        (r) => r.status === "in_scoping",
-    ).length;
+            ? section[1] || "projects"
+            : section[0] || "projects";
+    const view = requestedView === "clients" ? "projects" : requestedView;
 
     React.useEffect(() => {
         fetch("http://localhost:8000/api/v1/admin/support/tickets")
@@ -215,8 +211,9 @@ export default function AdminWorkbench({
                     title: "Project Scoping & Quotations",
                     bn: "প্রজেক্ট স্কোপিং ও কোটেশন",
                     icon: FolderKanban,
-                    badge:
-                        inScopingCount > 0 ? String(inScopingCount) : undefined,
+                    // Per-account, browser-only quotations aren't part of the
+                    // server-backed project flow yet.
+                    comingSoon: true,
                 },
                 {
                     id: "assets",
@@ -306,13 +303,6 @@ export default function AdminWorkbench({
                             ? String(registrations.length)
                             : undefined,
                 },
-                {
-                    id: "clients",
-                    title: "Client Intake Queue",
-                    bn: "ক্লায়েন্ট ইনটেক ও রিকোয়েস্ট",
-                    icon: Users,
-                    badge: pendingCount > 0 ? String(pendingCount) : undefined,
-                },
             ],
         },
     ];
@@ -360,10 +350,7 @@ export default function AdminWorkbench({
                                 <SidebarMenu>
                                     {list.map((item) => {
                                         const Icon = item.icon;
-                                        const isActive =
-                                            view === item.id ||
-                                            (view === "tenant-admin" &&
-                                                item.id === "clients");
+                                        const isActive = view === item.id;
                                         return (
                                             <SidebarMenuItem key={item.id}>
                                                 <SidebarMenuButton
