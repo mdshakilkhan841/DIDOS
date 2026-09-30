@@ -64,6 +64,7 @@ import { CreditBadgeButton } from "@/components/billing/CreditWalletModal";
 import { AssessmentWizardInline } from "@/components/dudos-records";
 import { CustomerUserPanel } from "./CustomerUserPanel";
 import { ClientInvoices } from "./ClientInvoices";
+import { ClientWallet } from "./ClientWallet";
 import {
     preferredWorkspace,
     rememberWorkspace,
@@ -788,6 +789,8 @@ export default function ClientWorkbench({
                         <ClientComingSoon lang={lang} item={activeNavItem} />
                     ) : view === "invoices" ? (
                         <ClientInvoices lang={lang} />
+                    ) : view === "billing" ? (
+                        <ClientWallet lang={lang} />
                     ) : (
                         <CustomerUserPanel
                             workspace={activeWorkspaceId || "client_ws"}
