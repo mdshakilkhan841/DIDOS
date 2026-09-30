@@ -70,7 +70,41 @@ export function proxy(req: NextRequest) {
       ? `${protocol}//localhost${port}${targetPath}`
       : `${protocol}//${rootDomain}${port}${targetPath}`;
 
-    const response = NextResponse.redirect(new URL(loginDest));
+    // On localhost every host keeps its own cookies, so visit app, admin and the
+    // main host in turn, clearing each one, before landing on the login page.
+    // (Production cookies share the parent domain, so one hop clears them all.)
+    const hosts = isLocalhost ? ["app", "admin", "main"] : [];
+    const visited = new Set(
+      (url.searchParams.get("cleared") || "").split(",").filter(Boolean)
+    );
+    visited.add(subdomain || "main");
+    const nextHost = hosts.find((host) => !visited.has(host));
+
+    let destination = new URL(loginDest);
+    if (nextHost) {
+      const nextBase =
+        nextHost === "main" ? `localhost${port}` : `${nextHost}.localhost${port}`;
+      destination = new URL(`${protocol}//${nextBase}/logout`);
+      destination.searchParams.set("return_to", targetPath);
+      destination.searchParams.set("cleared", Array.from(visited).join(","));
+    }
+
+    // Forward with a tiny page instead of a 307: Next rewrites any Location on
+    // the dev server's own origin (localhost) into a relative path, which would
+    // keep the browser on the subdomain.
+    const href = JSON.stringify(destination.toString());
+    const response = new NextResponse(
+      `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Signing out…</title>` +
+        `<meta http-equiv="refresh" content="0;url=${destination.toString().replace(/"/g, "&quot;")}">` +
+        `</head><body><script>location.replace(${href.replace(/</g, "\\u003c")})</script></body></html>`,
+      {
+        status: 200,
+        headers: {
+          "Content-Type": "text/html; charset=utf-8",
+          "Cache-Control": "no-store",
+        },
+      }
+    );
     clearAuthCookies(response);
     return response;
   }

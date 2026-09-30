@@ -60,6 +60,7 @@ import { api } from "@/lib/dudos/client";
 import { fetchAuthenticatedWorkspaces } from "@/lib/dudos/workspaces";
 import { useAuth } from "@/context/auth-context";
 import {
+    assessmentTitle,
     findAssessmentRecord,
     syncAssessmentToWorkspaceDraft,
 } from "@/lib/dudos/assessment-sync";
@@ -558,7 +559,7 @@ export function QuickIntake({ kind, lang }: { kind: string; lang: string }) {
     );
 }
 const steps = [
-    ["Project goals", "প্রজেক্টের লক্ষ্য", ["outcomes"]],
+    ["Project goals", "প্রজেক্টের লক্ষ্য", ["project_name", "outcomes"]],
     [
         "Business & website",
         "ব্যবসা ও ওয়েবসাইট",
@@ -574,8 +575,25 @@ const steps = [
         "ব্র্যান্ড, অধিকার ও বাজেট",
         ["brand", "rights", "budget", "unknowns"],
     ],
-    ["Review & submit", "পর্যালোচনা ও জমা", []],
+    ["Review & confirm", "পর্যালোচনা ও নিশ্চিতকরণ", []],
 ] as const;
+const REVIEW_STEP = steps.length - 1;
+
+// First step with a missing required answer, or the review step when complete.
+function firstIncompleteStep(data: Record<string, string>): number {
+    const required = (moduleById("assessment")?.fields || []).filter(
+        (f) => f.required,
+    );
+    const index = steps.findIndex((s) =>
+        required.some(
+            (f) =>
+                (s[2] as readonly string[]).includes(f.key) &&
+                !data[f.key]?.trim(),
+        ),
+    );
+    return index < 0 ? REVIEW_STEP : index;
+}
+
 export function AssessmentWizard({ lang }: { lang: string }) {
     return (
         <WorkspaceGate lang={lang}>
@@ -650,7 +668,12 @@ function Wizard({
                   data: assessment.assessmentData,
               }
             : null;
-    const [step, setStep] = useState(0),
+    const resumeAtPreview = mode === "edit" && Boolean(onSubmitted);
+    const [step, setStep] = useState(() =>
+        resumeAtPreview && initialAssessment?.data
+            ? firstIncompleteStep(initialAssessment.data)
+            : 0,
+    ),
         [data, setData] = useState<Record<string, string>>(
             initialAssessment?.data || {},
         ),
@@ -740,6 +763,13 @@ function Wizard({
                     setSaved(existing);
                     if (existing.data) {
                         setData((prev) => ({ ...prev, ...existing.data }));
+                        if (resumeAtPreview)
+                            setStep(
+                                firstIncompleteStep({
+                                    ...initialAssessment?.data,
+                                    ...existing.data,
+                                }),
+                            );
                     }
                 } else if (initialAssessment?.data) {
                     setData((prev) => ({
@@ -783,14 +813,14 @@ function Wizard({
                       workspace,
                       id: saved.id,
                       version: saved.version,
-                      title: data.organization || "Transformation draft",
+                      title: assessmentTitle(data),
                       data,
                       status: nextStatus,
                   }
                 : {
                       workspace,
                       kind: "assessment",
-                      title: data.organization || "Transformation draft",
+                      title: assessmentTitle(data),
                       data,
                       idempotency_key: key,
                       status: nextStatus,
@@ -822,6 +852,16 @@ function Wizard({
     }
 
     async function submitAndGoToPortal() {
+        const missingStep = firstIncompleteStep(data);
+        if (missingStep !== REVIEW_STEP) {
+            setStep(missingStep);
+            setError(
+                lang === "bn"
+                    ? "জমা দেওয়ার আগে প্রয়োজনীয় তথ্য পূরণ করুন।"
+                    : "Please fill in the required fields before submitting.",
+            );
+            return;
+        }
         setBusy(true);
         setError("");
         try {
@@ -830,14 +870,14 @@ function Wizard({
                       workspace,
                       id: saved.id,
                       version: saved.version,
-                      title: data.organization || "Transformation Project",
+                      title: assessmentTitle(data),
                       data,
                       status: "submitted",
                   }
                 : {
                       workspace,
                       kind: "assessment",
-                      title: data.organization || "Transformation Project",
+                      title: assessmentTitle(data),
                       data,
                       idempotency_key: key,
                       status: "submitted",
@@ -1097,8 +1137,8 @@ function Wizard({
                                 <Check size={16} />
                                 <span>
                                     {lang === "bn"
-                                        ? "অ্যাসেসমেন্ট জমা দিন ও পোর্টাল খুলুন"
-                                        : "Submit Assessment & Open Portal"}
+                                        ? "নিশ্চিত করুন ও পেমেন্টে যান"
+                                        : "Confirm & continue to payment"}
                                 </span>
                                 <ArrowRight size={14} />
                             </Button>

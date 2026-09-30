@@ -37,7 +37,6 @@ import {
 import { useAuth } from "@/context/auth-context";
 import { AdminControlPanel } from "./AdminControlPanel";
 import { AdminUserManagement } from "./AdminUserManagement";
-import { buildSubdomainUrl } from "@/lib/subdomains";
 
 type AdminNavigationItem = {
     id: string;
@@ -164,7 +163,8 @@ export default function AdminWorkbench({
             document.cookie = `dudos_session=; path=/; domain=.localhost; max-age=0; expires=${epoch}`;
             document.cookie = `dudos_at=; path=/; domain=.localhost; max-age=0; expires=${epoch}`;
         } catch {}
-        window.location.href = buildSubdomainUrl("main", "/login");
+        // /logout clears the session on every DUDOS host, then shows the login page.
+        window.location.href = "/logout?return_to=/login";
     };
 
     // Existing operations stay functional; roadmap modules are visible placeholders.

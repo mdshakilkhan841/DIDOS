@@ -80,6 +80,13 @@ const REGISTRATIONS_KEY = "dudos_registrations_queue";
 
 const SEED_REGISTRATIONS: UserProfile[] = [];
 
+// The auth cookie is the source of truth for "signed in on this host". A stored
+// localStorage session without it is left over from a sign-out on another host.
+function hasAuthCookie(): boolean {
+  if (typeof document === "undefined") return false;
+  return /(^|;\s*)dudos_at=[^;]+/.test(document.cookie);
+}
+
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<UserProfile | null>(null);
   const [activeRole, setActiveRole] = useState<StakeholderRole>("client");
@@ -94,7 +101,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       let restoredRole: StakeholderRole | null = null;
       let restoredToken: string | undefined = undefined;
 
-      // 1. Check localStorage first
+      // 1. Check localStorage first (only while this host still has its auth cookie)
+      if (!hasAuthCookie()) {
+        localStorage.removeItem(STORAGE_KEY);
+        localStorage.removeItem("dudos_jwt_token");
+      }
       const stored = localStorage.getItem(STORAGE_KEY);
       if (stored) {
         try {
@@ -514,6 +525,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setUser(null);
     persistSession(null, activeRole);
   }, [activeRole]);
+
+  // A tab left open on another host notices the sign-out when it is shown again.
+  useEffect(() => {
+    if (!user) return;
+    const checkSession = () => {
+      if (document.visibilityState === "visible" && !hasAuthCookie()) {
+        setUser(null);
+        persistSession(null, activeRole);
+      }
+    };
+    window.addEventListener("focus", checkSession);
+    document.addEventListener("visibilitychange", checkSession);
+    return () => {
+      window.removeEventListener("focus", checkSession);
+      document.removeEventListener("visibilitychange", checkSession);
+    };
+  }, [user, activeRole]);
 
   const switchRole = (newRole: StakeholderRole) => {
     setActiveRole(newRole);

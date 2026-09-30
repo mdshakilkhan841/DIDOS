@@ -117,6 +117,29 @@ export function findAssessmentRecord(
     return null;
 }
 
+// Placeholder titles older records were saved with; never shown as a name.
+const PLACEHOLDER_TITLES = new Set([
+    "transformation draft",
+    "transformation project",
+    "untitled record",
+]);
+
+/** Project title: the project name, else the organization, else "Untitled project". */
+export function assessmentTitle(
+    data?: Record<string, string> | null,
+    fallbackTitle?: string,
+): string {
+    const fallback = fallbackTitle?.trim() || "";
+    return (
+        data?.project_name?.trim() ||
+        cleanString(data?.organization) ||
+        (fallback && !PLACEHOLDER_TITLES.has(fallback.toLowerCase())
+            ? fallback
+            : "") ||
+        "Untitled project"
+    );
+}
+
 const ACTIVE_DRAFT_KEY = "dudos_active_draft";
 const PROJECT_RECORDS_KEY = "dudos_project_records";
 const CUSTOM_PROJECTS_KEY = "dudos_custom_projects";
@@ -148,9 +171,7 @@ export function convertAssessmentRecordToDraft(
             ? `${user.displayName}'s Organization`
             : "Customer Workspace");
 
-    const title = org
-        ? `${org} — Transformation Project`
-        : record?.title || "Digital Transformation Project";
+    const title = assessmentTitle(d, record?.title);
 
     const scopeParts = [
         d.outcomes ? `Desired Outcomes:\n${d.outcomes}` : "",
@@ -232,9 +253,7 @@ export async function syncAssessmentToWorkspaceDraft(
                 ? `${user.displayName}'s Organization`
                 : "Customer Workspace");
 
-        const title = org
-            ? `${org} — Transformation Project`
-            : record.title || "Transformation Project";
+        const title = assessmentTitle(data, record?.title);
 
         const scopeParts = [
             data.outcomes ? `Desired Outcomes:\n${data.outcomes}` : "",
