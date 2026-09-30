@@ -34,7 +34,6 @@ import { UserProfile, UserStatus, ProjectIntakeData } from "@/types/auth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Textarea } from "@/components/ui/textarea";
 import {
   Table,
   TableHeader,
@@ -44,7 +43,6 @@ import {
   TableCell,
 } from "@/components/ui/table";
 import { AdminEstimationModal } from "@/components/projects/AdminEstimationModal";
-import { AdminNewTicketDialog } from "./AdminNewTicketDialog";
 import { showToast } from "@/lib/toast";
 
 export function AdminControlPanel({
@@ -64,7 +62,6 @@ export function AdminControlPanel({
   } = useAuth();
 
   const [activeTab, setActiveTab] = useState<"queue" | "quotes" | "deployments" | "ledger" | "support">(initialTab);
-  const [showNewTicket, setShowNewTicket] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
 
@@ -76,10 +73,6 @@ export function AdminControlPanel({
 
   // Support Tickets State
   const [supportTickets, setSupportTickets] = useState<any[]>([]);
-  const [supportSearch, setSupportSearch] = useState<string>("");
-  const [supportFilter, setSupportFilter] = useState<string>("all");
-  const [replyingTicketId, setReplyingTicketId] = useState<string | null>(null);
-  const [replyText, setReplyText] = useState<string>("");
 
   // Selected client for modal views
   const [inspectingUser, setInspectingUser] = useState<UserProfile | null>(null);
@@ -172,31 +165,6 @@ export function AdminControlPanel({
     if (!creditModalUser) return;
     allocateCreditsToUser(creditModalUser.id, creditAmount, creditReason);
     setCreditModalUser(null);
-  };
-
-  const handleUpdateSupportTicket = async (
-    ticketId: string,
-    statusVal?: string,
-    responseMsg?: string,
-    priorityVal?: string
-  ) => {
-    try {
-      const res = await fetch(`http://localhost:8000/api/v1/admin/support/tickets/${ticketId}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          status: statusVal,
-          adminResponse: responseMsg,
-          priority: priorityVal,
-        }),
-      });
-      if (res.ok) {
-        showToast.success("Support ticket updated successfully");
-        loadSupportTickets();
-      }
-    } catch {
-      showToast.error("Failed to update support ticket");
-    }
   };
 
   useEffect(() => {
@@ -1106,214 +1074,6 @@ export function AdminControlPanel({
           )}
         </div>
       )}
-
-      {/* 4. Support Tickets Tab */}
-      {activeTab === "support" && (
-        <div className="space-y-4">
-          <div className="bg-white rounded-xl p-4 border border-[#dce5e9] shadow-xs flex flex-wrap items-center justify-between gap-3">
-            <div>
-              <h3 className="text-sm font-bold text-[#162c38] flex items-center gap-2">
-                <LifeBuoy className="h-4 w-4 text-[#087f79]" />
-                <span>Customer Support Tickets Queue</span>
-              </h3>
-              <p className="text-xs text-[#5b6f7b]">
-                Review customer inquiries, technical issues, billing questions, and send resolutions.
-              </p>
-            </div>
-
-            <div className="flex items-center gap-2">
-              <Input
-                placeholder="Search subject, client, or message..."
-                value={supportSearch}
-                onChange={(e) => setSupportSearch(e.target.value)}
-                className="text-xs h-8 w-60 bg-[#f8fafb] border-[#dce5e9]"
-              />
-              <select
-                value={supportFilter}
-                onChange={(e) => setSupportFilter(e.target.value)}
-                className="text-xs h-8 px-2 rounded-lg bg-[#f8fafb] border border-[#dce5e9] text-[#162c38] outline-none"
-              >
-                <option value="all">All Statuses</option>
-                <option value="open">Open</option>
-                <option value="in_progress">In Progress</option>
-                <option value="resolved">Resolved</option>
-              </select>
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={loadSupportTickets}
-                className="h-8 text-xs bg-white border-[#dce5e9]"
-              >
-                <RefreshCw className="h-3.5 w-3.5 mr-1" />
-                Refresh
-              </Button>
-              <Button
-                size="sm"
-                onClick={() => setShowNewTicket(true)}
-                className="h-8 text-xs"
-              >
-                <Plus className="h-3.5 w-3.5 mr-1" />
-                New ticket
-              </Button>
-            </div>
-          </div>
-
-          <AdminNewTicketDialog
-            open={showNewTicket}
-            onOpenChange={setShowNewTicket}
-            clients={registrations.filter((r) => r.role !== "admin")}
-            onCreated={loadSupportTickets}
-          />
-
-          {/* Tickets List */}
-          {supportTickets.length === 0 ? (
-            <div className="p-8 text-center text-xs text-[#5b6f7b] bg-white rounded-xl border border-[#dce5e9]">
-              No customer support tickets recorded.
-            </div>
-          ) : (
-            <div className="space-y-3">
-              {supportTickets
-                .filter((t) => {
-                  if (supportFilter !== "all" && t.status !== supportFilter) return false;
-                  if (!supportSearch.trim()) return true;
-                  const q = supportSearch.toLowerCase();
-                  return (
-                    (t.subject && t.subject.toLowerCase().includes(q)) ||
-                    (t.message && t.message.toLowerCase().includes(q)) ||
-                    (t.customerEmail && t.customerEmail.toLowerCase().includes(q))
-                  );
-                })
-                .map((t) => (
-                  <div
-                    key={t.id}
-                    className="p-5 rounded-2xl border border-[#dce5e9] bg-white shadow-xs space-y-3 text-xs"
-                  >
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2 border-b border-[#eef3f6]">
-                      <div className="flex items-center gap-2">
-                        <span className="font-bold text-[#162c38] text-sm">{t.subject}</span>
-                        <span className="font-mono text-[10px] text-[#5b6f7b]">#{t.id.slice(-6).toUpperCase()}</span>
-                        <Badge variant="outline" className="text-[10px] uppercase font-semibold border-[#dce5e9]">
-                          {t.category}
-                        </Badge>
-                        <Badge
-                          className={`text-[10px] uppercase font-semibold ${
-                            t.priority === "critical"
-                              ? "bg-red-100 text-red-800 border-red-200"
-                              : t.priority === "high"
-                              ? "bg-amber-100 text-amber-800 border-amber-200"
-                              : "bg-slate-100 text-slate-700 border-slate-200"
-                          }`}
-                        >
-                          {t.priority}
-                        </Badge>
-                      </div>
-
-                      <div className="flex items-center gap-2">
-                        <Badge
-                          className={`text-xs font-semibold ${
-                            t.status === "resolved" || t.status === "closed"
-                              ? "bg-emerald-100 text-emerald-800 border-emerald-300"
-                              : t.status === "in_progress"
-                              ? "bg-blue-100 text-blue-800 border-blue-300"
-                              : "bg-amber-100 text-amber-800 border-amber-300"
-                          }`}
-                        >
-                          {t.status === "in_progress" ? "In Progress" : t.status === "resolved" ? "Resolved" : "Open"}
-                        </Badge>
-                        <span className="text-[11px] text-[#5b6f7b]">
-                          {new Date(t.createdAt).toLocaleString()}
-                        </span>
-                      </div>
-                    </div>
-
-                    <div className="flex items-center gap-4 text-[11px] text-[#5b6f7b]">
-                      <span>Customer: <strong className="text-[#162c38]">{t.customerEmail || t.userId}</strong></span>
-                      {t.projectId && <span>Project: <strong className="font-mono text-[#162c38]">{t.projectId}</strong></span>}
-                    </div>
-
-                    <div className="p-3 bg-[#f8fafb] rounded-xl border border-[#eef3f6] text-xs text-[#162c38]">
-                      {t.message}
-                    </div>
-
-                    {t.adminResponse && (
-                      <div className="p-3 bg-[#edf7f4] rounded-xl border border-[#c2e2dc] text-xs space-y-1">
-                        <span className="font-bold text-[#087f79] text-[11px]">Admin Resolution Note:</span>
-                        <p className="text-[#162c38]">{t.adminResponse}</p>
-                      </div>
-                    )}
-
-                    {/* Admin Actions */}
-                    <div className="pt-2 border-t border-[#eef3f6] flex flex-wrap items-center justify-between gap-2">
-                      <div className="flex items-center gap-2">
-                        <span className="text-[11px] text-[#5b6f7b]">Update Status:</span>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => handleUpdateSupportTicket(t.id, "in_progress")}
-                          className="h-7 text-[11px] border-[#dce5e9]"
-                        >
-                          Mark In-Progress
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => handleUpdateSupportTicket(t.id, "resolved")}
-                          className="h-7 text-[11px] border-emerald-300 bg-emerald-50 text-emerald-800 hover:bg-emerald-100"
-                        >
-                          Mark Resolved
-                        </Button>
-                      </div>
-
-                      <Button
-                        size="sm"
-                        onClick={() => {
-                          setReplyingTicketId(replyingTicketId === t.id ? null : t.id);
-                          setReplyText(t.adminResponse || "");
-                        }}
-                        className="h-7 text-[11px] bg-[#087f79] hover:bg-[#066762] text-white"
-                      >
-                        {replyingTicketId === t.id ? "Close Reply" : "Send Resolution Reply"}
-                      </Button>
-                    </div>
-
-                    {replyingTicketId === t.id && (
-                      <div className="p-3 bg-[#f0f4f6] rounded-xl border border-[#dce5e9] space-y-2 mt-2">
-                        <Textarea
-                          placeholder="Type response / solution for the customer..."
-                          value={replyText}
-                          onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setReplyText(e.target.value)}
-                          rows={3}
-                          className="text-xs bg-white border-[#dce5e9]"
-                        />
-                        <div className="flex justify-end gap-2">
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => setReplyingTicketId(null)}
-                            className="h-7 text-xs"
-                          >
-                            Cancel
-                          </Button>
-                          <Button
-                            size="sm"
-                            onClick={() => {
-                              handleUpdateSupportTicket(t.id, "resolved", replyText);
-                              setReplyingTicketId(null);
-                            }}
-                            className="h-7 text-xs bg-[#087f79] text-white"
-                          >
-                            Save & Resolve
-                          </Button>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                ))}
-            </div>
-          )}
-        </div>
-      )}
-
 
       {/* Inspect Intake Modal */}
       {inspectingUser && (

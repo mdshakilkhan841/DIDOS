@@ -38,6 +38,8 @@ import { useAuth } from "@/context/auth-context";
 import { AdminControlPanel } from "./AdminControlPanel";
 import { AdminUserManagement } from "./AdminUserManagement";
 import { AdminProjectTracking } from "./AdminProjectTracking";
+import { AdminSupportTickets } from "./AdminSupportTickets";
+import { getAuthToken } from "@/lib/dudos/assessment-sync";
 
 type AdminNavigationItem = {
     id: string;
@@ -115,7 +117,10 @@ export default function AdminWorkbench({
     const view = requestedView === "clients" ? "projects" : requestedView;
 
     React.useEffect(() => {
-        fetch("http://localhost:8000/api/v1/admin/support/tickets")
+        const token = getAuthToken();
+        fetch("http://localhost:8000/api/v1/admin/support/tickets", {
+            headers: token ? { Authorization: `Bearer ${token}` } : {},
+        })
             .then((res) => res.json())
             .then((data) => {
                 if (Array.isArray(data)) {
@@ -487,6 +492,12 @@ export default function AdminWorkbench({
                 <main id="main" className="workbench-main">
                     {view === "projects" ? (
                         <AdminProjectTracking />
+                    ) : view === "support" ? (
+                        <AdminSupportTickets
+                            clients={registrations.filter(
+                                (r) => r.role !== "admin",
+                            )}
+                        />
                     ) : view === "users" ? (
                         <AdminUserManagement
                             lang={lang}

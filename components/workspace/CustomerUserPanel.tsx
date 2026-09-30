@@ -505,6 +505,20 @@ function stageLabel(status: ProjectStatus, lang: string): string {
     }
 }
 
+// Support ticket statuses (match TICKET_STATUSES in the backend).
+function ticketStatusMeta(status: string): { label: string; className: string } {
+    switch (status) {
+        case "in_progress":
+            return { label: "In progress", className: "border-sky-300 bg-sky-50 text-sky-800" };
+        case "resolved":
+            return { label: "Resolved", className: "border-emerald-300 bg-emerald-50 text-emerald-800" };
+        case "closed":
+            return { label: "Closed", className: "border-slate-300 bg-slate-50 text-slate-600" };
+        default:
+            return { label: "Open", className: "border-amber-300 bg-amber-50 text-amber-800" };
+    }
+}
+
 const PROJECT_FILTERS: { id: "all" | ProjectStage; en: string; bn: string }[] = [
     { id: "all", en: "All", bn: "সব" },
     { id: "draft", en: "Drafts", bn: "খসড়া" },
@@ -3454,22 +3468,11 @@ ${draft.projectScope}
                                                 </Badge>
                                             </div>
                                             <Badge
-                                                className={`text-xs font-semibold ${
-                                                    t.status === "resolved" ||
-                                                    t.status === "closed"
-                                                        ? "bg-emerald-100 text-emerald-800 border-emerald-300"
-                                                        : t.status ===
-                                                            "in_progress"
-                                                          ? "bg-blue-100 text-blue-800 border-blue-300"
-                                                          : "bg-amber-100 text-amber-800 border-amber-300"
-                                                }`}
-                                            >
-                                                {t.status === "in_progress"
-                                                    ? "In Progress"
-                                                    : t.status === "resolved"
-                                                      ? "Resolved"
-                                                      : "Open"}
-                                            </Badge>
+                                                    variant="outline"
+                                                    className={`text-xs font-semibold ${ticketStatusMeta(t.status).className}`}
+                                                >
+                                                    {ticketStatusMeta(t.status).label}
+                                                </Badge>
                                         </div>
 
                                         <p className="text-[#5b6f7b] text-xs leading-relaxed">
@@ -4258,6 +4261,7 @@ ${draft.projectScope}
                                 <option value="open">Open</option>
                                 <option value="in_progress">In Progress</option>
                                 <option value="resolved">Resolved</option>
+                                <option value="closed">Closed</option>
                             </select>
                             <span className="text-xs text-[#5b6f7b]">
                                 Total: <strong>{supportTickets.length}</strong>{" "}
@@ -4348,23 +4352,10 @@ ${draft.projectScope}
 
                                             <div className="flex items-center gap-2">
                                                 <Badge
-                                                    className={`text-xs font-semibold ${
-                                                        t.status ===
-                                                            "resolved" ||
-                                                        t.status === "closed"
-                                                            ? "bg-emerald-100 text-emerald-800 border-emerald-300"
-                                                            : t.status ===
-                                                                "in_progress"
-                                                              ? "bg-blue-100 text-blue-800 border-blue-300"
-                                                              : "bg-amber-100 text-amber-800 border-amber-300"
-                                                    }`}
+                                                    variant="outline"
+                                                    className={`text-xs font-semibold ${ticketStatusMeta(t.status).className}`}
                                                 >
-                                                    {t.status === "in_progress"
-                                                        ? "In Progress"
-                                                        : t.status ===
-                                                            "resolved"
-                                                          ? "Resolved"
-                                                          : "Open"}
+                                                    {ticketStatusMeta(t.status).label}
                                                 </Badge>
                                                 <span className="text-[11px] text-[#5b6f7b]">
                                                     {new Date(
