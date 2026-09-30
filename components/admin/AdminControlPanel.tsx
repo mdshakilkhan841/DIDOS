@@ -44,6 +44,7 @@ import {
   TableCell,
 } from "@/components/ui/table";
 import { AdminEstimationModal } from "@/components/projects/AdminEstimationModal";
+import { AdminNewTicketDialog } from "./AdminNewTicketDialog";
 import { showToast } from "@/lib/toast";
 
 export function AdminControlPanel({
@@ -63,6 +64,7 @@ export function AdminControlPanel({
   } = useAuth();
 
   const [activeTab, setActiveTab] = useState<"queue" | "quotes" | "deployments" | "ledger" | "support">(initialTab);
+  const [showNewTicket, setShowNewTicket] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
 
@@ -1145,8 +1147,23 @@ export function AdminControlPanel({
                 <RefreshCw className="h-3.5 w-3.5 mr-1" />
                 Refresh
               </Button>
+              <Button
+                size="sm"
+                onClick={() => setShowNewTicket(true)}
+                className="h-8 text-xs"
+              >
+                <Plus className="h-3.5 w-3.5 mr-1" />
+                New ticket
+              </Button>
             </div>
           </div>
+
+          <AdminNewTicketDialog
+            open={showNewTicket}
+            onOpenChange={setShowNewTicket}
+            clients={registrations.filter((r) => r.role !== "admin")}
+            onCreated={loadSupportTickets}
+          />
 
           {/* Tickets List */}
           {supportTickets.length === 0 ? (
