@@ -16,6 +16,7 @@ import {
 } from "@/components/ui/dialog";
 import { DataTable, type DataTableColumn } from "@/components/ui/data-table";
 import { getAuthToken } from "@/lib/dudos/assessment-sync";
+import { AdminBuilderPanel, builderBadge, type BuilderState } from "./AdminBuilderPanel";
 import { showToast } from "@/lib/toast";
 
 const API_BASE =
@@ -45,6 +46,7 @@ type AdminProject = {
     liveUrl?: string | null;
     domainName?: string | null;
     deliveryNote?: string | null;
+    builder?: BuilderState | null;
 };
 
 // Admin view of the client lifecycle. Delivery statuses unlock only after the
@@ -257,6 +259,22 @@ export function AdminProjectTracking() {
             cell: paymentText,
         },
         {
+            id: "builder",
+            header: "Builder",
+            exportValue: (project) => builderBadge(project.builder).label,
+            cell: (project) => {
+                if (!["building", "deploying", "live"].includes(stageOf(project.status))) {
+                    return <span className="text-xs text-slate-400">—</span>;
+                }
+                const badge = builderBadge(project.builder);
+                return (
+                    <Badge variant="outline" className={`text-[10px] ${badge.className}`}>
+                        {badge.label}
+                    </Badge>
+                );
+            },
+        },
+        {
             id: "submitted",
             header: "Submitted to builder",
             className: "text-xs",
@@ -425,7 +443,7 @@ export function AdminProjectTracking() {
                     if (!open) setEditing(null);
                 }}
             >
-                <DialogContent className="max-h-[90vh] max-w-lg overflow-y-auto bg-white">
+                <DialogContent className="max-h-[90vh] w-[calc(100vw-2rem)] max-w-[calc(100%-2rem)] overflow-y-auto bg-white sm:max-w-2xl">
                     <DialogHeader>
                         <DialogTitle className="text-base font-bold">
                             {editing ? displayName(editing.name) : ""}
@@ -465,6 +483,23 @@ export function AdminProjectTracking() {
                                     </div>
                                 )}
                             </dl>
+
+                            {handedOff && (
+                                <AdminBuilderPanel<AdminProject>
+                                    projectId={editing.id}
+                                    onProjectChange={(updated) => {
+                                        setProjects((prev) =>
+                                            prev.map((project) => (project.id === updated.id ? updated : project)),
+                                        );
+                                        setEditing(updated);
+                                        setForm((current) => ({
+                                            ...current,
+                                            status: updated.status,
+                                            previewUrl: current.previewUrl || updated.previewUrl || "",
+                                        }));
+                                    }}
+                                />
+                            )}
 
                             <div className="space-y-1.5">
                                 <Label htmlFor="project-status" className="text-xs font-semibold">

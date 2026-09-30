@@ -50,6 +50,7 @@ import {
     DialogDescription,
 } from "@/components/ui/dialog";
 import { CreditWalletModal } from "@/components/billing/CreditWalletModal";
+import { BuildProgress, type ClientBuild } from "./BuildProgress";
 import { ManagedDeploymentModal } from "@/components/projects/ManagedDeploymentModal";
 import { CustomerSupportModal } from "@/components/support/CustomerSupportModal";
 import { showToast } from "@/lib/toast";
@@ -148,6 +149,8 @@ export interface ActiveProjectDraft {
     deploymentTicket?: any;
     quotationInvoice?: any;
     builderSubmittedAt?: string;
+    // Builder progress, summarised by the backend once the project is handed off.
+    build?: ClientBuild | null;
     // Set on projects returned by the backend once paid.
     payment?: {
         credits?: number | null;
@@ -1227,6 +1230,47 @@ export function CustomerUserPanel({
             user,
         ],
     );
+
+    // While the builder works on a project, refresh its progress every 30s.
+    const buildRunning = workspaceProjects.some(
+        (project) =>
+            project.draft.build &&
+            !project.draft.build.ready &&
+            project.draft.build.phase !== "attention",
+    );
+    useEffect(() => {
+        if (!buildRunning) return;
+        const timer = window.setInterval(() => {
+            const token = getAuthToken();
+            if (!token) return;
+            void fetch(`${API_BASE}/projects`, {
+                headers: { Authorization: `Bearer ${token}` },
+                cache: "no-store",
+            })
+                .then((res) => (res.ok ? res.json() : null))
+                .then((fresh) => {
+                    if (!Array.isArray(fresh)) return;
+                    const byId = new Map(fresh.map((project) => [project.id, project]));
+                    setAllProjects((prev) =>
+                        prev.map((entry) => byId.get(entry?.id) || entry),
+                    );
+                    setActiveDraft((current) => {
+                        const latest = current && byId.get(current.id);
+                        return latest
+                            ? {
+                                  ...current,
+                                  status: latest.status,
+                                  build: latest.build,
+                                  previewUrl: latest.previewUrl || current.previewUrl,
+                                  liveUrl: latest.liveUrl || current.liveUrl,
+                              }
+                            : current;
+                    });
+                })
+                .catch(() => {});
+        }, 30000);
+        return () => window.clearInterval(timer);
+    }, [buildRunning]);
     const selectedProject =
         workspaceProjects.find(
             (project) => activeDraft && project.ids.includes(activeDraft.id),
@@ -1917,6 +1961,8 @@ ${draft.projectScope}
                     organization: d.organizationName,
                     workspace,
                     recordId,
+                    // Every assessment answer: the builder's brief is written from these.
+                    assessment: d.assessmentData,
                 },
                 qaAnswers: d.qaAnswers,
             }),
@@ -2118,8 +2164,8 @@ ${draft.projectScope}
                 : "Payment received. Submit the project to the builder to begin.",
         submitted:
             lang === "bn"
-                ? "প্রজেক্ট বিল্ডারে জমা হয়েছে। অগ্রগতি এখানে দেখাবে।"
-                : "Your project has been submitted to the builder. Progress will appear here.",
+                ? "প্রজেক্টটি বিল্ডারে আছে এবং স্বয়ংক্রিয়ভাবে তৈরি হচ্ছে। নিচে প্রতিটি ধাপ দেখুন।"
+                : "Your project is with the builder. It builds automatically; follow each step below.",
     }[currentStage];
 
     // Actions live only in the selected-project panel.
@@ -2358,6 +2404,12 @@ ${draft.projectScope}
                                             </li>
                                         ))}
                                     </ol>
+
+                                    <BuildProgress
+                                        build={selectedProject.draft.build}
+                                        previewUrl={selectedProject.draft.previewUrl}
+                                        lang={lang}
+                                    />
 
                                     <div className="flex flex-wrap items-center justify-between gap-3 border-t border-dudos-border pt-4">
                                         <p className="text-sm text-dudos-text-secondary">
@@ -3900,6 +3952,16 @@ ${draft.projectScope}
                                                     )}
                                                 </ol>
 
+                                                {draft.build && (
+                                                    <div className="mt-4">
+                                                        <BuildProgress
+                                                            build={draft.build}
+                                                            previewUrl={draft.previewUrl}
+                                                            lang={lang}
+                                                        />
+                                                    </div>
+                                                )}
+
                                                 <dl className="mt-5 grid gap-x-6 gap-y-3 border-t border-dudos-border pt-4 text-xs sm:grid-cols-2 lg:grid-cols-4">
                                                     {details.map(
                                                         ([label, value]) => (
@@ -4492,7 +4554,7 @@ ${draft.projectScope}
                         <DialogDescription className="text-sm">
                             {lang === "bn"
                                 ? `"${confirmSubmitProject?.draft.title}" বিল্ডারে পাঠানো হবে। জমা দেওয়ার পর অ্যাসেসমেন্ট আর পরিবর্তন করা যাবে না।`
-                                : `"${confirmSubmitProject?.draft.title}" will be sent to the builder. The assessment can’t be changed after submission.`}
+                                : `"${confirmSubmitProject?.draft.title}" goes straight into the builder queue and the build starts automatically. You can follow each step here. The assessment can’t be changed after submission.`}
                         </DialogDescription>
                     </DialogHeader>
                     <div className="flex justify-end gap-2 pt-2">
