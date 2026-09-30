@@ -55,6 +55,8 @@ interface AuthContextType {
   credits: number;
   deductCredits: (amount: number, reason: string) => boolean;
   addCredits: (amount: number, reason: string) => void;
+  // Apply a balance the server already charged, logging the debit locally.
+  applyServerCharge: (remainingCredits: number, charged: number, reason: string) => void;
   creditTransactions: CreditTransaction[];
   // Pre-registration persistence
   savePreRegistrationDraft: (draft: PreRegistrationDraft) => void;
@@ -241,8 +243,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   // Save session when user or role changes
-  const persistSession = (u: UserProfile | null, r: StakeholderRole, jwtToken?: string) => {
+  const persistSession = (u: UserProfile | null, r: StakeholderRole, newToken?: string) => {
     try {
+      // Callers updating only the profile (credits, role) keep the current JWT;
+      // dropping it would write a placeholder token and force a re-login.
+      const jwtToken =
+        newToken ||
+        (u ? localStorage.getItem("dudos_jwt_token") || undefined : undefined);
       const cookieDomain = getCookieDomain();
       const domainAttr = cookieDomain ? `; domain=${cookieDomain}` : "";
 
@@ -556,6 +563,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   // Credits management
   const credits = user?.credits ?? 0;
 
+  const applyServerCharge = (remainingCredits: number, charged: number, reason: string) => {
+    if (!user) return;
+    const updatedUser = { ...user, credits: remainingCredits };
+    setUser(updatedUser);
+    persistSession(updatedUser, activeRole);
+    if (charged <= 0) return;
+    const tx: CreditTransaction = {
+      id: "tx_" + Date.now().toString(36),
+      amount: charged,
+      type: "debit",
+      reason,
+      timestamp: new Date().toISOString(),
+    };
+    const updatedTx = [tx, ...creditTransactions];
+    setCreditTransactions(updatedTx);
+    try {
+      localStorage.setItem(TRANSACTIONS_KEY, JSON.stringify(updatedTx));
+    } catch {}
+  };
+
   const deductCredits = (amount: number, reason: string): boolean => {
     if (!user) return false;
     if (user.credits < amount) {
@@ -654,6 +681,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         credits,
         deductCredits,
         addCredits,
+        applyServerCharge,
         creditTransactions,
         savePreRegistrationDraft,
         getPreRegistrationDraft,

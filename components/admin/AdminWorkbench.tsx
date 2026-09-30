@@ -37,6 +37,7 @@ import {
 import { useAuth } from "@/context/auth-context";
 import { AdminControlPanel } from "./AdminControlPanel";
 import { AdminUserManagement } from "./AdminUserManagement";
+import { AdminProjectTracking } from "./AdminProjectTracking";
 
 type AdminNavigationItem = {
     id: string;
@@ -180,7 +181,6 @@ export default function AdminWorkbench({
                     title: "Project Tracking",
                     bn: "প্রজেক্ট ট্র্যাকিং",
                     icon: FolderKanban,
-                    comingSoon: true,
                 },
                 {
                     id: "builder",
@@ -498,7 +498,9 @@ export default function AdminWorkbench({
                 </header>
 
                 <main id="main" className="workbench-main">
-                    {view === "users" ? (
+                    {view === "projects" ? (
+                        <AdminProjectTracking />
+                    ) : view === "users" ? (
                         <AdminUserManagement
                             lang={lang}
                             users={registrations}

@@ -70,6 +70,21 @@ const BUILD_PAYMENTS_KEY = "dudos_build_payments";
 // report "submitted" can never roll a handed-off project back.
 const BUILDER_SUBMISSIONS_KEY = "dudos_builder_submissions";
 const BUILD_PACKAGE_CREDITS = 1000;
+const API_BASE =
+    process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8000/api/v1";
+
+// Project row returned by the backend, and the pay / submit responses.
+type BackendProject = {
+    id: string;
+    paidAt?: string | null;
+    builderSubmittedAt?: string | null;
+    [key: string]: unknown;
+};
+type ProjectActionResult = BackendProject & {
+    project?: BackendProject;
+    remainingCredits?: number;
+    charged?: number;
+};
 
 export interface ActiveProjectDraft {
     id: string;
@@ -113,6 +128,8 @@ export interface ActiveProjectDraft {
     deploymentTicket?: any;
     quotationInvoice?: any;
     builderSubmittedAt?: string;
+    // Set on projects returned by the backend once paid.
+    payment?: { credits?: number | null; paidAt?: string | null };
     savedAt: string;
     updatedAt: string;
 }
@@ -201,6 +218,13 @@ export interface WorkspaceProject {
     invoice?: any;
     payment?: any;
     updatedAt: string;
+    // True when the backend has this project; its status is then the truth.
+    onServer?: boolean;
+}
+
+// Rows returned by the FastAPI projects endpoints.
+function isServerEntry(entry: any): boolean {
+    return typeof entry?.slug === "string" && typeof entry?.userId === "string";
 }
 
 function projectEntryIds(entry: any): string[] {
@@ -315,12 +339,16 @@ function buildWorkspaceProjects({
         matches.forEach((entry) => claimed.add(entry));
 
         const base = convertAssessmentRecordToDraft(record, user, workspace);
+        // Once the backend has the project, only its status counts; local
+        // copies can be stale or left over from browser-only payments.
+        const serverMatches = matches.filter(isServerEntry);
+        const sources = serverMatches.length ? serverMatches : matches;
         let status = base.status;
-        for (const entry of matches) status = laterStatus(status, entry.status);
+        for (const entry of sources) status = laterStatus(status, entry.status);
 
         // Drafts are edited through the assessment record; after submission,
         // QA answers, quotations and deployment details live on the project.
-        const latest = mostAdvanced(matches);
+        const latest = mostAdvanced(sources);
         const draft: ActiveProjectDraft =
             status !== "draft" && latest
                 ? {
@@ -343,6 +371,7 @@ function buildWorkspaceProjects({
             status,
             updatedAt:
                 record.updated_at || record.created_at || draft.updatedAt,
+            onServer: serverMatches.length > 0,
         });
     }
 
@@ -358,13 +387,15 @@ function buildWorkspaceProjects({
         ]);
     }
     for (const [id, group] of legacyGroups) {
-        const status = group.reduce<ProjectStatus>(
+        const serverGroup = group.filter(isServerEntry);
+        const status = (serverGroup.length ? serverGroup : group).reduce<ProjectStatus>(
             (current, entry) => laterStatus(current, entry.status),
             "draft",
         );
-        const shaped =
-            group.find((entry) => entry.qaAnswers && entry.projectScope) ||
-            mostAdvanced(group);
+        const shaped = serverGroup.length
+            ? mostAdvanced(serverGroup)
+            : group.find((entry) => entry.qaAnswers && entry.projectScope) ||
+              mostAdvanced(group);
         const draft = projectEntryToDraft(shaped, user, workspace);
         projects.push({
             id,
@@ -372,6 +403,7 @@ function buildWorkspaceProjects({
             draft: { ...draft, status },
             status,
             updatedAt: draft.updatedAt,
+            onServer: serverGroup.length > 0,
         });
     }
 
@@ -411,9 +443,15 @@ function buildWorkspaceProjects({
         );
 
     for (const project of projects) {
-        project.payment = payments.find((payment) =>
-            belongsTo(payment, project),
-        );
+        if (project.onServer) {
+            // Server-tracked: payment and handoff come from the backend only.
+            project.invoice = undefined;
+            project.payment = project.draft.payment || undefined;
+            continue;
+        }
+        project.payment =
+            payments.find((payment) => belongsTo(payment, project)) ||
+            undefined;
         if (project.payment) {
             project.status = laterStatus(project.status, "approved");
         } else if (project.invoice) {
@@ -542,7 +580,13 @@ export function CustomerUserPanel({
         | "overview-details";
 }) {
     const router = useRouter();
-    const { user, creditTransactions, deductCredits, addCredits } = useAuth();
+    const {
+        user,
+        creditTransactions,
+        deductCredits,
+        addCredits,
+        applyServerCharge,
+    } = useAuth();
 
     const [activeDraft, setActiveDraft] = useState<ActiveProjectDraft | null>(
         null,
@@ -1767,19 +1811,128 @@ ${draft.projectScope}
         else setPayingProject(project);
     };
 
-    const handlePayBuildPackage = () => {
-        if (!payingProject) return;
-        const paid = deductCredits(
-            BUILD_PACKAGE_CREDITS,
-            `Build package for "${payingProject.draft.title}"`,
-        );
-        if (!paid) return;
-        const now = new Date().toISOString();
+    // Server-side lifecycle: payment and builder handoff are recorded in the
+    // backend so the admin panel sees them; local storage is only a fallback
+    // when no backend session exists.
+    const mergeBackendProject = (saved?: BackendProject | null) => {
+        if (!saved?.id) return;
+        setAllProjects((prev) => [saved, ...prev]);
+    };
+
+    const ensureBackendProject = async (
+        project: WorkspaceProject,
+        token: string,
+    ): Promise<string | null> => {
+        // Always upsert first: it confirms older rows still marked "draft" and
+        // refreshes the name before the server accepts payment or handoff.
+        const known = project.ids.find((id) => id.startsWith("cproj_"));
+        const d = project.draft;
+        const recordId = project.recordId || project.id;
+        const res = await fetch(`${API_BASE}/projects/from-draft`, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${token}`,
+            },
+            body: JSON.stringify({
+                projectId: known,
+                recordId,
+                workspace,
+                name: d.title,
+                domain: d.businessDomain,
+                scopeSummary: d.projectScope,
+                specs: {
+                    stack: d.targetStack,
+                    timeline: d.expectedTimeline,
+                    budget: d.budgetExpectation,
+                    organization: d.organizationName,
+                    workspace,
+                    recordId,
+                },
+                qaAnswers: d.qaAnswers,
+            }),
+        });
+        if (!res.ok) return known || null;
+        const saved = await res.json();
+        mergeBackendProject(saved);
+        return saved?.id || known || null;
+    };
+
+    const callProjectAction = async (
+        project: WorkspaceProject,
+        action: "pay" | "submit-to-builder",
+    ): Promise<ProjectActionResult | null | undefined> => {
+        const token = getAuthToken();
+        if (!token) return undefined;
+        try {
+            const id = await ensureBackendProject(project, token);
+            if (!id) throw new Error("unreachable");
+            const res = await fetch(`${API_BASE}/projects/${id}/${action}`, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    Authorization: `Bearer ${token}`,
+                },
+                body: action === "pay" ? JSON.stringify({ method: "credits" }) : undefined,
+            });
+            const body = await res.json().catch(() => ({}));
+            if (!res.ok) {
+                showToast.error(
+                    res.status === 402 && action === "pay"
+                        ? lang === "bn"
+                            ? "পর্যাপ্ত ক্রেডিট নেই"
+                            : "Not enough credits"
+                        : lang === "bn"
+                          ? "অনুরোধটি সম্পন্ন হয়নি"
+                          : "Request failed",
+                    { description: body?.detail },
+                );
+                return null;
+            }
+            return body;
+        } catch {
+            showToast.error(
+                lang === "bn" ? "সার্ভারে সংযোগ হয়নি" : "Could not reach the server",
+                {
+                    description:
+                        lang === "bn"
+                            ? "কিছুক্ষণ পর আবার চেষ্টা করুন।"
+                            : "Nothing was charged. Please try again.",
+                },
+            );
+            return null;
+        }
+    };
+
+    const handlePayBuildPackage = async () => {
+        if (!payingProject || isProcessingPayment) return;
+        const project = payingProject;
+        const reason = `Build package for "${project.draft.title}"`;
+
+        setIsProcessingPayment(true);
+        const result = await callProjectAction(project, "pay");
+        setIsProcessingPayment(false);
+        if (result === null) return;
+        if (result) {
+            mergeBackendProject(result.project);
+            applyServerCharge(
+                result.remainingCredits ?? 0,
+                result.charged ?? 0,
+                reason,
+            );
+        } else if (!deductCredits(BUILD_PACKAGE_CREDITS, reason)) {
+            // Offline mode: no backend session, charge the local wallet.
+            return;
+        }
+
+        const now = result?.project?.paidAt || new Date().toISOString();
         const receipt = {
             id: "pay_" + Date.now().toString(36),
-            projectId: payingProject.draft.id,
-            projectIds: payingProject.ids,
-            projectTitle: payingProject.draft.title,
+            projectId: result?.project?.id || project.draft.id,
+            projectIds: Array.from(
+                new Set([...project.ids, result?.project?.id].filter(Boolean)),
+            ),
+            projectTitle: project.draft.title,
             clientEmail: user?.email || "",
             workspace,
             method: "credits",
@@ -1804,8 +1957,11 @@ ${draft.projectScope}
         );
     };
 
-    const handleSubmitToBuilder = (project: WorkspaceProject) => {
-        const now = new Date().toISOString();
+    const handleSubmitToBuilder = async (project: WorkspaceProject) => {
+        const result = await callProjectAction(project, "submit-to-builder");
+        if (result === null) return;
+        if (result) mergeBackendProject(result);
+        const now = result?.builderSubmittedAt || new Date().toISOString();
         const submission = {
             id: "bld_" + Date.now().toString(36),
             projectId: project.draft.id,
@@ -1842,7 +1998,9 @@ ${draft.projectScope}
                 PROJECT_RECORDS_KEY,
                 JSON.stringify([
                     updated,
-                    ...records.filter((entry: any) => entry.id !== updated.id),
+                    ...records.filter(
+                        (entry: { id?: string }) => entry.id !== updated.id,
+                    ),
                 ]),
             );
             const custom = JSON.parse(
@@ -1851,7 +2009,7 @@ ${draft.projectScope}
             localStorage.setItem(
                 CUSTOM_PROJECTS_KEY,
                 JSON.stringify(
-                    custom.map((entry: any) =>
+                    custom.map((entry: { id: string }) =>
                         project.ids.includes(entry.id)
                             ? { ...entry, status: "in_development" }
                             : entry,
@@ -4381,7 +4539,11 @@ ${draft.projectScope}
                                     : "Buy credits"}
                             </Button>
                         ) : (
-                            <Button size="sm" onClick={handlePayBuildPackage}>
+                            <Button
+                                size="sm"
+                                disabled={isProcessingPayment}
+                                onClick={() => void handlePayBuildPackage()}
+                            >
                                 <Check className="mr-1 h-4 w-4" />
                                 {lang === "bn"
                                     ? `${BUILD_PACKAGE_CREDITS.toLocaleString()} ক্রেডিট দিয়ে পেমেন্ট`
