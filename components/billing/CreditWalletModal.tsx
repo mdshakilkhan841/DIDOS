@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import { Coins, Plus, Check, ShieldCheck } from "lucide-react";
+import { Coins, Plus, Check, ShieldCheck, Loader2, ExternalLink } from "lucide-react";
 import { useAuth } from "@/context/auth-context";
 import { getAuthToken } from "@/lib/dudos/assessment-sync";
 import {
@@ -74,7 +74,7 @@ const FALLBACK_CREDIT_PACKAGES: DudosPackage[] = [
   },
 ];
 
-const PHONE_KEY = "dudos_payment_phone";
+type PendingPayment = { invoiceId: string; paymentUrl: string; pkg: DudosPackage };
 
 export function CreditWalletModal({
   open,
@@ -89,14 +89,9 @@ export function CreditWalletModal({
   const [packages, setPackages] = useState<DudosPackage[]>(FALLBACK_CREDIT_PACKAGES);
   const [selectedPkg, setSelectedPkg] = useState<string>("");
   const [processingId, setProcessingId] = useState<string | null>(null);
-  // PayStation needs the payer's mobile number; remembered on this device.
-  const [phone, setPhone] = useState(() => {
-    try {
-      return localStorage.getItem(PHONE_KEY) || "";
-    } catch {
-      return "";
-    }
-  });
+  // A PayStation top-up open in another tab, until it is paid or given up.
+  const [pending, setPending] = useState<PendingPayment | null>(null);
+  const [checking, setChecking] = useState(false);
 
   // Live packs from Packages & Pricing; keep the fallback if the API is down.
   useEffect(() => {
@@ -116,9 +111,61 @@ export function CreditWalletModal({
     packages[0]?.id ||
     "";
 
+  const settle = (payment: PendingPayment, status: string, totalCredits: number) => {
+    const { pkg } = payment;
+    if (status === "paid") {
+      applyServerBalance(totalCredits, pkg.credits || 0, `Purchased ${pkg.name} (${formatBdt(pkg.priceBdt)})`);
+      showToast.success(
+        lang === "bn"
+          ? "পেমেন্ট সম্পন্ন হয়েছে। ওয়ালেটে ব্যালেন্স যোগ হয়েছে।"
+          : `Payment received. ${(pkg.credits || 0).toLocaleString()} ${unitLabel(pkg.unit, lang)} added.`,
+      );
+    } else if (status === "cancelled") {
+      showToast.info(lang === "bn" ? "পেমেন্ট বাতিল হয়েছে।" : "Payment cancelled. Nothing was charged.");
+    } else if (status === "failed") {
+      showToast.error(lang === "bn" ? "পেমেন্ট ব্যর্থ হয়েছে।" : "Payment failed. Nothing was added to your wallet.");
+    } else {
+      return false;
+    }
+    setPending(null);
+    return true;
+  };
+
+  const checkPending = async (action: "status" | "cancel", quiet = false) => {
+    if (!pending) return;
+    const payment = pending;
+    setChecking(true);
+    try {
+      const res = await fetch(`${API_BASE}/payments/paystation/${payment.invoiceId}/${action}`, {
+        method: action === "cancel" ? "POST" : "GET",
+        headers: authHeaders(),
+        cache: "no-store",
+      });
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(body?.detail);
+      if (!settle(payment, body.status, body.totalCredits) && !quiet) {
+        showToast.info(lang === "bn" ? "পেমেন্ট এখনও সম্পন্ন হয়নি।" : "Not paid yet. Finish the payment in the PayStation tab.");
+      }
+    } catch {
+      if (!quiet) showToast.error(lang === "bn" ? "সার্ভারে সংযোগ হয়নি" : "Could not reach the server");
+    } finally {
+      setChecking(false);
+    }
+  };
+
+  // While the client pays in the other tab, check every few seconds.
+  useEffect(() => {
+    if (!open || !pending) return;
+    const timer = window.setInterval(() => void checkPending("status", true), 5000);
+    return () => window.clearInterval(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, pending]);
+
   const handlePurchase = async (pkg: DudosPackage) => {
     const reason = `Purchased ${pkg.name} (${formatBdt(pkg.priceBdt)})`;
     setProcessingId(pkg.id);
+    // Open the tab now, inside the click, so the browser doesn't block it.
+    const tab = getAuthToken() ? window.open("", "_blank") : null;
     try {
       if (!getAuthToken()) {
         // Offline mode: no backend session, top up the local wallet.
@@ -129,28 +176,33 @@ export function CreditWalletModal({
       const res = await fetch(`${API_BASE}/credits/purchase`, {
         method: "POST",
         headers: authHeaders(true),
-        body: JSON.stringify({ packageId: pkg.id, phone: phone.trim() || undefined }),
+        body: JSON.stringify({ packageId: pkg.id }),
       });
       const body = await res.json().catch(() => ({}));
       if (!res.ok) {
+        tab?.close();
         showToast.error(lang === "bn" ? "ক্রয় সম্পন্ন হয়নি" : "Purchase failed", {
           description: body?.detail,
         });
         return;
       }
       if (body.paymentUrl) {
-        try {
-          localStorage.setItem(PHONE_KEY, phone.trim());
-        } catch {}
-        showToast.info(lang === "bn" ? "PayStation-এ নিয়ে যাওয়া হচ্ছে…" : "Redirecting to PayStation…");
-        window.location.assign(body.paymentUrl);
+        if (!tab) {
+          // Pop-up blocked: pay in this tab instead.
+          window.location.assign(body.paymentUrl);
+          return;
+        }
+        tab.location.href = body.paymentUrl;
+        setPending({ invoiceId: body.invoiceId, paymentUrl: body.paymentUrl, pkg });
         return;
       }
+      tab?.close();
       applyServerBalance(body.totalCredits, body.added, reason);
       showToast.success(
         lang === "bn" ? "ক্রেডিট যোগ হয়েছে" : `${Number(body.added).toLocaleString()} ${unitLabel(pkg.unit, lang)} added`,
       );
     } catch {
+      tab?.close();
       showToast.error(lang === "bn" ? "সার্ভারে সংযোগ হয়নি" : "Could not reach the server");
     } finally {
       setProcessingId(null);
@@ -191,6 +243,35 @@ export function CreditWalletModal({
           </div>
         </DialogHeader>
 
+        {pending ? (
+          <div className="space-y-4 rounded-xl border border-amber-200 bg-amber-50 p-5 text-sm">
+            <div className="flex items-start gap-3">
+              <Loader2 className="mt-0.5 h-5 w-5 shrink-0 animate-spin text-amber-600" />
+              <div>
+                <p className="font-bold text-dudos-text">
+                  {lang === "bn" ? "পেমেন্টের অপেক্ষায়" : "Waiting for your payment"}
+                </p>
+                <p className="mt-1 text-xs text-dudos-text-secondary">
+                  {lang === "bn"
+                    ? `নতুন ট্যাবে PayStation-এ ${formatBdt(pending.pkg.priceBdt)} পরিশোধ করুন। সম্পন্ন হলে এখানে স্বয়ংক্রিয়ভাবে আপডেট হবে।`
+                    : `Pay ${formatBdt(pending.pkg.priceBdt)} for ${packageName(pending.pkg, lang)} in the PayStation tab. This updates on its own when the payment goes through. If PayStation shows an error, close that tab and cancel here.`}
+                </p>
+              </div>
+            </div>
+            <div className="flex flex-wrap justify-end gap-2">
+              <Button size="sm" variant="outline" onClick={() => window.open(pending.paymentUrl, "_blank")}>
+                <ExternalLink className="mr-1 h-3.5 w-3.5" />
+                {lang === "bn" ? "PayStation আবার খুলুন" : "Reopen PayStation"}
+              </Button>
+              <Button size="sm" variant="outline" disabled={checking} onClick={() => void checkPending("cancel")}>
+                {lang === "bn" ? "পেমেন্ট বাতিল" : "Cancel payment"}
+              </Button>
+              <Button size="sm" disabled={checking} onClick={() => void checkPending("status")}>
+                {checking ? (lang === "bn" ? "যাচাই হচ্ছে…" : "Checking…") : lang === "bn" ? "স্ট্যাটাস দেখুন" : "Check status"}
+              </Button>
+            </div>
+          </div>
+        ) : (
         <div className="space-y-4">
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 pt-2">
             {packages.map((pkg) => {
@@ -254,21 +335,6 @@ export function CreditWalletModal({
             })}
           </div>
 
-          <label className="flex flex-wrap items-center gap-3 rounded-xl border border-dudos-border bg-white p-3.5 text-xs">
-            <span className="font-semibold text-dudos-text">
-              {lang === "bn" ? "মোবাইল নম্বর (পেমেন্টের জন্য)" : "Mobile number (for payment)"}
-            </span>
-            <input
-              type="tel"
-              inputMode="tel"
-              autoComplete="tel"
-              placeholder="01XXXXXXXXX"
-              value={phone}
-              onChange={(event) => setPhone(event.target.value)}
-              className="h-9 min-w-0 flex-1 rounded-md border border-dudos-border px-3 text-sm outline-none focus:border-dudos-primary"
-            />
-          </label>
-
           <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-600 flex flex-wrap items-center justify-between gap-2">
             <div className="flex items-center gap-2">
               <ShieldCheck className="h-4 w-4 text-teal-600" />
@@ -283,6 +349,7 @@ export function CreditWalletModal({
             </Badge>
           </div>
         </div>
+        )}
       </DialogContent>
     </Dialog>
   );
