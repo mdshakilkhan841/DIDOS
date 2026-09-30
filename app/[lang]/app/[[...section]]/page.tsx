@@ -59,9 +59,10 @@ export default async function Page({
                 signal: AbortSignal.timeout(1500),
             });
             if (!checkRes.ok) {
-                // Backend says token is invalid or account was deleted in PostgreSQL
+                // Backend says token is invalid or account was deleted in PostgreSQL.
+                // Sign out first so the stale cookie can't bounce /login back here.
                 const returnTo = `/${lang}/app${section.length ? "/" + section.join("/") : ""}`;
-                redirect(`/login?return_to=${encodeURIComponent(returnTo)}`);
+                redirect(`/logout?return_to=${encodeURIComponent(`/login?return_to=${encodeURIComponent(returnTo)}`)}`);
             }
         } catch (e: any) {
             if (e?.digest?.startsWith("NEXT_REDIRECT")) throw e;

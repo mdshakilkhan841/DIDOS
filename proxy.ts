@@ -161,12 +161,44 @@ export function proxy(req: NextRequest) {
     return response;
   }
 
+  // Already signed in: /login and /register go straight to the workspace
+  // (the admin panel for admins), so a stale tab never asks to log in again.
+  const isAuthPage = url.pathname.startsWith("/login") || url.pathname.startsWith("/register");
+  if (isAuthPage && hasLiveToken(dudosAt) && dudosSessionRaw) {
+    const targetSub = userRole === "admin" ? "admin" : "app";
+    const subBase = isLocalhost
+      ? `${protocol}//${targetSub}.localhost${port}`
+      : `${protocol}//${targetSub}.${rootDomain}${port}`;
+    const returnTo = url.searchParams.get("return_to") || "";
+    let path = "/";
+    try {
+      const wanted = new URL(returnTo, subBase);
+      // Only follow return_to within the right workspace, never back to an auth page.
+      if (wanted.origin === subBase && !/^\/(login|register|logout)/.test(wanted.pathname)) {
+        path = wanted.pathname + wanted.search;
+      }
+    } catch {}
+    const destination = new URL(`${subBase}${path}`);
+    if (subdomain !== targetSub) {
+      // Different host: hand the session over, as the /app redirect above does.
+      destination.searchParams.set("dudos_at", dudosAt as string);
+      const parsed = safeJsonParse(dudosSessionRaw);
+      destination.searchParams.set("dudos_session", parsed ? JSON.stringify(parsed) : dudosSessionRaw);
+    }
+    // Forward with a page, not a 307: the dev server rewrites Location headers
+    // on its own origin into relative paths (see the logout interceptor).
+    return forwardPage(destination.toString());
+  }
+
+  // Sign in on the main host only. On localhost each host keeps its own
+  // cookies and storage, so a login on app./admin. would leave the main site
+  // (and its Workspace button) thinking you are signed out.
+  if (isAuthPage && isLocalhost && (subdomain === "app" || subdomain === "admin")) {
+    return forwardPage(`${mainOrigin}${url.pathname}${url.search}`);
+  }
+
   // Allow public auth routes (/login, /register, /logout) on all domains
-  if (
-    url.pathname.startsWith("/login") ||
-    url.pathname.startsWith("/register") ||
-    url.pathname.startsWith("/logout")
-  ) {
+  if (isAuthPage || url.pathname.startsWith("/logout")) {
     return NextResponse.next();
   }
 
@@ -257,6 +289,29 @@ export function proxy(req: NextRequest) {
   }
 
   return NextResponse.next();
+}
+
+/** A real (non-placeholder) JWT that hasn't expired. Signature is checked by the API. */
+function hasLiveToken(token?: string): boolean {
+  if (!token || token.startsWith("token_")) return false;
+  const parts = token.split(".");
+  if (parts.length !== 3) return false;
+  try {
+    const payload = JSON.parse(atob(parts[1].replace(/-/g, "+").replace(/_/g, "/")));
+    return typeof payload.exp !== "number" || payload.exp * 1000 > Date.now();
+  } catch {
+    return false;
+  }
+}
+
+function forwardPage(destination: string): NextResponse {
+  const href = JSON.stringify(destination).replace(/</g, "\\u003c");
+  return new NextResponse(
+    `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Opening your workspace…</title>` +
+      `<meta http-equiv="refresh" content="0;url=${destination.replace(/"/g, "&quot;")}">` +
+      `</head><body><script>location.replace(${href})</script></body></html>`,
+    { status: 200, headers: { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-store" } }
+  );
 }
 
 export default proxy;

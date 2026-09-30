@@ -67,7 +67,9 @@ export function SiteHeader({
             }
             return rawUrl;
           })()
-        : `/login?return_to=${encodeURIComponent(buildSubdomainUrl("app", `/${lang}/app`))}`)
+        // Not signed in here: let the workspace host decide. It opens straight
+        // away when that host has the session, otherwise it sends you to sign in.
+        : buildSubdomainUrl("app", `/${lang}/app`))
     : defaultWorkspaceHref;
 
   const workspaceLabel = mounted && isAuthenticated && user?.role === "admin"
