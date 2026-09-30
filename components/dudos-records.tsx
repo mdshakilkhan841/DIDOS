@@ -59,7 +59,10 @@ import {
 import { api } from "@/lib/dudos/client";
 import { fetchAuthenticatedWorkspaces } from "@/lib/dudos/workspaces";
 import { useAuth } from "@/context/auth-context";
-import { syncAssessmentToWorkspaceDraft } from "@/lib/dudos/assessment-sync";
+import {
+    findAssessmentRecord,
+    syncAssessmentToWorkspaceDraft,
+} from "@/lib/dudos/assessment-sync";
 export { api } from "@/lib/dudos/client";
 
 export function WorkspaceGate({
@@ -585,11 +588,20 @@ export function AssessmentWizardInline({
     workspace,
     lang,
     mode,
+    organizationName,
+    assessment,
     onSubmitted,
 }: {
     workspace: string;
     lang: string;
     mode: "new" | "edit";
+    organizationName?: string;
+    assessment?: {
+        assessmentRecordId?: string;
+        assessmentVersion?: number;
+        assessmentData?: Record<string, string>;
+        status?: string;
+    };
     onSubmitted: () => void;
 }) {
     return (
@@ -598,6 +610,8 @@ export function AssessmentWizardInline({
             workspace={workspace}
             lang={lang}
             mode={mode}
+            organizationName={organizationName}
+            assessment={assessment}
             onSubmitted={onSubmitted}
         />
     );
@@ -607,18 +621,40 @@ function Wizard({
     workspace,
     lang,
     mode = "edit",
+    organizationName,
+    assessment,
     onSubmitted,
 }: {
     workspace: string;
     lang: string;
     mode?: "new" | "edit";
+    organizationName?: string;
+    assessment?: {
+        assessmentRecordId?: string;
+        assessmentVersion?: number;
+        assessmentData?: Record<string, string>;
+        status?: string;
+    };
     onSubmitted?: () => void;
 }) {
     const router = useRouter();
     const { user } = useAuth();
+    const initialAssessment =
+        mode === "edit" && assessment?.assessmentData
+            ? {
+                  id: assessment.assessmentRecordId || "",
+                  version: assessment.assessmentVersion || 1,
+                  status: assessment.status || "draft",
+                  data: assessment.assessmentData,
+              }
+            : null;
     const [step, setStep] = useState(0),
-        [data, setData] = useState<Record<string, string>>({}),
-        [saved, setSaved] = useState<any>(null),
+        [data, setData] = useState<Record<string, string>>(
+            initialAssessment?.data || {},
+        ),
+        [saved, setSaved] = useState<any>(
+            initialAssessment?.id ? initialAssessment : null,
+        ),
         [drafts, setDrafts] = useState<any[]>([]),
         [key, setKey] = useState(() => crypto.randomUUID()),
         [error, setError] = useState(""),
@@ -662,15 +698,51 @@ function Wizard({
     useEffect(() => {
         void api("/api/records?workspace=" + workspace + "&kind=assessment")
             .then((d) => {
-                const records = d.records || [];
-                setDrafts(records);
+                const records = Array.isArray(d.records) ? d.records : [];
+                const localRecords: any[] = [];
+                const localKeys = [
+                    user?.id ? `dudos_static_records_${user.id}` : "",
+                    "dudos_static_records",
+                ].filter(Boolean);
+                for (const key of localKeys) {
+                    try {
+                        const stored = localStorage.getItem(key);
+                        const parsed = stored ? JSON.parse(stored) : [];
+                        if (Array.isArray(parsed)) localRecords.push(...parsed);
+                    } catch {}
+                }
+                const allRecords = [
+                    ...records,
+                    ...localRecords.filter(
+                        (localRecord) =>
+                            !records.some(
+                                (record: any) => record.id === localRecord.id,
+                            ),
+                    ),
+                ];
+                setDrafts(allRecords);
                 const existing =
-                    mode === "edit" && records.length > 0 ? records[0] : null;
+                    mode === "edit"
+                        ? findAssessmentRecord(allRecords, {
+                              recordId: assessment?.assessmentRecordId,
+                              organizationName,
+                          }) ||
+                          (!assessment?.assessmentRecordId &&
+                          !organizationName &&
+                          allRecords.length === 1
+                              ? allRecords[0]
+                              : null)
+                        : null;
                 if (existing) {
                     setSaved(existing);
                     if (existing.data) {
-                        setData((prev) => ({ ...existing.data, ...prev }));
+                        setData((prev) => ({ ...prev, ...existing.data }));
                     }
+                } else if (initialAssessment?.data) {
+                    setData((prev) => ({
+                        ...prev,
+                        ...initialAssessment.data,
+                    }));
                 }
             })
             .catch((e) => setError(e.message));
@@ -683,7 +755,15 @@ function Wizard({
             modules: params.get("package") || prev.modules || "",
             languages: prev.languages || (lang === "bn" ? "bn, en" : "en, bn"),
         }));
-    }, [workspace, lang, mode]);
+    }, [
+        workspace,
+        lang,
+        mode,
+        organizationName,
+        assessment?.assessmentRecordId,
+        assessment?.assessmentData,
+        user?.id,
+    ]);
 
     async function save(isSubmit = false) {
         setBusy(true);

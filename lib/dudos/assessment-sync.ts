@@ -46,6 +46,9 @@ export function getAuthToken(): string | null {
 export interface ActiveProjectDraft {
     id: string;
     workspace?: string;
+    assessmentRecordId?: string;
+    assessmentVersion?: number;
+    assessmentData?: Record<string, string>;
     title: string;
     organizationName: string;
     contactName: string;
@@ -83,6 +86,35 @@ export interface ActiveProjectDraft {
     quotationInvoice?: any;
     savedAt: string;
     updatedAt: string;
+}
+
+export function findAssessmentRecord(
+    records: any[],
+    {
+        recordId,
+        organizationName,
+    }: { recordId?: string; organizationName?: string },
+) {
+    const assessments = Array.isArray(records)
+        ? records.filter((record) => record?.kind === "assessment")
+        : [];
+    if (recordId) {
+        const byId = assessments.find((record) => record.id === recordId);
+        if (byId) return byId;
+    }
+
+    const organization = organizationName?.trim().toLowerCase();
+    if (organization) {
+        return (
+            assessments.find(
+                (record) =>
+                    record.data?.organization?.trim().toLowerCase() ===
+                    organization,
+            ) || null
+        );
+    }
+
+    return null;
 }
 
 const ACTIVE_DRAFT_KEY = "dudos_active_draft";
@@ -156,6 +188,9 @@ export function convertAssessmentRecordToDraft(
     return {
         id: record?.id || "draft_" + Date.now().toString(36),
         workspace: workspaceId || record?.workspace || "default",
+        assessmentRecordId: record?.id,
+        assessmentVersion: record?.version,
+        assessmentData: d,
         title,
         organizationName: org,
         contactName: user?.displayName || user?.username || "Client Lead",
@@ -231,6 +266,9 @@ export async function syncAssessmentToWorkspaceDraft(
         const draftRecord: ActiveProjectDraft = {
             id: originalRecordId || "draft_" + Date.now().toString(36),
             workspace: workspaceId,
+            assessmentRecordId: originalRecordId || undefined,
+            assessmentVersion: record?.version,
+            assessmentData: { ...data },
             title,
             organizationName: org,
             contactName:

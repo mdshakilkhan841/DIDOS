@@ -67,6 +67,9 @@ const INVOICES_KEY = "dudos_quotation_invoices";
 export interface ActiveProjectDraft {
     id: string;
     workspace?: string;
+    assessmentRecordId?: string;
+    assessmentVersion?: number;
+    assessmentData?: Record<string, string>;
     title: string;
     organizationName: string;
     contactName: string;
@@ -106,6 +109,52 @@ export interface ActiveProjectDraft {
     updatedAt: string;
 }
 
+function assessmentAnswersFromDraft(
+    draft: ActiveProjectDraft,
+): Record<string, string> {
+    const source = draft.assessmentData || {};
+    const scope = draft.projectScope || "";
+    const sectionLabels = [
+        "Desired Outcomes",
+        "Modules & Scope",
+        "Existing Systems",
+        "Brand Requirements",
+        "Ownership & Permissions",
+        "Resolved Scope",
+    ];
+    const readSection = (label: string) => {
+        const marker = `${label}:\n`;
+        const start = scope.indexOf(marker);
+        if (start < 0) return "";
+        const valueStart = start + marker.length;
+        const nextSection = sectionLabels
+            .map((nextLabel) =>
+                scope.indexOf(`\n\n${nextLabel}:\n`, valueStart),
+            )
+            .filter((index) => index >= 0)
+            .sort((left, right) => left - right)[0];
+        return scope.slice(valueStart, nextSection ?? scope.length).trim();
+    };
+
+    return {
+        ...source,
+        organization: source.organization || draft.organizationName || "",
+        outcomes: source.outcomes || readSection("Desired Outcomes") || scope,
+        sector: source.sector || draft.businessDomain || "",
+        site_url: source.site_url || draft.siteUrl || "",
+        systems:
+            source.systems ||
+            readSection("Existing Systems") ||
+            draft.targetStack ||
+            "",
+        modules: source.modules || readSection("Modules & Scope"),
+        brand: source.brand || readSection("Brand Requirements"),
+        rights: source.rights || readSection("Ownership & Permissions"),
+        budget: source.budget || draft.budgetExpectation || "",
+        unknowns: source.unknowns || readSection("Resolved Scope"),
+    };
+}
+
 export function CustomerUserPanel({
     workspace,
     workspaceName,
@@ -124,7 +173,17 @@ export function CustomerUserPanel({
     activeWorkspaceId?: string;
     onSelectWorkspace?: (id: string) => void;
     onCreateWorkspace?: () => void;
-    onOpenAssessment?: (mode: "new" | "edit") => void;
+    onOpenAssessment?: (
+        mode: "new" | "edit",
+        organizationName?: string,
+        assessment?: Pick<
+            ActiveProjectDraft,
+            | "assessmentRecordId"
+            | "assessmentVersion"
+            | "assessmentData"
+            | "status"
+        >,
+    ) => void;
     refreshKey?: number;
     lang?: string;
     activeSection?:
@@ -1350,7 +1409,19 @@ ${draft.projectScope}
                             size="sm"
                             variant="outline"
                             onClick={() =>
-                                onOpenAssessment?.(activeDraft ? "edit" : "new")
+                                onOpenAssessment?.(
+                                    activeDraft ? "edit" : "new",
+                                    activeDraft?.organizationName,
+                                    activeDraft
+                                        ? {
+                                              ...activeDraft,
+                                              assessmentData:
+                                                  assessmentAnswersFromDraft(
+                                                      activeDraft,
+                                                  ),
+                                          }
+                                        : undefined,
+                                )
                             }
                         >
                             {activeDraft
@@ -1447,6 +1518,16 @@ ${draft.projectScope}
                                         onClick={() =>
                                             onOpenAssessment?.(
                                                 activeDraft ? "edit" : "new",
+                                                activeDraft?.organizationName,
+                                                activeDraft
+                                                    ? {
+                                                          ...activeDraft,
+                                                          assessmentData:
+                                                              assessmentAnswersFromDraft(
+                                                                  activeDraft,
+                                                              ),
+                                                      }
+                                                    : undefined,
                                             )
                                         }
                                     >

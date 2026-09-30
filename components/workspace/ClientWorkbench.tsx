@@ -140,7 +140,25 @@ export default function ClientWorkbench({
     const [assessmentMode, setAssessmentMode] = useState<"new" | "edit" | null>(
         null,
     );
+    const [assessmentOrganizationName, setAssessmentOrganizationName] =
+        useState<string | undefined>();
+    const [assessmentSeed, setAssessmentSeed] = useState<{
+        assessmentRecordId?: string;
+        assessmentVersion?: number;
+        assessmentData?: Record<string, string>;
+        status?: string;
+    }>();
     const [assessmentRefreshKey, setAssessmentRefreshKey] = useState(0);
+
+    const openAssessment = (
+        mode: "new" | "edit",
+        organizationName?: string,
+        assessment?: typeof assessmentSeed,
+    ) => {
+        setAssessmentOrganizationName(organizationName);
+        setAssessmentSeed(assessment);
+        setAssessmentMode(mode);
+    };
 
     const view = section[0] || "overview";
 
@@ -379,7 +397,7 @@ export default function ClientWorkbench({
                     title: "New Project Assessment",
                     bn: "নতুন প্রজেক্ট অ্যাসেসমেন্ট",
                     icon: Plus,
-                    onClick: () => setAssessmentMode("new"),
+                    onClick: () => openAssessment("new"),
                 },
                 {
                     id: "builder",
@@ -737,7 +755,7 @@ export default function ClientWorkbench({
                         )}
                         <button
                             type="button"
-                            onClick={() => setAssessmentMode("new")}
+                            onClick={() => openAssessment("new")}
                             className="text-link"
                         >
                             {lang === "bn"
@@ -761,7 +779,7 @@ export default function ClientWorkbench({
                             onCreateWorkspace={() =>
                                 setIsCreatingWorkspace(true)
                             }
-                            onOpenAssessment={setAssessmentMode}
+                            onOpenAssessment={openAssessment}
                             refreshKey={assessmentRefreshKey}
                             lang={lang}
                             activeSection={
@@ -785,7 +803,11 @@ export default function ClientWorkbench({
             <Dialog
                 open={assessmentMode !== null}
                 onOpenChange={(open) => {
-                    if (!open) setAssessmentMode(null);
+                    if (!open) {
+                        setAssessmentMode(null);
+                        setAssessmentSeed(undefined);
+                        setAssessmentOrganizationName(undefined);
+                    }
                 }}
             >
                 <DialogContent className="max-h-[92vh] w-[calc(100vw-1rem)] max-w-[calc(100%-2rem)] overflow-y-auto bg-white sm:max-w-6xl">
@@ -814,8 +836,12 @@ export default function ClientWorkbench({
                             }
                             lang={lang}
                             mode={assessmentMode}
+                            organizationName={assessmentOrganizationName}
+                            assessment={assessmentSeed}
                             onSubmitted={() => {
                                 setAssessmentMode(null);
+                                setAssessmentSeed(undefined);
+                                setAssessmentOrganizationName(undefined);
                                 setAssessmentRefreshKey((key) => key + 1);
                             }}
                         />

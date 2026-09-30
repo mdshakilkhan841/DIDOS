@@ -21,6 +21,7 @@ global.localStorage = global.window.localStorage;
 import {
     convertAssessmentRecordToDraft,
     getAuthToken,
+    findAssessmentRecord,
     syncAssessmentToWorkspaceDraft,
 } from "../lib/dudos/assessment-sync.ts";
 
@@ -154,3 +155,29 @@ console.log(
 console.log("\n======================================================");
 console.log("🎉 All Assessment & Workspace Sync unit tests passed!");
 console.log("======================================================");
+
+assert.strictEqual(
+    findAssessmentRecord([mockAssessmentRecord], {
+        recordId: mockAssessmentRecord.id,
+        organizationName: "A different org",
+    }),
+    mockAssessmentRecord,
+    "Edit lookup should prioritize the original assessment ID",
+);
+assert.strictEqual(
+    findAssessmentRecord([mockAssessmentRecord], {
+        organizationName: "Daffodil Smart Campus",
+    }),
+    mockAssessmentRecord,
+    "Edit lookup should fall back to the assessment organization",
+);
+assert.strictEqual(
+    synced.assessmentRecordId,
+    mockAssessmentRecord.id,
+    "Synced draft should preserve the source assessment ID",
+);
+assert.strictEqual(
+    synced.assessmentData.organization,
+    "Daffodil Smart Campus",
+    "Synced draft should preserve editable assessment answers",
+);
