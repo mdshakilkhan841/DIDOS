@@ -181,3 +181,49 @@ assert.strictEqual(
     "Daffodil Smart Campus",
     "Synced draft should preserve editable assessment answers",
 );
+
+// Two assessments for the same organization must both stay listed.
+const secondRecord = {
+    ...mockAssessmentRecord,
+    id: "rec_assessment_test2",
+    status: "draft",
+};
+await syncAssessmentToWorkspaceDraft(
+    secondRecord,
+    secondRecord.data,
+    "ws_test_shakil",
+    { displayName: "Shakil", email: "shakil@daffodil.family" },
+);
+const recordsAfterSecond = JSON.parse(storage["dudos_project_records"]);
+const customAfterSecond = JSON.parse(storage["dudos_custom_projects"]);
+for (const id of [mockAssessmentRecord.id, secondRecord.id]) {
+    assert.ok(
+        recordsAfterSecond.some((item) => item.assessmentRecordId === id),
+        `Project records should keep assessment ${id} even when titles match`,
+    );
+    assert.ok(
+        customAfterSecond.some((item) => item.assessmentRecordId === id),
+        `Custom projects should keep assessment ${id} even when titles match`,
+    );
+}
+
+// Continuing a record-less onboarding draft replaces it instead of duplicating it.
+storage["dudos_project_records"] = JSON.stringify([
+    { id: "draft_onboarding1", title: "Legacy", status: "draft" },
+    ...recordsAfterSecond,
+]);
+await syncAssessmentToWorkspaceDraft(
+    { ...mockAssessmentRecord, id: "rec_assessment_test3" },
+    mockAssessmentRecord.data,
+    "ws_test_shakil",
+    {},
+    false,
+    ["draft_onboarding1"],
+);
+assert.ok(
+    !JSON.parse(storage["dudos_project_records"]).some(
+        (item) => item.id === "draft_onboarding1",
+    ),
+    "Replaced onboarding draft should be removed",
+);
+console.log("  ✅ Passed: same-organization assessments stay separate projects");

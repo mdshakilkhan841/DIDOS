@@ -219,6 +219,8 @@ export async function syncAssessmentToWorkspaceDraft(
     workspaceId: string,
     user?: any,
     isSubmitted = false,
+    // Legacy project ids (e.g. onboarding drafts) this assessment now replaces.
+    replaceIds: string[] = [],
 ): Promise<ActiveProjectDraft | null> {
     if (typeof window === "undefined") return null;
 
@@ -298,6 +300,7 @@ export async function syncAssessmentToWorkspaceDraft(
         const customItem: any = {
             id: draftRecord.id,
             workspace: workspaceId,
+            assessmentRecordId: originalRecordId || undefined,
             title: draftRecord.title,
             clientName: draftRecord.contactName,
             clientEmail: draftRecord.email,
@@ -372,6 +375,16 @@ export async function syncAssessmentToWorkspaceDraft(
             }
         }
 
+        // Match by id only: several assessments may share an organization/title
+        // and each one must stay its own project.
+        const replacedIds = new Set(
+            [draftRecord.id, originalRecordId, ...replaceIds].filter(Boolean),
+        );
+        const isReplaced = (item: any) =>
+            replacedIds.has(item?.id) ||
+            (Boolean(originalRecordId) &&
+                item?.assessmentRecordId === originalRecordId);
+
         // 1. Set active draft in localStorage with unified ID
         localStorage.setItem(ACTIVE_DRAFT_KEY, JSON.stringify(draftRecord));
 
@@ -381,13 +394,7 @@ export async function syncAssessmentToWorkspaceDraft(
             [];
         const nextRecords = [
             draftRecord,
-            ...existingRecords.filter(
-                (item: any) =>
-                    item.id !== draftRecord.id &&
-                    item.id !== originalRecordId &&
-                    (item.title || "").trim().toLowerCase() !==
-                        draftRecord.title.trim().toLowerCase(),
-            ),
+            ...existingRecords.filter((item: any) => !isReplaced(item)),
         ];
         localStorage.setItem(PROJECT_RECORDS_KEY, JSON.stringify(nextRecords));
 
@@ -397,13 +404,7 @@ export async function syncAssessmentToWorkspaceDraft(
             [];
         const nextCustom = [
             customItem,
-            ...existingCustom.filter(
-                (item: any) =>
-                    item.id !== draftRecord.id &&
-                    item.id !== originalRecordId &&
-                    (item.title || item.name || "").trim().toLowerCase() !==
-                        draftRecord.title.trim().toLowerCase(),
-            ),
+            ...existingCustom.filter((item: any) => !isReplaced(item)),
         ];
         localStorage.setItem(CUSTOM_PROJECTS_KEY, JSON.stringify(nextCustom));
 

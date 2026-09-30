@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import Link from "@/components/dudos-link";
 import {
     LayoutDashboard,
@@ -126,6 +127,7 @@ export default function ClientWorkbench({
     lang: string;
     section: string[];
 }) {
+    const router = useRouter();
     const { user, logout } = useAuth();
     const [navSearch, setNavSearch] = useState("");
     const [projectCount, setProjectCount] = useState<number>(0);
@@ -147,6 +149,7 @@ export default function ClientWorkbench({
         assessmentVersion?: number;
         assessmentData?: Record<string, string>;
         status?: string;
+        sourceProjectId?: string;
     }>();
     const [assessmentRefreshKey, setAssessmentRefreshKey] = useState(0);
 
@@ -807,6 +810,8 @@ export default function ClientWorkbench({
                         setAssessmentMode(null);
                         setAssessmentSeed(undefined);
                         setAssessmentOrganizationName(undefined);
+                        // Drafts may have been saved without submitting.
+                        setAssessmentRefreshKey((key) => key + 1);
                     }
                 }}
             >
@@ -843,6 +848,9 @@ export default function ClientWorkbench({
                                 setAssessmentSeed(undefined);
                                 setAssessmentOrganizationName(undefined);
                                 setAssessmentRefreshKey((key) => key + 1);
+                                // Submitted projects are tracked on the overview.
+                                if (view !== "overview")
+                                    router.push(`/${lang}/app/overview`);
                             }}
                         />
                     )}

@@ -601,6 +601,7 @@ export function AssessmentWizardInline({
         assessmentVersion?: number;
         assessmentData?: Record<string, string>;
         status?: string;
+        sourceProjectId?: string;
     };
     onSubmitted: () => void;
 }) {
@@ -634,6 +635,7 @@ function Wizard({
         assessmentVersion?: number;
         assessmentData?: Record<string, string>;
         status?: string;
+        sourceProjectId?: string;
     };
     onSubmitted?: () => void;
 }) {
@@ -728,6 +730,7 @@ function Wizard({
                               organizationName,
                           }) ||
                           (!assessment?.assessmentRecordId &&
+                          !assessment?.sourceProjectId &&
                           !organizationName &&
                           allRecords.length === 1
                               ? allRecords[0]
@@ -764,6 +767,10 @@ function Wizard({
         assessment?.assessmentData,
         user?.id,
     ]);
+
+    const replacedProjectIds = assessment?.sourceProjectId
+        ? [assessment.sourceProjectId]
+        : [];
 
     async function save(isSubmit = false) {
         setBusy(true);
@@ -802,6 +809,7 @@ function Wizard({
                 workspace,
                 user,
                 nextStatus === "submitted",
+                replacedProjectIds,
             );
             setError("");
             return updatedSaved;
@@ -860,6 +868,7 @@ function Wizard({
                 workspace,
                 user,
                 true,
+                replacedProjectIds,
             );
 
             // Navigate straight to client workspace portal
