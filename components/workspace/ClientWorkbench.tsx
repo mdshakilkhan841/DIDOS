@@ -21,6 +21,9 @@ import {
     Coins,
     UserRound,
     Megaphone,
+    LayoutTemplate,
+    MessageSquare,
+    Target,
     type LucideIcon,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
@@ -129,7 +132,6 @@ export default function ClientWorkbench({
     const router = useRouter();
     const { user, logout } = useAuth();
     const [navSearch, setNavSearch] = useState("");
-    const [projectCount, setProjectCount] = useState<number>(0);
     const [supportCount, setSupportCount] = useState<number>(0);
 
     // Multi-Workspace state
@@ -320,15 +322,6 @@ export default function ClientWorkbench({
                   localStorage.getItem("dudos_auth_token")
                 : null;
         if (token) {
-            fetch("http://localhost:8000/api/v1/projects", {
-                headers: { Authorization: `Bearer ${token}` },
-            })
-                .then((res) => res.json())
-                .then((data) => {
-                    if (Array.isArray(data)) setProjectCount(data.length);
-                })
-                .catch(() => {});
-
             fetch("http://localhost:8000/api/v1/support/tickets/my", {
                 headers: { Authorization: `Bearer ${token}` },
             })
@@ -369,7 +362,7 @@ export default function ClientWorkbench({
         window.location.href = "/logout?return_to=/login";
     };
 
-    // Live customer workflows and clearly marked roadmap destinations.
+    // Sidebar follows the PRD; features not built yet are marked "Soon".
     const clientNavSections: {
         group: string;
         items: ClientNavigationItem[];
@@ -388,13 +381,7 @@ export default function ClientWorkbench({
                     title: "My Projects",
                     bn: "আমার প্রজেক্ট",
                     icon: FolderKanban,
-                    badge: projectCount > 0 ? String(projectCount) : undefined,
                 },
-            ],
-        },
-        {
-            group: "WEB & PROJECT BUILDING",
-            items: [
                 {
                     id: "new-project",
                     title: "New Project Assessment",
@@ -402,11 +389,23 @@ export default function ClientWorkbench({
                     icon: Plus,
                     onClick: () => openAssessment("new"),
                 },
+            ],
+        },
+        {
+            group: "WEBSITE BUILDER",
+            items: [
                 {
                     id: "builder",
                     title: "AI Website Builder",
                     bn: "এআই ওয়েবসাইট বিল্ডার",
                     icon: Sparkles,
+                    comingSoon: true,
+                },
+                {
+                    id: "templates",
+                    title: "Templates & References",
+                    bn: "টেমপ্লেট ও রেফারেন্স",
+                    icon: LayoutTemplate,
                     comingSoon: true,
                 },
                 {
@@ -444,6 +443,14 @@ export default function ClientWorkbench({
                     title: "Deployments & Domains",
                     bn: "ডিপ্লয়মেন্ট ও ডোমেন",
                     icon: Rocket,
+                    comingSoon: true,
+                },
+                {
+                    id: "feedback",
+                    title: "Feedback & Comments",
+                    bn: "মতামত ও মন্তব্য",
+                    icon: MessageSquare,
+                    comingSoon: true,
                 },
                 {
                     id: "support",
@@ -455,13 +462,20 @@ export default function ClientWorkbench({
             ],
         },
         {
-            group: "MARKETING AUTOMATION",
+            group: "MARKETING (PHASE 2)",
             items: [
                 {
-                    id: "marketing",
-                    title: "Content & Social Campaigns",
-                    bn: "কনটেন্ট ও সোশ্যাল ক্যাম্পেইন",
+                    id: "content-studio",
+                    title: "Content Engine",
+                    bn: "কনটেন্ট ইঞ্জিন",
                     icon: Megaphone,
+                    comingSoon: true,
+                },
+                {
+                    id: "marketing",
+                    title: "Facebook Ads",
+                    bn: "ফেসবুক বিজ্ঞাপন",
+                    icon: Target,
                     comingSoon: true,
                 },
             ],

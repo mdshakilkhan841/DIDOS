@@ -111,6 +111,7 @@ export default async function Page({
         "servers",
         "ledger",
         "support",
+        "feedback",
         "studio",
         "cms",
         "inbox",
