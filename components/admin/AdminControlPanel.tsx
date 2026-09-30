@@ -43,6 +43,7 @@ import {
   TableCell,
 } from "@/components/ui/table";
 import { AdminEstimationModal } from "@/components/projects/AdminEstimationModal";
+import { DataTable, type DataTableColumn } from "@/components/ui/data-table";
 import { showToast } from "@/lib/toast";
 
 export function AdminControlPanel({
@@ -301,6 +302,53 @@ export function AdminControlPanel({
         return <Badge className="bg-amber-100 text-amber-800 border-amber-200">Pending Review</Badge>;
     }
   };
+
+  const ledgerColumns: DataTableColumn<CreditTransaction>[] = [
+    {
+      id: "id",
+      header: "Transaction ID",
+      className: "font-mono text-[11px] text-[#5b6f7b]",
+      exportValue: (tx) => tx.id,
+      cell: (tx) => tx.id,
+    },
+    {
+      id: "type",
+      header: "Type",
+      exportValue: (tx) => tx.type,
+      cell: (tx) =>
+        tx.type === "credit" ? (
+          <span className="px-2 py-0.5 rounded text-[10px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
+            CREDIT
+          </span>
+        ) : (
+          <span className="px-2 py-0.5 rounded text-[10px] font-semibold bg-rose-50 text-rose-700 border border-rose-200">
+            DEBIT
+          </span>
+        ),
+    },
+    {
+      id: "amount",
+      header: "Credits",
+      className: "font-bold text-[#162c38] tabular-nums",
+      exportValue: (tx) => (tx.type === "credit" ? tx.amount : -tx.amount),
+      cell: (tx) => (tx.type === "credit" ? `+${tx.amount.toLocaleString()}` : `-${tx.amount.toLocaleString()}`),
+    },
+    {
+      id: "reason",
+      header: "Reason / Notes",
+      className: "text-[#5b6f7b]",
+      exportValue: (tx) => tx.reason,
+      cell: (tx) => tx.reason,
+    },
+    {
+      id: "timestamp",
+      header: "Timestamp",
+      headerClassName: "text-right",
+      className: "text-right text-[#5b6f7b] text-[11px]",
+      exportValue: (tx) => tx.timestamp,
+      cell: (tx) => new Date(tx.timestamp).toLocaleString(),
+    },
+  ];
 
   return (
     <div className="space-y-6">
@@ -736,65 +784,26 @@ export function AdminControlPanel({
             </Badge>
           </div>
 
-          <div className="data-table">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Transaction ID</TableHead>
-                  <TableHead>Type</TableHead>
-                  <TableHead>Credits</TableHead>
-                  <TableHead>Reason / Notes</TableHead>
-                  <TableHead className="text-right">Timestamp</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {creditTransactions.length === 0 ? (
-                  <TableRow>
-                    <TableCell
-                      colSpan={5}
-                      className="py-12 text-center text-[#5b6f7b]"
-                    >
-                      <div className="flex flex-col items-center justify-center">
-                        <CreditCard className="h-8 w-8 text-[#8fa0ac] mb-2" />
-                        <span className="font-semibold text-sm text-[#162c38]">
-                          {lang === "bn" ? "কোন ক্রেডিট লেনদেন নেই" : "No credit transactions recorded"}
-                        </span>
-                        <span className="text-xs text-[#5b6f7b] mt-1">
-                          {lang === "bn"
-                            ? "ক্লায়েন্টদের ক্রেডিট বরাদ্দ এবং সিস্টেম ব্যবহারের রেকর্ড এখানে প্রদর্শিত হবে।"
-                            : "Client credit allocations, top-ups, and AI usage deductions will appear here in real-time."}
-                        </span>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ) : (
-                  creditTransactions.map((tx) => (
-                    <TableRow key={tx.id}>
-                      <TableCell className="font-mono text-[11px] text-[#5b6f7b]">{tx.id}</TableCell>
-                      <TableCell>
-                        {tx.type === "credit" ? (
-                          <span className="px-2 py-0.5 rounded text-[10px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
-                            CREDIT
-                          </span>
-                        ) : (
-                          <span className="px-2 py-0.5 rounded text-[10px] font-semibold bg-rose-50 text-rose-700 border border-rose-200">
-                            DEBIT
-                          </span>
-                        )}
-                      </TableCell>
-                      <TableCell className="font-bold text-[#162c38]">
-                        {tx.type === "credit" ? `+${tx.amount.toLocaleString()}` : `-${tx.amount.toLocaleString()}`}
-                      </TableCell>
-                      <TableCell className="text-[#5b6f7b]">{tx.reason}</TableCell>
-                      <TableCell className="text-right text-[#5b6f7b] text-[11px]">
-                        {new Date(tx.timestamp).toLocaleString()}
-                      </TableCell>
-                    </TableRow>
-                  ))
-                )}
-              </TableBody>
-            </Table>
-          </div>
+          <DataTable
+            label="credit transactions"
+            rows={creditTransactions}
+            columns={ledgerColumns}
+            getRowId={(tx) => tx.id}
+            exportFileName="dudos-credit-ledger"
+            empty={
+              <span className="flex flex-col items-center gap-1">
+                <CreditCard className="h-8 w-8 text-[#8fa0ac] mb-1" />
+                <span className="font-semibold text-sm text-[#162c38]">
+                  {lang === "bn" ? "কোন ক্রেডিট লেনদেন নেই" : "No credit transactions recorded"}
+                </span>
+                <span className="text-xs">
+                  {lang === "bn"
+                    ? "ক্লায়েন্টদের ক্রেডিট বরাদ্দ এবং সিস্টেম ব্যবহারের রেকর্ড এখানে প্রদর্শিত হবে।"
+                    : "Client credit allocations, top-ups, and AI usage deductions will appear here in real-time."}
+                </span>
+              </span>
+            }
+          />
         </div>
       )}
 

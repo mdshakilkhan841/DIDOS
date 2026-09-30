@@ -14,14 +14,7 @@ import {
     DialogHeader,
     DialogTitle,
 } from "@/components/ui/dialog";
-import {
-    Table,
-    TableBody,
-    TableCell,
-    TableHead,
-    TableHeader,
-    TableRow,
-} from "@/components/ui/table";
+import { DataTable, type DataTableColumn } from "@/components/ui/data-table";
 import { UserProfile } from "@/types/auth";
 import { getAuthToken } from "@/lib/dudos/assessment-sync";
 import { showToast } from "@/lib/toast";
@@ -179,6 +172,106 @@ export function AdminSupportTickets({ clients }: { clients: UserProfile[] }) {
         setForm({ status: ticket.status, priority: ticket.priority, reply: ticket.adminResponse || "" });
     };
 
+    const ticketColumns: DataTableColumn<Ticket>[] = [
+        {
+            id: "ticket",
+            header: "Ticket",
+            className: "max-w-xs",
+            exportValue: (ticket) => ticket.subject,
+            cell: (ticket) => (
+                <>
+                    <p className="truncate font-semibold text-dudos-text">{ticket.subject}</p>
+                    <p className="truncate text-xs text-dudos-text-secondary">
+                        #{ticket.id.slice(-6).toUpperCase()}
+                        {ticket.projectId && ` · ${projectNames[ticket.projectId] || ticket.projectId}`}
+                        {ticket.adminResponse && " · replied"}
+                    </p>
+                </>
+            ),
+        },
+        {
+            id: "client",
+            header: "Client",
+            exportValue: (ticket) =>
+                [ticket.customerName, ticket.customerEmail].filter(Boolean).join(" · "),
+            cell: (ticket) => (
+                <>
+                    <p className="text-sm text-dudos-text">{ticket.customerName || "—"}</p>
+                    <p className="text-xs text-dudos-text-secondary">{ticket.customerEmail}</p>
+                </>
+            ),
+        },
+        {
+            id: "category",
+            header: "Category",
+            className: "text-xs",
+            exportValue: (ticket) => CATEGORY_LABELS[ticket.category] || ticket.category,
+            cell: (ticket) => CATEGORY_LABELS[ticket.category] || ticket.category,
+        },
+        {
+            id: "priority",
+            header: "Priority",
+            exportValue: (ticket) => priorityMeta(ticket.priority).label,
+            cell: (ticket) => {
+                const priority = priorityMeta(ticket.priority);
+                return <span className={`text-xs ${priority.className}`}>{priority.label}</span>;
+            },
+        },
+        {
+            id: "status",
+            header: "Status",
+            exportValue: (ticket) => statusMeta(ticket.status).label,
+            cell: (ticket) => {
+                const status = statusMeta(ticket.status);
+                return (
+                    <Badge variant="outline" className={status.className}>
+                        {status.label}
+                    </Badge>
+                );
+            },
+        },
+        {
+            id: "updated",
+            header: "Updated",
+            className: "text-xs",
+            exportValue: (ticket) => ticket.updatedAt,
+            cell: (ticket) => formatDateTime(ticket.updatedAt),
+        },
+    ];
+
+    const [bulkSaving, setBulkSaving] = useState(false);
+
+    // Apply one status to every selected ticket.
+    const bulkSetStatus = async (targets: Ticket[], status: string, done: () => void) => {
+        const changing = targets.filter((ticket) => ticket.status !== status);
+        if (changing.length === 0) return done();
+        setBulkSaving(true);
+        const results = await Promise.all(
+            changing.map((ticket) =>
+                fetch(`${API_BASE}/admin/support/tickets/${ticket.id}`, {
+                    method: "PATCH",
+                    headers: authHeaders(true),
+                    body: JSON.stringify({ status }),
+                })
+                    .then((res) => (res.ok ? res.json() : null))
+                    .catch(() => null),
+            ),
+        );
+        setBulkSaving(false);
+        const updated = results.filter(Boolean) as Ticket[];
+        const byId = new Map(updated.map((ticket) => [ticket.id, ticket]));
+        setTickets((prev) => prev.map((ticket) => byId.get(ticket.id) || ticket));
+        const failed = changing.length - updated.length;
+        if (failed > 0) {
+            showToast.error(`${failed} ticket${failed === 1 ? "" : "s"} not updated`, {
+                description: "Check your admin session and try again.",
+            });
+        } else {
+            showToast.success(`${updated.length} ticket${updated.length === 1 ? "" : "s"} set to ${statusMeta(status).label}`);
+            done();
+        }
+    };
+
     const unchanged =
         !selected ||
         (form.status === selected.status &&
@@ -283,79 +376,42 @@ export function AdminSupportTickets({ clients }: { clients: UserProfile[] }) {
                 </div>
             </div>
 
-            <div className="overflow-hidden rounded-xl border border-dudos-border bg-white">
-                {error ? (
-                    <p className="p-8 text-center text-sm text-rose-700">{error}</p>
-                ) : loading && tickets.length === 0 ? (
-                    <p className="p-8 text-center text-sm text-dudos-text-secondary">Loading tickets…</p>
-                ) : visible.length === 0 ? (
-                    <div className="p-8 text-center">
-                        <LifeBuoy className="mx-auto h-8 w-8 text-slate-400" />
-                        <p className="mt-2 text-sm text-dudos-text-secondary">
-                            {tickets.length === 0 ? "No support tickets yet." : "No tickets match this filter."}
-                        </p>
-                    </div>
-                ) : (
-                    <Table>
-                        <TableHeader>
-                            <TableRow>
-                                <TableHead>Ticket</TableHead>
-                                <TableHead>Client</TableHead>
-                                <TableHead>Category</TableHead>
-                                <TableHead>Priority</TableHead>
-                                <TableHead>Status</TableHead>
-                                <TableHead>Updated</TableHead>
-                            </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                            {visible.map((ticket) => {
-                                const status = statusMeta(ticket.status);
-                                const priority = priorityMeta(ticket.priority);
-                                return (
-                                    <TableRow
-                                        key={ticket.id}
-                                        onClick={() => openTicket(ticket)}
-                                        className="cursor-pointer"
-                                    >
-                                        <TableCell className="max-w-xs">
-                                            <button
-                                                type="button"
-                                                onClick={(event) => {
-                                                    event.stopPropagation();
-                                                    openTicket(ticket);
-                                                }}
-                                                className="block max-w-full cursor-pointer truncate text-left font-semibold text-dudos-text hover:underline"
-                                            >
-                                                {ticket.subject}
-                                            </button>
-                                            <p className="truncate text-xs text-dudos-text-secondary">
-                                                #{ticket.id.slice(-6).toUpperCase()}
-                                                {ticket.projectId &&
-                                                    ` · ${projectNames[ticket.projectId] || ticket.projectId}`}
-                                                {ticket.adminResponse && " · replied"}
-                                            </p>
-                                        </TableCell>
-                                        <TableCell>
-                                            <p className="text-sm text-dudos-text">{ticket.customerName || "—"}</p>
-                                            <p className="text-xs text-dudos-text-secondary">{ticket.customerEmail}</p>
-                                        </TableCell>
-                                        <TableCell className="text-xs">
-                                            {CATEGORY_LABELS[ticket.category] || ticket.category}
-                                        </TableCell>
-                                        <TableCell className={`text-xs ${priority.className}`}>{priority.label}</TableCell>
-                                        <TableCell>
-                                            <Badge variant="outline" className={status.className}>
-                                                {status.label}
-                                            </Badge>
-                                        </TableCell>
-                                        <TableCell className="text-xs">{formatDateTime(ticket.updatedAt)}</TableCell>
-                                    </TableRow>
-                                );
-                            })}
-                        </TableBody>
-                    </Table>
+            <DataTable
+                label="support tickets"
+                rows={visible}
+                columns={ticketColumns}
+                getRowId={(ticket) => ticket.id}
+                resetKey={`${filter}|${query}`}
+                onRowClick={openTicket}
+                exportFileName="dudos-support-tickets"
+                loading={loading}
+                error={error}
+                bulkActions={(selectedTickets, clearSelection) => (
+                    <select
+                        aria-label="Set status for selected tickets"
+                        value=""
+                        disabled={bulkSaving}
+                        onChange={(event) => {
+                            if (event.target.value)
+                                void bulkSetStatus(selectedTickets, event.target.value, clearSelection);
+                        }}
+                        className="h-7 rounded-md border border-dudos-border bg-white px-2 text-xs text-dudos-text"
+                    >
+                        <option value="">{bulkSaving ? "Updating…" : "Set status…"}</option>
+                        {STATUSES.map((item) => (
+                            <option key={item.id} value={item.id}>
+                                {item.label}
+                            </option>
+                        ))}
+                    </select>
                 )}
-            </div>
+                empty={
+                    <span className="flex flex-col items-center gap-2">
+                        <LifeBuoy className="h-8 w-8 text-slate-400" />
+                        {tickets.length === 0 ? "No support tickets yet." : "No tickets match this filter."}
+                    </span>
+                }
+            />
 
             <AdminNewTicketDialog
                 open={showNew}

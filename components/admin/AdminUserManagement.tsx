@@ -15,14 +15,7 @@ import { UserProfile, UserStatus } from "@/types/auth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import {
-    Table,
-    TableBody,
-    TableCell,
-    TableHead,
-    TableHeader,
-    TableRow,
-} from "@/components/ui/table";
+import { DataTable, type DataTableColumn } from "@/components/ui/data-table";
 import { showToast } from "@/lib/toast";
 
 const STATUSES: UserStatus[] = [
@@ -181,6 +174,114 @@ export function AdminUserManagement({
         setCreditUser(null);
     };
 
+    const userColumns: DataTableColumn<UserProfile>[] = [
+        {
+            id: "user",
+            header: "User",
+            exportValue: (account) => account.displayName,
+            cell: (account) => (
+                <div className="flex items-center gap-3">
+                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#edf7f4] text-dudos-primary">
+                        <UserRound className="h-4 w-4" />
+                    </div>
+                    <div className="min-w-48">
+                        <strong className="block text-sm font-semibold text-dudos-text">
+                            {account.displayName}
+                        </strong>
+                        <span className="block text-xs text-dudos-text-secondary">{account.email}</span>
+                        {account.organizationName && (
+                            <span className="block text-[11px] text-[#8fa0ac]">{account.organizationName}</span>
+                        )}
+                    </div>
+                </div>
+            ),
+        },
+        {
+            id: "email",
+            header: "Email",
+            exportOnly: true,
+            exportValue: (account) => account.email,
+            cell: () => null,
+        },
+        {
+            id: "role",
+            header: "Role",
+            exportValue: (account) => account.role,
+            cell: (account) => (
+                <Badge variant="outline" className="capitalize">
+                    {account.role}
+                </Badge>
+            ),
+        },
+        {
+            id: "status",
+            header: "Status",
+            exportValue: (account) => statusLabel(account.status),
+            cell: (account) => (
+                <select
+                    aria-label={`Status for ${account.displayName}`}
+                    value={account.status}
+                    onChange={(event) => onStatusChange(account.id, event.target.value as UserStatus)}
+                    className={`rounded-full border px-2.5 py-1 text-xs font-medium ${statusClass(account.status)}`}
+                >
+                    {STATUSES.map((status) => (
+                        <option key={status} value={status}>
+                            {statusLabel(status)}
+                        </option>
+                    ))}
+                </select>
+            ),
+        },
+        {
+            id: "credits",
+            header: "Credits",
+            className: "font-medium text-dudos-text tabular-nums",
+            exportValue: (account) => account.credits || 0,
+            cell: (account) => (account.credits || 0).toLocaleString(),
+        },
+        {
+            id: "joined",
+            header: "Joined",
+            className: "whitespace-nowrap text-xs text-dudos-text-secondary",
+            exportValue: (account) => account.createdAt || "",
+            cell: (account) =>
+                account.createdAt ? new Date(account.createdAt).toLocaleDateString() : "—",
+        },
+        {
+            id: "actions",
+            header: "Actions",
+            headerClassName: "text-right",
+            cell: (account) => (
+                <div className="flex justify-end gap-1">
+                    <Button
+                        size="sm"
+                        variant="outline"
+                        aria-label={`Adjust credits for ${account.displayName}`}
+                        title="Adjust credits"
+                        onClick={() => {
+                            setCreditUser(account);
+                            setCreditAmount(1000);
+                        }}
+                        className="h-8 w-8 p-0"
+                    >
+                        <Coins className="h-4 w-4" />
+                    </Button>
+                    <Button
+                        size="sm"
+                        variant="outline"
+                        aria-label={`Delete ${account.displayName}`}
+                        title="Delete user"
+                        disabled={deletingUserId === account.id}
+                        onClick={() => deleteUser(account)}
+                        className="h-8 w-8 p-0 text-rose-600 hover:bg-rose-50"
+                    >
+                        <Trash2 className="h-4 w-4" />
+                    </Button>
+                </div>
+            ),
+        },
+    ];
+
     return (
         <section
             className="space-y-6"
@@ -262,8 +363,8 @@ export function AdminUserManagement({
                 </div>
             </div>
 
-            <div className="overflow-hidden rounded-xl border border-dudos-border bg-white">
-                <div className="flex flex-col gap-3 border-b border-dudos-border p-4 lg:flex-row lg:items-center">
+            <div>
+                <div className="flex flex-col gap-3 pb-3 lg:flex-row lg:items-center">
                     <div className="relative min-w-0 flex-1 lg:max-w-md">
                         <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#8fa0ac]" />
                         <Input
@@ -300,139 +401,44 @@ export function AdminUserManagement({
                     </div>
                 </div>
 
-                <div className="overflow-x-auto">
-                    <Table>
-                        <TableHeader>
-                            <TableRow>
-                                <TableHead>User</TableHead>
-                                <TableHead>Role</TableHead>
-                                <TableHead>Status</TableHead>
-                                <TableHead>Credits</TableHead>
-                                <TableHead>Joined</TableHead>
-                                <TableHead className="text-right">
-                                    Actions
-                                </TableHead>
-                            </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                            {filteredUsers.length === 0 ? (
-                                <TableRow>
-                                    <TableCell
-                                        colSpan={6}
-                                        className="py-12 text-center text-sm text-dudos-text-secondary"
-                                    >
-                                        {users.length === 0
-                                            ? "No user accounts found."
-                                            : "No users match these filters."}
-                                    </TableCell>
-                                </TableRow>
-                            ) : (
-                                filteredUsers.map((account) => (
-                                    <TableRow key={account.id}>
-                                        <TableCell>
-                                            <div className="flex items-center gap-3">
-                                                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#edf7f4] text-dudos-primary">
-                                                    <UserRound className="h-4 w-4" />
-                                                </div>
-                                                <div className="min-w-48">
-                                                    <strong className="block text-sm font-semibold text-dudos-text">
-                                                        {account.displayName}
-                                                    </strong>
-                                                    <span className="block text-xs text-dudos-text-secondary">
-                                                        {account.email}
-                                                    </span>
-                                                    {account.organizationName && (
-                                                        <span className="block text-[11px] text-[#8fa0ac]">
-                                                            {
-                                                                account.organizationName
-                                                            }
-                                                        </span>
-                                                    )}
-                                                </div>
-                                            </div>
-                                        </TableCell>
-                                        <TableCell>
-                                            <Badge
-                                                variant="outline"
-                                                className="capitalize"
-                                            >
-                                                {account.role}
-                                            </Badge>
-                                        </TableCell>
-                                        <TableCell>
-                                            <select
-                                                aria-label={`Status for ${account.displayName}`}
-                                                value={account.status}
-                                                onChange={(event) =>
-                                                    onStatusChange(
-                                                        account.id,
-                                                        event.target
-                                                            .value as UserStatus,
-                                                    )
-                                                }
-                                                className={`rounded-full border px-2.5 py-1 text-xs font-medium ${statusClass(account.status)}`}
-                                            >
-                                                {STATUSES.map((status) => (
-                                                    <option
-                                                        key={status}
-                                                        value={status}
-                                                    >
-                                                        {statusLabel(status)}
-                                                    </option>
-                                                ))}
-                                            </select>
-                                        </TableCell>
-                                        <TableCell className="font-medium text-dudos-text">
-                                            {(
-                                                account.credits || 0
-                                            ).toLocaleString()}
-                                        </TableCell>
-                                        <TableCell className="whitespace-nowrap text-xs text-dudos-text-secondary">
-                                            {account.createdAt
-                                                ? new Date(
-                                                      account.createdAt,
-                                                  ).toLocaleDateString()
-                                                : "—"}
-                                        </TableCell>
-                                        <TableCell>
-                                            <div className="flex justify-end gap-1">
-                                                <Button
-                                                    size="sm"
-                                                    variant="outline"
-                                                    aria-label={`Adjust credits for ${account.displayName}`}
-                                                    title="Adjust credits"
-                                                    onClick={() => {
-                                                        setCreditUser(account);
-                                                        setCreditAmount(1000);
-                                                    }}
-                                                    className="h-8 w-8 p-0"
-                                                >
-                                                    <Coins className="h-4 w-4" />
-                                                </Button>
-                                                <Button
-                                                    size="sm"
-                                                    variant="outline"
-                                                    aria-label={`Delete ${account.displayName}`}
-                                                    title="Delete user"
-                                                    disabled={
-                                                        deletingUserId ===
-                                                        account.id
-                                                    }
-                                                    onClick={() =>
-                                                        deleteUser(account)
-                                                    }
-                                                    className="h-8 w-8 p-0 text-rose-600 hover:bg-rose-50"
-                                                >
-                                                    <Trash2 className="h-4 w-4" />
-                                                </Button>
-                                            </div>
-                                        </TableCell>
-                                    </TableRow>
-                                ))
-                            )}
-                        </TableBody>
-                    </Table>
-                </div>
+                <DataTable
+                    label="users"
+                    rows={filteredUsers}
+                    columns={userColumns}
+                    getRowId={(account) => account.id}
+                    resetKey={`${statusFilter}|${search.trim().toLowerCase()}`}
+                    exportFileName="dudos-users"
+                    empty={
+                        users.length === 0
+                            ? "No user accounts found."
+                            : "No users match these filters."
+                    }
+                    bulkActions={(selectedUsers, clearSelection) => (
+                        <select
+                            aria-label="Set status for selected users"
+                            value=""
+                            onChange={(event) => {
+                                const status = event.target.value as UserStatus;
+                                if (!status) return;
+                                selectedUsers
+                                    .filter((account) => account.status !== status)
+                                    .forEach((account) => onStatusChange(account.id, status));
+                                showToast.success(
+                                    `${selectedUsers.length} user${selectedUsers.length === 1 ? "" : "s"} set to ${statusLabel(status)}`,
+                                );
+                                clearSelection();
+                            }}
+                            className="h-7 rounded-md border border-dudos-border bg-white px-2 text-xs text-dudos-text"
+                        >
+                            <option value="">Set status…</option>
+                            {STATUSES.map((status) => (
+                                <option key={status} value={status}>
+                                    {statusLabel(status)}
+                                </option>
+                            ))}
+                        </select>
+                    )}
+                />
             </div>
 
             {creditUser && (

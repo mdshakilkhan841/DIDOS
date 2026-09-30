@@ -14,14 +14,7 @@ import {
     DialogHeader,
     DialogTitle,
 } from "@/components/ui/dialog";
-import {
-    Table,
-    TableBody,
-    TableCell,
-    TableHead,
-    TableHeader,
-    TableRow,
-} from "@/components/ui/table";
+import { DataTable, type DataTableColumn } from "@/components/ui/data-table";
 import { getAuthToken } from "@/lib/dudos/assessment-sync";
 import { showToast } from "@/lib/toast";
 
@@ -217,6 +210,87 @@ export function AdminProjectTracking() {
         });
     };
 
+    const projectColumns: DataTableColumn<AdminProject>[] = [
+        {
+            id: "project",
+            header: "Project",
+            exportValue: (project) => displayName(project.name),
+            cell: (project) => (
+                <>
+                    <p className="font-semibold text-dudos-text">{displayName(project.name)}</p>
+                    {project.organizationName && (
+                        <p className="text-xs text-dudos-text-secondary">{project.organizationName}</p>
+                    )}
+                </>
+            ),
+        },
+        {
+            id: "client",
+            header: "Client",
+            exportValue: (project) =>
+                [project.clientName, project.clientEmail].filter(Boolean).join(" · "),
+            cell: (project) => (
+                <>
+                    <p className="text-sm text-dudos-text">{project.clientName || "—"}</p>
+                    <p className="text-xs text-dudos-text-secondary">{project.clientEmail}</p>
+                </>
+            ),
+        },
+        {
+            id: "stage",
+            header: "Stage",
+            exportValue: (project) => STAGES[stageOf(project.status)].label,
+            cell: (project) => {
+                const stage = STAGES[stageOf(project.status)];
+                return (
+                    <Badge variant="outline" className={stage.className}>
+                        {stage.label}
+                    </Badge>
+                );
+            },
+        },
+        {
+            id: "payment",
+            header: "Payment",
+            className: "text-xs",
+            exportValue: paymentText,
+            cell: paymentText,
+        },
+        {
+            id: "submitted",
+            header: "Submitted to builder",
+            className: "text-xs",
+            exportValue: (project) => project.builderSubmittedAt || "",
+            cell: (project) => formatDate(project.builderSubmittedAt),
+        },
+        {
+            id: "updated",
+            header: "Updated",
+            className: "text-xs",
+            exportValue: (project) => project.updatedAt,
+            cell: (project) => formatDate(project.updatedAt),
+        },
+        {
+            id: "action",
+            header: "Action",
+            headerClassName: "text-right",
+            className: "text-right",
+            cell: (project) => (
+                <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={(event) => {
+                        event.stopPropagation();
+                        openManage(project);
+                    }}
+                >
+                    Manage
+                </Button>
+            ),
+        },
+    ];
+
+
     const handedOff = editing
         ? ["building", "deploying", "live"].includes(stageOf(editing.status))
         : false;
@@ -325,88 +399,25 @@ export function AdminProjectTracking() {
                 </div>
             </div>
 
-            <div className="overflow-hidden rounded-xl border border-dudos-border bg-white">
-                {error ? (
-                    <p className="p-8 text-center text-sm text-rose-700">{error}</p>
-                ) : loading && projects.length === 0 ? (
-                    <p className="p-8 text-center text-sm text-dudos-text-secondary">
-                        Loading projects…
-                    </p>
-                ) : visible.length === 0 ? (
-                    <div className="p-8 text-center">
-                        <FolderKanban className="mx-auto h-8 w-8 text-slate-400" />
-                        <p className="mt-2 text-sm text-dudos-text-secondary">
-                            {projects.length === 0
-                                ? "No client projects yet. They appear here once a client confirms an assessment."
-                                : "No projects match this filter."}
-                        </p>
-                    </div>
-                ) : (
-                    <Table>
-                        <TableHeader>
-                            <TableRow>
-                                <TableHead>Project</TableHead>
-                                <TableHead>Client</TableHead>
-                                <TableHead>Stage</TableHead>
-                                <TableHead>Payment</TableHead>
-                                <TableHead>Submitted to builder</TableHead>
-                                <TableHead>Updated</TableHead>
-                                <TableHead className="text-right">Action</TableHead>
-                            </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                            {visible.map((project) => {
-                                const stage = STAGES[stageOf(project.status)];
-                                return (
-                                    <TableRow key={project.id}>
-                                        <TableCell>
-                                            <p className="font-semibold text-dudos-text">
-                                                {displayName(project.name)}
-                                            </p>
-                                            {project.organizationName && (
-                                                <p className="text-xs text-dudos-text-secondary">
-                                                    {project.organizationName}
-                                                </p>
-                                            )}
-                                        </TableCell>
-                                        <TableCell>
-                                            <p className="text-sm text-dudos-text">
-                                                {project.clientName || "—"}
-                                            </p>
-                                            <p className="text-xs text-dudos-text-secondary">
-                                                {project.clientEmail}
-                                            </p>
-                                        </TableCell>
-                                        <TableCell>
-                                            <Badge variant="outline" className={stage.className}>
-                                                {stage.label}
-                                            </Badge>
-                                        </TableCell>
-                                        <TableCell className="text-xs">
-                                            {paymentText(project)}
-                                        </TableCell>
-                                        <TableCell className="text-xs">
-                                            {formatDate(project.builderSubmittedAt)}
-                                        </TableCell>
-                                        <TableCell className="text-xs">
-                                            {formatDate(project.updatedAt)}
-                                        </TableCell>
-                                        <TableCell className="text-right">
-                                            <Button
-                                                size="sm"
-                                                variant="outline"
-                                                onClick={() => openManage(project)}
-                                            >
-                                                Manage
-                                            </Button>
-                                        </TableCell>
-                                    </TableRow>
-                                );
-                            })}
-                        </TableBody>
-                    </Table>
-                )}
-            </div>
+            <DataTable
+                label="client projects"
+                rows={visible}
+                columns={projectColumns}
+                getRowId={(project) => project.id}
+                resetKey={`${filter}|${query}`}
+                onRowClick={openManage}
+                exportFileName="dudos-projects"
+                loading={loading}
+                error={error}
+                empty={
+                    <span className="flex flex-col items-center gap-2">
+                        <FolderKanban className="h-8 w-8 text-slate-400" />
+                        {projects.length === 0
+                            ? "No client projects yet. They appear here once a client confirms an assessment."
+                            : "No projects match this filter."}
+                    </span>
+                }
+            />
 
             <Dialog
                 open={Boolean(editing)}
