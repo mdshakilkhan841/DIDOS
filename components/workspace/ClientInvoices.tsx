@@ -8,6 +8,7 @@ import { DataTable, type DataTableColumn } from "@/components/ui/data-table";
 import { CreditWalletModal } from "@/components/billing/CreditWalletModal";
 import { useAuth } from "@/context/auth-context";
 import { API_BASE, authHeaders, formatBdt, unitLabel } from "@/lib/dudos/packages";
+import { showToast } from "@/lib/toast";
 
 type Invoice = {
     id: string;
@@ -44,7 +45,7 @@ const formatDate = (value?: string | null) => (value ? new Date(value).toLocaleS
 
 /** Client billing history: wallet top-ups (paid in BDT) and builds paid from the wallet. */
 export function ClientInvoices({ lang }: { lang: string }) {
-    const { credits } = useAuth();
+    const { credits, applyServerBalance } = useAuth();
     const [invoices, setInvoices] = useState<Invoice[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState("");
@@ -60,6 +61,37 @@ export function ClientInvoices({ lang }: { lang: string }) {
     useEffect(() => {
         void fetchInvoices().then(apply);
     }, [apply]);
+
+    // Back from PayStation (?payment=success|failed|cancelled|pending): tell the
+    // client, sync the balance the server credited, and clean the URL.
+    useEffect(() => {
+        const params = new URLSearchParams(window.location.search);
+        const result = params.get("payment");
+        if (!result) return;
+        const messages: Record<string, [string, string]> = {
+            success: ["Payment received. Your wallet has been topped up.", "পেমেন্ট সম্পন্ন হয়েছে। ওয়ালেটে ব্যালেন্স যোগ হয়েছে।"],
+            cancelled: ["Payment cancelled. Nothing was charged.", "পেমেন্ট বাতিল হয়েছে।"],
+            failed: ["Payment failed. Nothing was added to your wallet.", "পেমেন্ট ব্যর্থ হয়েছে।"],
+            pending: ["Payment is being confirmed. Refresh in a minute.", "পেমেন্ট যাচাই করা হচ্ছে।"],
+        };
+        const [en, bnText] = messages[result] || messages.pending;
+        const text = bn ? bnText : en;
+        if (result === "success") showToast.success(text);
+        else if (result === "pending") showToast.info(text);
+        else showToast.error(text);
+        void fetch(`${API_BASE}/credits/balance`, { headers: authHeaders(), cache: "no-store" })
+            .then((res) => (res.ok ? res.json() : null))
+            .then((data) => {
+                if (data && typeof data.credits === "number") applyServerBalance(data.credits, 0, "");
+            })
+            .catch(() => {});
+        params.delete("payment");
+        params.delete("invoice");
+        const query = params.toString();
+        window.history.replaceState(null, "", window.location.pathname + (query ? `?${query}` : ""));
+        // Runs once on arrival.
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
 
     const reload = () => {
         setLoading(true);
@@ -144,7 +176,9 @@ export function ClientInvoices({ lang }: { lang: string }) {
                     className={
                         inv.status === "paid"
                             ? "border-emerald-300 bg-emerald-50 text-[10px] capitalize text-emerald-800"
-                            : "border-amber-300 bg-amber-50 text-[10px] capitalize text-amber-800"
+                            : inv.status === "pending"
+                              ? "border-amber-300 bg-amber-50 text-[10px] capitalize text-amber-800"
+                              : "border-rose-300 bg-rose-50 text-[10px] capitalize text-rose-800"
                     }
                 >
                     {inv.status}

@@ -74,6 +74,8 @@ const FALLBACK_CREDIT_PACKAGES: DudosPackage[] = [
   },
 ];
 
+const PHONE_KEY = "dudos_payment_phone";
+
 export function CreditWalletModal({
   open,
   onOpenChange,
@@ -87,6 +89,14 @@ export function CreditWalletModal({
   const [packages, setPackages] = useState<DudosPackage[]>(FALLBACK_CREDIT_PACKAGES);
   const [selectedPkg, setSelectedPkg] = useState<string>("");
   const [processingId, setProcessingId] = useState<string | null>(null);
+  // PayStation needs the payer's mobile number; remembered on this device.
+  const [phone, setPhone] = useState(() => {
+    try {
+      return localStorage.getItem(PHONE_KEY) || "";
+    } catch {
+      return "";
+    }
+  });
 
   // Live packs from Packages & Pricing; keep the fallback if the API is down.
   useEffect(() => {
@@ -119,13 +129,21 @@ export function CreditWalletModal({
       const res = await fetch(`${API_BASE}/credits/purchase`, {
         method: "POST",
         headers: authHeaders(true),
-        body: JSON.stringify({ packageId: pkg.id }),
+        body: JSON.stringify({ packageId: pkg.id, phone: phone.trim() || undefined }),
       });
       const body = await res.json().catch(() => ({}));
       if (!res.ok) {
         showToast.error(lang === "bn" ? "ক্রয় সম্পন্ন হয়নি" : "Purchase failed", {
           description: body?.detail,
         });
+        return;
+      }
+      if (body.paymentUrl) {
+        try {
+          localStorage.setItem(PHONE_KEY, phone.trim());
+        } catch {}
+        showToast.info(lang === "bn" ? "PayStation-এ নিয়ে যাওয়া হচ্ছে…" : "Redirecting to PayStation…");
+        window.location.assign(body.paymentUrl);
         return;
       }
       applyServerBalance(body.totalCredits, body.added, reason);
@@ -236,6 +254,21 @@ export function CreditWalletModal({
             })}
           </div>
 
+          <label className="flex flex-wrap items-center gap-3 rounded-xl border border-dudos-border bg-white p-3.5 text-xs">
+            <span className="font-semibold text-dudos-text">
+              {lang === "bn" ? "মোবাইল নম্বর (পেমেন্টের জন্য)" : "Mobile number (for payment)"}
+            </span>
+            <input
+              type="tel"
+              inputMode="tel"
+              autoComplete="tel"
+              placeholder="01XXXXXXXXX"
+              value={phone}
+              onChange={(event) => setPhone(event.target.value)}
+              className="h-9 min-w-0 flex-1 rounded-md border border-dudos-border px-3 text-sm outline-none focus:border-dudos-primary"
+            />
+          </label>
+
           <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-600 flex flex-wrap items-center justify-between gap-2">
             <div className="flex items-center gap-2">
               <ShieldCheck className="h-4 w-4 text-teal-600" />
@@ -245,7 +278,9 @@ export function CreditWalletModal({
                   : "Your balance is charged when you pay for a project build. Every top-up appears under Invoices & Payments."}
               </span>
             </div>
-            <Badge variant="outline" className="text-[10px]">Instant Credit Top-up</Badge>
+            <Badge variant="outline" className="text-[10px]">
+              {lang === "bn" ? "PayStation দিয়ে নিরাপদ পেমেন্ট" : "Secure payment via PayStation"}
+            </Badge>
           </div>
         </div>
       </DialogContent>
