@@ -124,6 +124,161 @@ function ClientComingSoon({
     );
 }
 
+function ClientProfileSettings({
+    lang,
+    user,
+    activeWorkspaceDisplayName,
+    activeWorkspaceId,
+}: {
+    lang: string;
+    user: any;
+    activeWorkspaceDisplayName?: string;
+    activeWorkspaceId?: string;
+}) {
+    return (
+        <section className="space-y-6" aria-labelledby="profile-settings-title">
+            <div className="section-heading">
+                <div>
+                    <p className="eyebrow">
+                        <span />
+                        {lang === "bn" ? "অ্যাকাউন্ট সেটিংস" : "ACCOUNT & PROFILE"}
+                    </p>
+                    <h1 id="profile-settings-title">
+                        {lang === "bn" ? "প্রোফাইল ও সেটিংস" : "Profile & Settings"}
+                    </h1>
+                    <p>
+                        {lang === "bn"
+                            ? "আপনার ব্যক্তিগত তথ্য, ওয়ার্কস্পেস সংযোগ এবং অ্যাকাউন্ট স্থিতি পর্যালোচনা করুন।"
+                            : "Review your personal information, workspace linkage, and account details."}
+                    </p>
+                </div>
+            </div>
+
+            {/* Profile Overview Card */}
+            <div className="rounded-xl border border-dudos-border bg-white p-6 shadow-2xs">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pb-6 border-b border-slate-100">
+                    <div className="flex items-center gap-4">
+                        <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-[#087f79]/10 text-[#087f79] font-bold text-xl uppercase">
+                            {user?.displayName?.[0] || user?.email?.[0] || "U"}
+                        </div>
+                        <div>
+                            <h2 className="text-lg font-bold text-[#162c38]">
+                                {user?.displayName || "DUDOS Client"}
+                            </h2>
+                            <p className="text-xs text-[#5b6f7b] font-mono mt-0.5">
+                                {user?.email || "user@daffodil.family"}
+                            </p>
+                            <div className="flex items-center gap-2 mt-2">
+                                <Badge className="bg-[#087f79] text-white text-[11px] font-medium border-0 capitalize">
+                                    {user?.role || "client"}
+                                </Badge>
+                                <Badge variant="outline" className="border-emerald-300 bg-emerald-50 text-emerald-800 text-[11px] font-medium capitalize">
+                                    {user?.status || "approved"}
+                                </Badge>
+                            </div>
+                        </div>
+                    </div>
+                    <div className="flex flex-col sm:items-end">
+                        <span className="text-xs font-semibold uppercase tracking-wider text-slate-400">
+                            {lang === "bn" ? "ক্রেডিট ব্যালেন্স" : "Credit Balance"}
+                        </span>
+                        <span className="text-2xl font-black text-[#087f79] mt-0.5">
+                            {user?.credits ?? 0} <span className="text-sm font-semibold text-slate-500">Cr</span>
+                        </span>
+                    </div>
+                </div>
+
+                {/* Details Grid */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 pt-6">
+                    <div>
+                        <label className="text-xs font-bold text-[#5b6f7b] uppercase tracking-wider">
+                            {lang === "bn" ? "ইউজারনেম" : "Username"}
+                        </label>
+                        <p className="text-sm font-semibold text-[#162c38] mt-1 font-mono">
+                            @{user?.username || "client_user"}
+                        </p>
+                    </div>
+
+                    <div>
+                        <label className="text-xs font-bold text-[#5b6f7b] uppercase tracking-wider">
+                            {lang === "bn" ? "প্রতিষ্ঠান / সংস্থা" : "Organization"}
+                        </label>
+                        <p className="text-sm font-semibold text-[#162c38] mt-1">
+                            {user?.organizationName || "Independent Client"}
+                        </p>
+                    </div>
+
+                    <div>
+                        <label className="text-xs font-bold text-[#5b6f7b] uppercase tracking-wider">
+                            {lang === "bn" ? "সক্রিয় ওয়ার্কস্পেস" : "Active Workspace"}
+                        </label>
+                        <p className="text-sm font-semibold text-[#162c38] mt-1 flex items-center gap-1.5">
+                            <Building2 size={14} className="text-[#087f79]" />
+                            {activeWorkspaceDisplayName || "Default Workspace"}
+                        </p>
+                        {activeWorkspaceId && (
+                            <p className="text-[11px] text-slate-400 font-mono mt-0.5">
+                                ID: {activeWorkspaceId}
+                            </p>
+                        )}
+                    </div>
+
+                    <div>
+                        <label className="text-xs font-bold text-[#5b6f7b] uppercase tracking-wider">
+                            {lang === "bn" ? "যোগাযোগের ফোন" : "Phone Number"}
+                        </label>
+                        <p className="text-sm font-semibold text-[#162c38] mt-1">
+                            {user?.phone || (lang === "bn" ? "যোগ করা হয়নি" : "Not specified")}
+                        </p>
+                    </div>
+
+                    <div>
+                        <label className="text-xs font-bold text-[#5b6f7b] uppercase tracking-wider">
+                            {lang === "bn" ? "আইডি / আইডেন্টিফায়ার" : "Identifier"}
+                        </label>
+                        <p className="text-sm font-semibold text-[#162c38] mt-1 font-mono">
+                            {user?.identifier || user?.id || "N/A"}
+                        </p>
+                    </div>
+
+                    <div>
+                        <label className="text-xs font-bold text-[#5b6f7b] uppercase tracking-wider">
+                            {lang === "bn" ? "নিবন্ধন তারিখ" : "Member Since"}
+                        </label>
+                        <p className="text-sm font-semibold text-[#162c38] mt-1">
+                            {user?.createdAt ? new Date(user.createdAt).toLocaleDateString() : "2026"}
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            {/* Workspace & Preferences Box */}
+            <div className="rounded-xl border border-dudos-border bg-white p-6 shadow-2xs space-y-4">
+                <h3 className="text-base font-bold text-[#162c38]">
+                    {lang === "bn" ? "পছন্দসমূহ ও নিরাপত্তা" : "Preferences & Security"}
+                </h3>
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 rounded-lg bg-[#f8fafb] border border-slate-200">
+                    <div>
+                        <p className="text-sm font-bold text-[#162c38]">
+                            {lang === "bn" ? "ভাষা পছন্দ" : "Language Preference"}
+                        </p>
+                        <p className="text-xs text-[#5b6f7b] mt-0.5">
+                            {lang === "bn" ? "বর্তমান ভাষা: বাংলা" : "Current language: English"}
+                        </p>
+                    </div>
+                    <Link
+                        href={`/${lang === "bn" ? "en" : "bn"}/app/settings`}
+                        className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg border border-slate-200 bg-white text-xs font-bold text-[#162c38] hover:bg-slate-50 transition-colors"
+                    >
+                        <Globe size={14} />
+                        {lang === "bn" ? "Switch to English" : "বাংলায় পরিবর্তন করুন"}
+                    </Link>
+                </div>
+            </div>
+        </section>
+    );
+}
+
 export default function ClientWorkbench({
     lang = "en",
     section = [],
@@ -393,6 +548,7 @@ export default function ClientWorkbench({
                 },
             ],
         },
+        /* Temporarily commented out roadmap section — enable later when functional
         {
             group: "WEBSITE BUILDER",
             items: [
@@ -419,6 +575,7 @@ export default function ClientWorkbench({
                 },
             ],
         },
+        */
         {
             group: "CREDITS & BILLING",
             items: [
@@ -439,6 +596,7 @@ export default function ClientWorkbench({
         {
             group: "DELIVERY & SUPPORT",
             items: [
+                /* Temporarily commented out roadmap items — enable later when functional
                 {
                     id: "deployments",
                     title: "Deployments & Domains",
@@ -453,6 +611,7 @@ export default function ClientWorkbench({
                     icon: MessageSquare,
                     comingSoon: true,
                 },
+                */
                 {
                     id: "support",
                     title: "Support & Helpdesk",
@@ -462,6 +621,7 @@ export default function ClientWorkbench({
                 },
             ],
         },
+        /* Temporarily commented out roadmap section — enable later when functional
         {
             group: "MARKETING (PHASE 2)",
             items: [
@@ -481,6 +641,7 @@ export default function ClientWorkbench({
                 },
             ],
         },
+        */
         {
             group: "ACCOUNT",
             items: [
@@ -489,7 +650,6 @@ export default function ClientWorkbench({
                     title: "Profile & Settings",
                     bn: "প্রোফাইল ও সেটিংস",
                     icon: UserRound,
-                    comingSoon: true,
                 },
             ],
         },
@@ -791,6 +951,19 @@ export default function ClientWorkbench({
                         <ClientInvoices lang={lang} />
                     ) : view === "billing" ? (
                         <ClientWallet lang={lang} />
+                    ) : view === "settings" ? (
+                        <ClientProfileSettings
+                            lang={lang}
+                            user={user}
+                            activeWorkspaceDisplayName={
+                                activeWorkspaceDisplayName
+                            }
+                            activeWorkspaceId={
+                                activeWorkspaceId ||
+                                workspaces[0]?.id ||
+                                "client_ws"
+                            }
+                        />
                     ) : view === "new-project" ? (
                         <section
                             className="space-y-5"
