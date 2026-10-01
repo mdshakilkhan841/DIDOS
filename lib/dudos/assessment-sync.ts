@@ -56,6 +56,13 @@ export function getAuthToken(): string | null {
     return getAuthTokenCandidates()[0] || null;
 }
 
+export function mergeAssessmentData(
+    current: Record<string, string>,
+    updates: Record<string, string>,
+): Record<string, string> {
+    return { ...current, ...updates };
+}
+
 export function persistAuthToken(token: string): void {
     if (typeof window === "undefined" || !token) return;
     try {

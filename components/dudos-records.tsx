@@ -62,6 +62,7 @@ import { useAuth } from "@/context/auth-context";
 import {
     assessmentTitle,
     findAssessmentRecord,
+    mergeAssessmentData,
     syncAssessmentToWorkspaceDraft,
 } from "@/lib/dudos/assessment-sync";
 export { api } from "@/lib/dudos/client";
@@ -670,10 +671,10 @@ function Wizard({
             : null;
     const resumeAtPreview = mode === "edit" && Boolean(onSubmitted);
     const [step, setStep] = useState(() =>
-        resumeAtPreview && initialAssessment?.data
-            ? firstIncompleteStep(initialAssessment.data)
-            : 0,
-    ),
+            resumeAtPreview && initialAssessment?.data
+                ? firstIncompleteStep(initialAssessment.data)
+                : 0,
+        ),
         [data, setData] = useState<Record<string, string>>(
             initialAssessment?.data || {},
         ),
@@ -712,7 +713,9 @@ function Wizard({
                 )
                     throw new Error("Invalid assessment field.");
             }
-            setData({ ...data, ...(fields as Record<string, string>) });
+            setData((current) =>
+                mergeAssessmentData(current, fields as Record<string, string>),
+            );
             return {
                 staged_fields: Object.keys(fields),
                 saved: false,
@@ -1003,7 +1006,11 @@ function Wizard({
                                         f={f}
                                         value={data[f.key] || ""}
                                         onChange={(v) =>
-                                            setData({ ...data, [f.key]: v })
+                                            setData((current) =>
+                                                mergeAssessmentData(current, {
+                                                    [f.key]: v,
+                                                }),
+                                            )
                                         }
                                     />
                                 ))}
@@ -1022,7 +1029,11 @@ function Wizard({
                                     .split(", ")
                                     .filter(Boolean)}
                                 onChange={(v) =>
-                                    setData({ ...data, modules: v.join(", ") })
+                                    setData((current) =>
+                                        mergeAssessmentData(current, {
+                                            modules: v.join(", "),
+                                        }),
+                                    )
                                 }
                                 options={[
                                     "website",

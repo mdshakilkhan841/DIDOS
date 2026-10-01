@@ -24,6 +24,7 @@ import {
     getAuthTokenCandidates,
     getAuthToken,
     findAssessmentRecord,
+    mergeAssessmentData,
     persistAuthToken,
     syncAssessmentToWorkspaceDraft,
 } from "../lib/dudos/assessment-sync.ts";
@@ -116,6 +117,19 @@ assert.strictEqual(
 );
 assert.strictEqual(recoveredAnswers.systems, "Current ERP");
 assert.strictEqual(recoveredAnswers.reporting, "Weekly email report");
+
+const assessmentFormAnswers = mergeAssessmentData(
+    mergeAssessmentData(
+        {},
+        { site_url: "https://example.com", country: "Bangladesh" },
+    ),
+    { languages: "en, bn" },
+);
+assert.deepStrictEqual(assessmentFormAnswers, {
+    site_url: "https://example.com",
+    country: "Bangladesh",
+    languages: "en, bn",
+});
 
 console.log("Test 1: Convert Assessment Record to ActiveProjectDraft");
 assert(draft.id === "rec_assessment_test1", "Draft ID should match record ID");
