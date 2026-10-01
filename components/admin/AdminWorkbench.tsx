@@ -10,13 +10,13 @@ import {
     Coins,
     LogOut,
     ArrowUpRight,
-    Database,
     LifeBuoy,
     UserRound,
     FileText,
     CreditCard,
     Megaphone,
     Package,
+    Activity,
     type LucideIcon,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
@@ -50,6 +50,7 @@ type AdminNavigationItem = {
     icon: LucideIcon;
     badge?: string;
     comingSoon?: boolean;
+    externalUrl?: string;
 };
 
 function AdminComingSoon({
@@ -171,7 +172,7 @@ export default function AdminWorkbench({
         window.location.href = "/logout?return_to=/login";
     };
 
-    // Existing operations stay functional; roadmap modules are visible placeholders.
+    // Functional admin operations; roadmap modules are commented out until enabled.
     const adminNavSections: {
         group: string;
         items: AdminNavigationItem[];
@@ -185,6 +186,7 @@ export default function AdminWorkbench({
                     bn: "প্রজেক্ট ট্র্যাকিং",
                     icon: FolderKanban,
                 },
+                /* Temporarily commented out roadmap modules — enable later when functional
                 {
                     id: "builder",
                     title: "AI Website Builder",
@@ -218,8 +220,6 @@ export default function AdminWorkbench({
                     title: "Project Scoping & Quotations",
                     bn: "প্রজেক্ট স্কোপিং ও কোটেশন",
                     icon: FolderKanban,
-                    // Per-account, browser-only quotations aren't part of the
-                    // server-backed project flow yet.
                     comingSoon: true,
                 },
                 {
@@ -229,6 +229,7 @@ export default function AdminWorkbench({
                     icon: FileText,
                     comingSoon: true,
                 },
+                */
             ],
         },
         {
@@ -251,6 +252,13 @@ export default function AdminWorkbench({
                     icon: LifeBuoy,
                     badge: supportCount > 0 ? String(supportCount) : undefined,
                 },
+                {
+                    id: "monitoring",
+                    title: "Infrastructure Monitor",
+                    bn: "ইনফ্রাস্ট্রাকচার মনিটর",
+                    icon: Activity,
+                    externalUrl: "https://monitor.daffodil.group/login",
+                },
             ],
         },
         {
@@ -268,6 +276,7 @@ export default function AdminWorkbench({
                     bn: "বিলিং ও ক্রেডিট লেজার",
                     icon: Coins,
                 },
+                /* Temporarily commented out roadmap modules — enable later when functional
                 {
                     id: "invoices",
                     title: "Invoices & Payments",
@@ -282,8 +291,10 @@ export default function AdminWorkbench({
                     icon: CreditCard,
                     comingSoon: true,
                 },
+                */
             ],
         },
+        /* Temporarily commented out roadmap section — enable later when functional
         {
             group: "MARKETING AUTOMATION",
             items: [
@@ -303,6 +314,7 @@ export default function AdminWorkbench({
                 },
             ],
         },
+        */
         {
             group: "ACCOUNT MANAGEMENT",
             items: [
@@ -370,44 +382,67 @@ export default function AdminWorkbench({
                                                     asChild
                                                     isActive={isActive}
                                                 >
-                                                    <Link
-                                                        href={`/${lang}/app/${item.id}`}
-                                                    >
-                                                        <Icon size={16} />
-                                                        <span>
-                                                            {lang === "bn"
-                                                                ? item.bn
-                                                                : item.title}
-                                                        </span>
-                                                        {item.badge && (
-                                                            <span
-                                                                style={{
-                                                                    marginLeft:
-                                                                        "auto",
-                                                                    fontSize:
-                                                                        "10px",
-                                                                    background:
-                                                                        "#eaf5f1",
-                                                                    color: "#087f79",
-                                                                    padding:
-                                                                        "2px 6px",
-                                                                    borderRadius:
-                                                                        "4px",
-                                                                    fontWeight:
-                                                                        "bold",
-                                                                }}
-                                                            >
-                                                                {item.badge}
-                                                            </span>
-                                                        )}
-                                                        {item.comingSoon && (
-                                                            <span className="ml-auto rounded border border-slate-200 bg-slate-50 px-1.5 py-0.5 text-[9px] font-medium text-slate-500">
+                                                    {item.externalUrl ? (
+                                                        <a
+                                                            href={item.externalUrl}
+                                                            target="_blank"
+                                                            rel="noopener noreferrer"
+                                                            className="flex items-center gap-2 w-full"
+                                                        >
+                                                            <Icon size={16} />
+                                                            <span>
                                                                 {lang === "bn"
-                                                                    ? "শীঘ্রই"
-                                                                    : "Soon"}
+                                                                    ? item.bn
+                                                                    : item.title}
                                                             </span>
-                                                        )}
-                                                    </Link>
+                                                            <ArrowUpRight
+                                                                size={13}
+                                                                style={{
+                                                                    marginLeft: "auto",
+                                                                    opacity: 0.7,
+                                                                }}
+                                                            />
+                                                        </a>
+                                                    ) : (
+                                                        <Link
+                                                            href={`/${lang}/app/${item.id}`}
+                                                        >
+                                                            <Icon size={16} />
+                                                            <span>
+                                                                {lang === "bn"
+                                                                    ? item.bn
+                                                                    : item.title}
+                                                            </span>
+                                                            {item.badge && (
+                                                                <span
+                                                                    style={{
+                                                                        marginLeft:
+                                                                            "auto",
+                                                                        fontSize:
+                                                                            "10px",
+                                                                        background:
+                                                                            "#eaf5f1",
+                                                                        color: "#087f79",
+                                                                        padding:
+                                                                            "2px 6px",
+                                                                        borderRadius:
+                                                                            "4px",
+                                                                        fontWeight:
+                                                                            "bold",
+                                                                    }}
+                                                                >
+                                                                    {item.badge}
+                                                                </span>
+                                                            )}
+                                                            {item.comingSoon && (
+                                                                <span className="ml-auto rounded border border-slate-200 bg-slate-50 px-1.5 py-0.5 text-[9px] font-medium text-slate-500">
+                                                                    {lang === "bn"
+                                                                        ? "শীঘ্রই"
+                                                                        : "Soon"}
+                                                                </span>
+                                                            )}
+                                                        </Link>
+                                                    )}
                                                 </SidebarMenuButton>
                                             </SidebarMenuItem>
                                         );
@@ -423,14 +458,6 @@ export default function AdminWorkbench({
                         {user?.displayName || user?.username || "Administrator"}
                     </p>
                     <div className="sidebar-foot-links">
-                        <a
-                            href="http://localhost:8000/db"
-                            target="_blank"
-                            rel="noreferrer"
-                        >
-                            <Database size={13} />
-                            <span>DB Explorer</span>
-                        </a>
                         <Link
                             href={`/${lang === "bn" ? "en" : "bn"}/app/${section.join("/")}`}
                         >
