@@ -67,6 +67,8 @@ import {
 import {
     convertAssessmentRecordToDraft,
     getAuthToken,
+    getAuthTokenCandidates,
+    persistAuthToken,
 } from "@/lib/dudos/assessment-sync";
 
 const STORAGE_KEY = "dudos_onboarding_draft";
@@ -416,7 +418,9 @@ function buildWorkspaceProjects({
     }
     for (const [id, group] of legacyGroups) {
         const serverGroup = group.filter(isServerEntry);
-        const status = (serverGroup.length ? serverGroup : group).reduce<ProjectStatus>(
+        const status = (
+            serverGroup.length ? serverGroup : group
+        ).reduce<ProjectStatus>(
             (current, entry) => laterStatus(current, entry.status),
             "draft",
         );
@@ -528,32 +532,49 @@ function stageLabel(status: ProjectStatus, lang: string): string {
         default:
             if (status === "live" || status === "completed")
                 return bn ? "লাইভ" : "Live";
-            if (status === "deploying") return bn ? "ডিপ্লয় হচ্ছে" : "Deploying";
+            if (status === "deploying")
+                return bn ? "ডিপ্লয় হচ্ছে" : "Deploying";
             return bn ? "জমা হয়েছে" : "Submitted";
     }
 }
 
 // Support ticket statuses (match TICKET_STATUSES in the backend).
-function ticketStatusMeta(status: string): { label: string; className: string } {
+function ticketStatusMeta(status: string): {
+    label: string;
+    className: string;
+} {
     switch (status) {
         case "in_progress":
-            return { label: "In progress", className: "border-sky-300 bg-sky-50 text-sky-800" };
+            return {
+                label: "In progress",
+                className: "border-sky-300 bg-sky-50 text-sky-800",
+            };
         case "resolved":
-            return { label: "Resolved", className: "border-emerald-300 bg-emerald-50 text-emerald-800" };
+            return {
+                label: "Resolved",
+                className: "border-emerald-300 bg-emerald-50 text-emerald-800",
+            };
         case "closed":
-            return { label: "Closed", className: "border-slate-300 bg-slate-50 text-slate-600" };
+            return {
+                label: "Closed",
+                className: "border-slate-300 bg-slate-50 text-slate-600",
+            };
         default:
-            return { label: "Open", className: "border-amber-300 bg-amber-50 text-amber-800" };
+            return {
+                label: "Open",
+                className: "border-amber-300 bg-amber-50 text-amber-800",
+            };
     }
 }
 
-const PROJECT_FILTERS: { id: "all" | ProjectStage; en: string; bn: string }[] = [
-    { id: "all", en: "All", bn: "সব" },
-    { id: "draft", en: "Drafts", bn: "খসড়া" },
-    { id: "payment", en: "Awaiting payment", bn: "পেমেন্ট বাকি" },
-    { id: "ready", en: "Ready to submit", bn: "জমার জন্য প্রস্তুত" },
-    { id: "submitted", en: "Submitted", bn: "জমা হয়েছে" },
-];
+const PROJECT_FILTERS: { id: "all" | ProjectStage; en: string; bn: string }[] =
+    [
+        { id: "all", en: "All", bn: "সব" },
+        { id: "draft", en: "Drafts", bn: "খসড়া" },
+        { id: "payment", en: "Awaiting payment", bn: "পেমেন্ট বাকি" },
+        { id: "ready", en: "Ready to submit", bn: "জমার জন্য প্রস্তুত" },
+        { id: "submitted", en: "Submitted", bn: "জমা হয়েছে" },
+    ];
 
 // Delivery tracker shown on My Projects; build and launch details are filled
 // in by the team once the builder is connected.
@@ -638,8 +659,9 @@ export function CustomerUserPanel({
     const [assessmentRecords, setAssessmentRecords] = useState<any[]>([]);
     const [buildPayments, setBuildPayments] = useState<any[]>([]);
     const [builderSubmissions, setBuilderSubmissions] = useState<any[]>([]);
-    const [payingProject, setPayingProject] =
-        useState<WorkspaceProject | null>(null);
+    const [payingProject, setPayingProject] = useState<WorkspaceProject | null>(
+        null,
+    );
     const [confirmSubmitProject, setConfirmSubmitProject] =
         useState<WorkspaceProject | null>(null);
     const [buildPackages, setBuildPackages] = useState<DudosPackage[]>([
@@ -1212,7 +1234,9 @@ export function CustomerUserPanel({
         () =>
             buildWorkspaceProjects({
                 records: assessmentRecords,
-                entries: activeDraft ? [...allProjects, activeDraft] : allProjects,
+                entries: activeDraft
+                    ? [...allProjects, activeDraft]
+                    : allProjects,
                 invoices,
                 payments: buildPayments,
                 submissions: builderSubmissions,
@@ -1250,7 +1274,9 @@ export function CustomerUserPanel({
                 .then((res) => (res.ok ? res.json() : null))
                 .then((fresh) => {
                     if (!Array.isArray(fresh)) return;
-                    const byId = new Map(fresh.map((project) => [project.id, project]));
+                    const byId = new Map(
+                        fresh.map((project) => [project.id, project]),
+                    );
                     setAllProjects((prev) =>
                         prev.map((entry) => byId.get(entry?.id) || entry),
                     );
@@ -1261,7 +1287,8 @@ export function CustomerUserPanel({
                                   ...current,
                                   status: latest.status,
                                   build: latest.build,
-                                  previewUrl: latest.previewUrl || current.previewUrl,
+                                  previewUrl:
+                                      latest.previewUrl || current.previewUrl,
                                   liveUrl: latest.liveUrl || current.liveUrl,
                               }
                             : current;
@@ -1293,13 +1320,17 @@ export function CustomerUserPanel({
         setActiveDraft(project.draft);
         setEditableQa({
             multiTenant: qa.multiTenant || "yes",
-            paymentGateway: qa.paymentGateway || "bKash, Nagad & Online Gateway",
+            paymentGateway:
+                qa.paymentGateway || "bKash, Nagad & Online Gateway",
             userScale: qa.userScale || "10,000 - 50,000 users",
             databaseChoice:
                 qa.databaseChoice || "PostgreSQL with Row-Level Security",
         });
         try {
-            localStorage.setItem(ACTIVE_DRAFT_KEY, JSON.stringify(project.draft));
+            localStorage.setItem(
+                ACTIVE_DRAFT_KEY,
+                JSON.stringify(project.draft),
+            );
         } catch {}
     };
 
@@ -1918,8 +1949,7 @@ ${draft.projectScope}
     );
     const openPayment = (project: WorkspaceProject) => {
         selectProject(project);
-        const quotation =
-            project.invoice && project.invoice.status !== "paid";
+        const quotation = project.invoice && project.invoice.status !== "paid";
         if (quotation) setShowPaymentModal(true);
         else setPayingProject(project);
     };
@@ -1967,7 +1997,16 @@ ${draft.projectScope}
                 qaAnswers: d.qaAnswers,
             }),
         });
-        if (!res.ok) return known || null;
+        if (!res.ok) {
+            if (res.status === 401) {
+                const error = new Error("Authentication required") as Error & {
+                    status: number;
+                };
+                error.status = res.status;
+                throw error;
+            }
+            return known || null;
+        }
         const saved = await res.json();
         mergeBackendProject(saved);
         return saved?.id || known || null;
@@ -1977,52 +2016,74 @@ ${draft.projectScope}
         project: WorkspaceProject,
         action: "pay" | "submit-to-builder",
     ): Promise<ProjectActionResult | null | undefined> => {
-        const token = getAuthToken();
-        if (!token) return undefined;
-        try {
-            const id = await ensureBackendProject(project, token);
-            if (!id) throw new Error("unreachable");
-            const res = await fetch(`${API_BASE}/projects/${id}/${action}`, {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                    Authorization: `Bearer ${token}`,
-                },
-                body:
-                    action === "pay"
-                        ? JSON.stringify({
-                              method: "credits",
-                              packageId: selectedBuild.id || undefined,
-                          })
-                        : undefined,
-            });
-            const body = await res.json().catch(() => ({}));
-            if (!res.ok) {
+        const tokens = getAuthTokenCandidates();
+        if (!tokens.length) return undefined;
+
+        for (const token of tokens) {
+            try {
+                const id = await ensureBackendProject(project, token);
+                if (!id) throw new Error("Project could not be prepared");
+                const res = await fetch(
+                    `${API_BASE}/projects/${id}/${action}`,
+                    {
+                        method: "POST",
+                        headers: {
+                            "Content-Type": "application/json",
+                            Authorization: `Bearer ${token}`,
+                        },
+                        body:
+                            action === "pay"
+                                ? JSON.stringify({
+                                      method: "credits",
+                                      packageId: selectedBuild.id || undefined,
+                                  })
+                                : undefined,
+                    },
+                );
+                const body = await res.json().catch(() => ({}));
+                if (res.status === 401) continue;
+                if (!res.ok) {
+                    showToast.error(
+                        res.status === 402 && action === "pay"
+                            ? lang === "bn"
+                                ? "পর্যাপ্ত ক্রেডিট নেই"
+                                : "Not enough credits"
+                            : lang === "bn"
+                              ? "অনুরোধটি সম্পন্ন হয়নি"
+                              : "Request failed",
+                        { description: body?.detail },
+                    );
+                    return null;
+                }
+                persistAuthToken(token);
+                return body;
+            } catch (error) {
+                if ((error as { status?: number })?.status === 401) continue;
                 showToast.error(
-                    res.status === 402 && action === "pay"
-                        ? lang === "bn"
-                            ? "পর্যাপ্ত ক্রেডিট নেই"
-                            : "Not enough credits"
-                        : lang === "bn"
-                          ? "অনুরোধটি সম্পন্ন হয়নি"
-                          : "Request failed",
-                    { description: body?.detail },
+                    lang === "bn"
+                        ? "সার্ভারে সংযোগ হয়নি"
+                        : "Could not reach the server",
+                    {
+                        description:
+                            lang === "bn"
+                                ? "কিছুক্ষণ পর আবার চেষ্টা করুন।"
+                                : "Nothing was charged. Please try again.",
+                    },
                 );
                 return null;
             }
-            return body;
-        } catch {
-            showToast.error(
-                lang === "bn" ? "সার্ভারে সংযোগ হয়নি" : "Could not reach the server",
-                {
-                    description:
-                        lang === "bn"
-                            ? "কিছুক্ষণ পর আবার চেষ্টা করুন।"
-                            : "Nothing was charged. Please try again.",
-                },
-            );
-            return null;
         }
+
+        showToast.error(
+            lang === "bn" ? "সেশন মেয়াদোত্তীর্ণ" : "Authentication failed",
+            {
+                description:
+                    lang === "bn"
+                        ? "আবার সাইন ইন করে প্রজেক্ট জমা দিন।"
+                        : "Your session was rejected. Please sign in again; your project and payment are unchanged.",
+            },
+        );
+        return null;
     };
 
     const handlePayBuildPackage = async () => {
@@ -2189,7 +2250,9 @@ ${draft.projectScope}
                         variant="outline"
                         onClick={() => continueAssessment(project)}
                     >
-                        {lang === "bn" ? "অ্যাসেসমেন্ট দেখুন" : "Review assessment"}
+                        {lang === "bn"
+                            ? "অ্যাসেসমেন্ট দেখুন"
+                            : "Review assessment"}
                     </Button>
                     <Button size="sm" onClick={() => openPayment(project)}>
                         <CreditCard className="mr-1 h-4 w-4" />
@@ -2206,7 +2269,10 @@ ${draft.projectScope}
         }
         if (stage === "ready") {
             return (
-                <Button size="sm" onClick={() => setConfirmSubmitProject(project)}>
+                <Button
+                    size="sm"
+                    onClick={() => setConfirmSubmitProject(project)}
+                >
                     <Rocket className="mr-1 h-4 w-4" />
                     {lang === "bn" ? "বিল্ডারে জমা দিন" : "Submit to builder"}
                 </Button>
@@ -2258,7 +2324,9 @@ ${draft.projectScope}
                             <div className="overflow-hidden rounded-xl border border-dudos-border bg-white">
                                 <div className="flex items-center justify-between gap-2 border-b border-dudos-border px-5 py-3">
                                     <h2 className="text-sm font-semibold text-dudos-text">
-                                        {lang === "bn" ? "প্রজেক্ট" : "Projects"}
+                                        {lang === "bn"
+                                            ? "প্রজেক্ট"
+                                            : "Projects"}
                                     </h2>
                                     <span className="text-xs text-dudos-text-secondary">
                                         {workspaceProjects.length}{" "}
@@ -2296,7 +2364,10 @@ ${draft.projectScope}
                                                 >
                                                     <span className="min-w-0 flex-1">
                                                         <span className="block truncate text-sm font-semibold text-dudos-text">
-                                                            {project.draft.title}
+                                                            {
+                                                                project.draft
+                                                                    .title
+                                                            }
                                                         </span>
                                                         {project.updatedAt && (
                                                             <span className="block text-xs text-dudos-text-secondary">
@@ -2350,7 +2421,8 @@ ${draft.projectScope}
                                                         .title && (
                                                     <p className="mt-1 text-sm text-dudos-text-secondary">
                                                         {
-                                                            selectedProject.draft
+                                                            selectedProject
+                                                                .draft
                                                                 .organizationName
                                                         }
                                                     </p>
@@ -2407,7 +2479,9 @@ ${draft.projectScope}
 
                                     <BuildProgress
                                         build={selectedProject.draft.build}
-                                        previewUrl={selectedProject.draft.previewUrl}
+                                        previewUrl={
+                                            selectedProject.draft.previewUrl
+                                        }
                                         lang={lang}
                                     />
 
@@ -2442,7 +2516,6 @@ ${draft.projectScope}
                             </Button>
                         </div>
                     )}
-
                 </section>
             )}
             {activeSection === "overview-details" && (
@@ -3583,11 +3656,14 @@ ${draft.projectScope}
                                                 </Badge>
                                             </div>
                                             <Badge
-                                                    variant="outline"
-                                                    className={`text-xs font-semibold ${ticketStatusMeta(t.status).className}`}
-                                                >
-                                                    {ticketStatusMeta(t.status).label}
-                                                </Badge>
+                                                variant="outline"
+                                                className={`text-xs font-semibold ${ticketStatusMeta(t.status).className}`}
+                                            >
+                                                {
+                                                    ticketStatusMeta(t.status)
+                                                        .label
+                                                }
+                                            </Badge>
                                         </div>
 
                                         <p className="text-[#5b6f7b] text-xs leading-relaxed">
@@ -3646,10 +3722,14 @@ ${draft.projectScope}
                         <div>
                             <p className="eyebrow">
                                 <span />
-                                {lang === "bn" ? "আপনার প্রজেক্ট" : "YOUR PROJECTS"}
+                                {lang === "bn"
+                                    ? "আপনার প্রজেক্ট"
+                                    : "YOUR PROJECTS"}
                             </p>
                             <h1 id="my-projects-title">
-                                {lang === "bn" ? "আমার প্রজেক্ট" : "My Projects"}
+                                {lang === "bn"
+                                    ? "আমার প্রজেক্ট"
+                                    : "My Projects"}
                             </h1>
                             <p>
                                 {lang === "bn"
@@ -3785,7 +3865,10 @@ ${draft.projectScope}
                                                     : "Shared later"}
                                             </span>
                                         );
-                                        const details: [string, React.ReactNode][] = [
+                                        const details: [
+                                            string,
+                                            React.ReactNode,
+                                        ][] = [
                                             [
                                                 lang === "bn"
                                                     ? "পেমেন্ট"
@@ -3883,9 +3966,7 @@ ${draft.projectScope}
                                                                 draft.businessDomain,
                                                                 `${lang === "bn" ? "হালনাগাদ" : "Updated"} ${formatDate(project.updatedAt)}`,
                                                             ]
-                                                                .filter(
-                                                                    Boolean,
-                                                                )
+                                                                .filter(Boolean)
                                                                 .join(" · ")}
                                                         </p>
                                                     </div>
@@ -3915,7 +3996,9 @@ ${draft.projectScope}
                                                                 reached;
                                                             return (
                                                                 <li
-                                                                    key={step.en}
+                                                                    key={
+                                                                        step.en
+                                                                    }
                                                                     className="min-w-0"
                                                                     aria-current={
                                                                         current
@@ -3956,7 +4039,9 @@ ${draft.projectScope}
                                                     <div className="mt-4">
                                                         <BuildProgress
                                                             build={draft.build}
-                                                            previewUrl={draft.previewUrl}
+                                                            previewUrl={
+                                                                draft.previewUrl
+                                                            }
                                                             lang={lang}
                                                         />
                                                     </div>
@@ -4480,7 +4565,11 @@ ${draft.projectScope}
                                                     variant="outline"
                                                     className={`text-xs font-semibold ${ticketStatusMeta(t.status).className}`}
                                                 >
-                                                    {ticketStatusMeta(t.status).label}
+                                                    {
+                                                        ticketStatusMeta(
+                                                            t.status,
+                                                        ).label
+                                                    }
                                                 </Badge>
                                                 <span className="text-[11px] text-[#5b6f7b]">
                                                     {new Date(
@@ -4569,9 +4658,7 @@ ${draft.projectScope}
                             size="sm"
                             onClick={() => {
                                 if (confirmSubmitProject)
-                                    handleSubmitToBuilder(
-                                        confirmSubmitProject,
-                                    );
+                                    handleSubmitToBuilder(confirmSubmitProject);
                                 setConfirmSubmitProject(null);
                             }}
                         >
@@ -4607,7 +4694,11 @@ ${draft.projectScope}
                         <div
                             className="space-y-2"
                             role="radiogroup"
-                            aria-label={lang === "bn" ? "বিল্ড প্যাকেজ" : "Build package"}
+                            aria-label={
+                                lang === "bn"
+                                    ? "বিল্ড প্যাকেজ"
+                                    : "Build package"
+                            }
                         >
                             {buildPackages.map((pkg) => {
                                 const isChosen = pkg.id === selectedBuild.id;
@@ -4617,7 +4708,9 @@ ${draft.projectScope}
                                         type="button"
                                         role="radio"
                                         aria-checked={isChosen}
-                                        onClick={() => setSelectedBuildId(pkg.id)}
+                                        onClick={() =>
+                                            setSelectedBuildId(pkg.id)
+                                        }
                                         className={`w-full cursor-pointer rounded-xl border p-3 text-left transition-colors ${
                                             isChosen
                                                 ? "border-dudos-primary bg-[#edf7f4] ring-1 ring-dudos-primary"
@@ -4634,7 +4727,9 @@ ${draft.projectScope}
                                                 )}
                                             </strong>
                                             <span className="text-sm font-semibold text-dudos-text">
-                                                {(pkg.credits || 0).toLocaleString()}{" "}
+                                                {(
+                                                    pkg.credits || 0
+                                                ).toLocaleString()}{" "}
                                                 {unitLabel(pkg.unit, lang)}
                                             </span>
                                         </span>

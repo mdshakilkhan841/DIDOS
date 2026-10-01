@@ -20,8 +20,10 @@ global.localStorage = global.window.localStorage;
 
 import {
     convertAssessmentRecordToDraft,
+    getAuthTokenCandidates,
     getAuthToken,
     findAssessmentRecord,
+    persistAuthToken,
     syncAssessmentToWorkspaceDraft,
 } from "../lib/dudos/assessment-sync.ts";
 
@@ -35,6 +37,20 @@ assert.strictEqual(
     "header.payload.signature",
     "Must read the raw access-token cookie even when the session cookie appears first",
 );
+storage.dudos_jwt_token = "stale.jwt.token";
+global.document.cookie = `dudos_session=${encodeURIComponent(JSON.stringify({ userId: "usr_shakil_01" }))}; dudos_at=header.payload.signature`;
+assert.deepStrictEqual(
+    getAuthTokenCandidates(),
+    ["stale.jwt.token", "header.payload.signature"],
+    "Must retain a fresh cookie token as a retry candidate when local storage contains a stale token",
+);
+persistAuthToken("header.payload.signature");
+assert.strictEqual(
+    getAuthToken(),
+    "header.payload.signature",
+    "A token that succeeds on retry should replace the stale cached token",
+);
+delete storage.dudos_jwt_token;
 global.document.cookie = "";
 
 console.log("🧪 Starting Assessment & Workspace Sync Unit Test...\n");
@@ -226,4 +242,6 @@ assert.ok(
     ),
     "Replaced onboarding draft should be removed",
 );
-console.log("  ✅ Passed: same-organization assessments stay separate projects");
+console.log(
+    "  ✅ Passed: same-organization assessments stay separate projects",
+);

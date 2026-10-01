@@ -10,19 +10,29 @@ function safeJsonParse<T = any>(
     }
 }
 
-export function getAuthToken(): string | null {
-    if (typeof window === "undefined") return null;
+export function getAuthTokenCandidates(): string[] {
+    if (typeof window === "undefined") return [];
+    const candidates: string[] = [];
+    const add = (value?: string | null) => {
+        const token = value?.trim();
+        if (
+            token &&
+            !token.startsWith("token_") &&
+            !candidates.includes(token)
+        ) {
+            candidates.push(token);
+        }
+    };
+
     try {
-        const direct =
-            localStorage.getItem("dudos_jwt_token") ||
-            localStorage.getItem("dudos_auth_token") ||
-            sessionStorage.getItem("dudos_jwt_token");
-        if (direct) return direct;
+        add(localStorage.getItem("dudos_jwt_token"));
+        add(localStorage.getItem("dudos_auth_token"));
+        add(sessionStorage.getItem("dudos_jwt_token"));
 
         const sessionStr = localStorage.getItem("dudos_auth_session");
         if (sessionStr) {
             const parsed = safeJsonParse(sessionStr);
-            if (parsed?.token) return parsed.token;
+            add(parsed?.token);
         }
 
         for (const cookie of document.cookie.split(";")) {
@@ -33,14 +43,31 @@ export function getAuthToken(): string | null {
 
             const value = decodeURIComponent(cookie.slice(separator + 1));
             const parsed = safeJsonParse(value);
-            if (parsed?.token) return parsed.token;
+            add(parsed?.token);
             // The access-token cookie stores a raw JWT, while the session cookie is JSON.
             // Check every cookie so a tokenless dudos_session does not hide dudos_at.
-            if (name === "dudos_at" && value && value !== "undefined")
-                return value;
+            if (name === "dudos_at") add(value);
         }
     } catch {}
-    return null;
+    return candidates;
+}
+
+export function getAuthToken(): string | null {
+    return getAuthTokenCandidates()[0] || null;
+}
+
+export function persistAuthToken(token: string): void {
+    if (typeof window === "undefined" || !token) return;
+    try {
+        localStorage.setItem("dudos_jwt_token", token);
+        const session = safeJsonParse<Record<string, any>>(
+            localStorage.getItem("dudos_auth_session"),
+        );
+        if (session) {
+            session.token = token;
+            localStorage.setItem("dudos_auth_session", JSON.stringify(session));
+        }
+    } catch {}
 }
 
 export interface ActiveProjectDraft {
