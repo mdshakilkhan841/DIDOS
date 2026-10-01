@@ -167,6 +167,64 @@ export function assessmentTitle(
     );
 }
 
+/** Recover form answers from older workspace drafts that only kept project scope. */
+export function assessmentAnswersFromDraft(
+    draft: Partial<ActiveProjectDraft> & {
+        assessmentData?: Record<string, string>;
+    },
+): Record<string, string> {
+    const source = draft.assessmentData || {};
+    const scope = draft.projectScope || "";
+    const sectionLabels = [
+        "Desired Outcomes",
+        "Modules & Scope",
+        "Existing Systems",
+        "Brand Requirements",
+        "Ownership & Permissions",
+        "Reporting and notification preferences",
+        "Resolved Scope",
+    ];
+    const readSection = (label: string) => {
+        const marker = `${label}:`;
+        const start = scope.indexOf(marker);
+        if (start < 0) return "";
+        const valueStart = start + marker.length;
+        const nextSection = sectionLabels
+            .map((nextLabel) => scope.indexOf(`\n\n${nextLabel}:`, valueStart))
+            .filter((index) => index >= 0)
+            .sort((left, right) => left - right)[0];
+        return scope.slice(valueStart, nextSection ?? scope.length).trim();
+    };
+
+    return {
+        ...source,
+        project_name:
+            source.project_name ||
+            (draft.title && draft.title !== "Untitled project"
+                ? draft.title
+                : ""),
+        organization: source.organization || draft.organizationName || "",
+        outcomes: source.outcomes || readSection("Desired Outcomes") || scope,
+        sector: source.sector || draft.businessDomain || "",
+        country: source.country || "",
+        languages: source.languages || "",
+        site_url: source.site_url || draft.siteUrl || "",
+        systems:
+            source.systems ||
+            readSection("Existing Systems") ||
+            draft.targetStack ||
+            "",
+        modules: source.modules || readSection("Modules & Scope"),
+        brand: source.brand || readSection("Brand Requirements"),
+        rights: source.rights || readSection("Ownership & Permissions"),
+        budget: source.budget || draft.budgetExpectation || "",
+        reporting:
+            source.reporting ||
+            readSection("Reporting and notification preferences"),
+        unknowns: source.unknowns || readSection("Resolved Scope"),
+    };
+}
+
 const ACTIVE_DRAFT_KEY = "dudos_active_draft";
 const PROJECT_RECORDS_KEY = "dudos_project_records";
 const CUSTOM_PROJECTS_KEY = "dudos_custom_projects";
@@ -206,6 +264,9 @@ export function convertAssessmentRecordToDraft(
         d.systems ? `Existing Systems: ${d.systems}` : "",
         d.brand ? `Brand Requirements: ${d.brand}` : "",
         d.rights ? `Ownership & Permissions: ${d.rights}` : "",
+        d.reporting
+            ? `Reporting and notification preferences: ${d.reporting}`
+            : "",
         d.unknowns ? `Resolved Scope: ${d.unknowns}` : "",
     ].filter(Boolean);
 
@@ -288,6 +349,9 @@ export async function syncAssessmentToWorkspaceDraft(
             data.systems ? `Existing Systems: ${data.systems}` : "",
             data.brand ? `Brand Requirements: ${data.brand}` : "",
             data.rights ? `Ownership & Permissions: ${data.rights}` : "",
+            data.reporting
+                ? `Reporting and notification preferences: ${data.reporting}`
+                : "",
             data.unknowns ? `Resolved Scope: ${data.unknowns}` : "",
         ].filter(Boolean);
 
@@ -398,6 +462,7 @@ export async function syncAssessmentToWorkspaceDraft(
                                 workspace: workspaceId,
                                 organization: draftRecord.organizationName,
                                 recordId: originalRecordId,
+                                assessment: { ...data },
                             },
                             qaAnswers: draftRecord.qaAnswers,
                             srsDocument: customItem.srsContent,

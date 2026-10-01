@@ -19,6 +19,7 @@ global.window = {
 global.localStorage = global.window.localStorage;
 
 import {
+    assessmentAnswersFromDraft,
     convertAssessmentRecordToDraft,
     getAuthTokenCandidates,
     getAuthToken,
@@ -87,6 +88,34 @@ const draft = convertAssessmentRecordToDraft(
     user,
     "ws_test_shakil",
 );
+
+const legacyProjectDraft = {
+    title: "TEST PROJECT",
+    organizationName: "Nostrud Proident",
+    businessDomain: "Technology",
+    projectScope: [
+        "Desired Outcomes:\nAutomate our workflow",
+        "Modules & Scope: Commerce, billing, AI assistant",
+        "Existing Systems: Current ERP",
+        "Brand Requirements: Use our brand guide",
+        "Ownership & Permissions: We own the provided assets",
+        "Reporting and notification preferences: Weekly email report",
+        "Resolved Scope: Confirm launch timeline",
+    ].join("\n\n"),
+    siteUrl: "https://example.com",
+    targetStack: "PostgreSQL 16",
+    budgetExpectation: "$10,000 USD",
+};
+const recoveredAnswers = assessmentAnswersFromDraft(legacyProjectDraft);
+assert.strictEqual(recoveredAnswers.project_name, "TEST PROJECT");
+assert.strictEqual(recoveredAnswers.organization, "Nostrud Proident");
+assert.strictEqual(
+    recoveredAnswers.modules,
+    "Commerce, billing, AI assistant",
+    "Inline Modules & Scope text must prefill Selected modules",
+);
+assert.strictEqual(recoveredAnswers.systems, "Current ERP");
+assert.strictEqual(recoveredAnswers.reporting, "Weekly email report");
 
 console.log("Test 1: Convert Assessment Record to ActiveProjectDraft");
 assert(draft.id === "rec_assessment_test1", "Draft ID should match record ID");

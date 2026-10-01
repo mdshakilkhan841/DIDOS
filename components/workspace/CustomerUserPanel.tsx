@@ -37,6 +37,7 @@ import {
     Code2,
 } from "lucide-react";
 import { useAuth } from "@/context/auth-context";
+import { moduleById } from "@/lib/dudos/modules";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -65,6 +66,7 @@ import {
     type DudosPackage,
 } from "@/lib/dudos/packages";
 import {
+    assessmentAnswersFromDraft as restoreAssessmentAnswers,
     convertAssessmentRecordToDraft,
     getAuthToken,
     getAuthTokenCandidates,
@@ -167,50 +169,7 @@ export interface ActiveProjectDraft {
 function assessmentAnswersFromDraft(
     draft: ActiveProjectDraft,
 ): Record<string, string> {
-    const source = draft.assessmentData || {};
-    const scope = draft.projectScope || "";
-    const sectionLabels = [
-        "Desired Outcomes",
-        "Modules & Scope",
-        "Existing Systems",
-        "Brand Requirements",
-        "Ownership & Permissions",
-        "Resolved Scope",
-    ];
-    const readSection = (label: string) => {
-        const marker = `${label}:\n`;
-        const start = scope.indexOf(marker);
-        if (start < 0) return "";
-        const valueStart = start + marker.length;
-        const nextSection = sectionLabels
-            .map((nextLabel) =>
-                scope.indexOf(`\n\n${nextLabel}:\n`, valueStart),
-            )
-            .filter((index) => index >= 0)
-            .sort((left, right) => left - right)[0];
-        return scope.slice(valueStart, nextSection ?? scope.length).trim();
-    };
-
-    return {
-        ...source,
-        project_name:
-            source.project_name ||
-            (draft.title !== "Untitled project" ? draft.title : ""),
-        organization: source.organization || draft.organizationName || "",
-        outcomes: source.outcomes || readSection("Desired Outcomes") || scope,
-        sector: source.sector || draft.businessDomain || "",
-        site_url: source.site_url || draft.siteUrl || "",
-        systems:
-            source.systems ||
-            readSection("Existing Systems") ||
-            draft.targetStack ||
-            "",
-        modules: source.modules || readSection("Modules & Scope"),
-        brand: source.brand || readSection("Brand Requirements"),
-        rights: source.rights || readSection("Ownership & Permissions"),
-        budget: source.budget || draft.budgetExpectation || "",
-        unknowns: source.unknowns || readSection("Resolved Scope"),
-    };
+    return restoreAssessmentAnswers(draft);
 }
 
 type ProjectStatus = ActiveProjectDraft["status"];
@@ -315,6 +274,7 @@ function projectEntryToDraft(
             entry.targetTimeline ||
             entry.specs?.timeline ||
             "",
+        assessmentData: entry.assessmentData || entry.specs?.assessment || {},
         qaAnswers: entry.qaAnswers || {},
         status,
         savedAt: entry.savedAt || entry.createdAt || entry.created_at || "",
@@ -1862,6 +1822,13 @@ ${draft.projectScope}
         ? selectedProject.invoice
         : invoices.find((inv) => inv.projectId === activeDraft?.id);
 
+    const assessmentAnswers = selectedProject
+        ? assessmentAnswersFromDraft(selectedProject.draft)
+        : activeDraft
+          ? assessmentAnswersFromDraft(activeDraft)
+          : {};
+    const assessmentFields = moduleById("assessment")?.fields || [];
+
     const currentStatus: ProjectStatus =
         selectedProject?.status || activeDraft?.status || "draft";
     const currentStage = projectStage(currentStatus);
@@ -2431,6 +2398,43 @@ ${draft.projectScope}
                                             {stageLabel(currentStatus, lang)}
                                         </Badge>
                                     </div>
+
+                                    <details
+                                        open
+                                        className="rounded-lg border border-dudos-border bg-slate-50/70 p-4"
+                                    >
+                                        <summary className="cursor-pointer text-sm font-semibold text-dudos-text">
+                                            {lang === "bn"
+                                                ? "সম্পূর্ণ অ্যাসেসমেন্ট উত্তর"
+                                                : "Full assessment answers"}
+                                        </summary>
+                                        <dl className="mt-4 grid gap-3 sm:grid-cols-2">
+                                            {assessmentFields.map((field) => {
+                                                const value =
+                                                    assessmentAnswers[
+                                                        field.key
+                                                    ]?.trim();
+                                                return (
+                                                    <div
+                                                        key={field.key}
+                                                        className="min-w-0 rounded-md border border-dudos-border bg-white p-3"
+                                                    >
+                                                        <dt className="text-xs font-medium text-dudos-text-secondary">
+                                                            {lang === "bn"
+                                                                ? field.bn
+                                                                : field.label}
+                                                        </dt>
+                                                        <dd className="mt-1 whitespace-pre-wrap break-words text-sm text-dudos-text">
+                                                            {value ||
+                                                                (lang === "bn"
+                                                                    ? "দেওয়া হয়নি"
+                                                                    : "Not supplied")}
+                                                        </dd>
+                                                    </div>
+                                                );
+                                            })}
+                                        </dl>
+                                    </details>
 
                                     <ol className="grid gap-3 sm:grid-cols-3">
                                         {journeySteps.map((item, index) => (
