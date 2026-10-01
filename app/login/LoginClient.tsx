@@ -115,84 +115,92 @@ export function LoginClient({
 
 
   return (
-    <div className="flex min-h-screen w-full">
+    <div className="flex min-h-screen w-full bg-white">
       {/* Left — brand panel, hidden on small screens */}
-      <div className="relative hidden w-1/2 flex-col justify-between overflow-hidden bg-[var(--primary)] px-14 py-12 text-white md:flex">
+      <div className="relative hidden w-1/2 flex-col justify-between overflow-hidden bg-[#087f79] px-14 py-12 text-white md:flex">
         <div
           aria-hidden
           className="pointer-events-none absolute -top-24 -left-24 h-96 w-96 rounded-full bg-white/10 blur-3xl"
         />
         <div
           aria-hidden
-          className="pointer-events-none absolute -bottom-32 -right-16 h-[28rem] w-[28rem] rounded-full bg-black/10 blur-3xl"
+          className="pointer-events-none absolute -bottom-32 -right-16 h-[28rem] w-[28rem] rounded-full bg-black/15 blur-3xl"
         />
 
-        <a href="/" className="relative flex items-center gap-2 text-lg font-semibold">
-          <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-white/15 text-xl font-bold">
+        <a href="/" className="relative z-10 flex items-center gap-2 text-lg font-semibold text-white">
+          <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-white/20 text-xl font-bold text-white shadow-sm">
             D
           </span>
-          <span>
+          <span className="text-white">
             DUDOS<span className="text-white/70">.</span>
           </span>
         </a>
 
-        <div className="relative max-w-md">
-          <h1 className="text-4xl font-semibold leading-tight tracking-tight">
+        <div className="relative z-10 max-w-md">
+          <h1 className="text-4xl font-semibold leading-tight tracking-tight text-white">
             Your digital work,<br />organized in one workspace.
           </h1>
-          <p className="mt-4 text-white/80">
+          <p
+            className="mt-4 text-white/90 text-sm sm:text-base leading-relaxed font-normal"
+            style={{ color: "rgba(255, 255, 255, 0.92)" }}
+          >
             Sign in to manage drafts, track requests and collaborate with your team — all under your own account.
           </p>
           <ul className="mt-8 space-y-3">
             {HIGHLIGHTS.map((item) => (
-              <li key={item} className="flex items-center gap-3 text-white/90">
-                <CheckCircle2 className="h-5 w-5 flex-none text-white/80" />
-                <span>{item}</span>
+              <li key={item} className="flex items-center gap-3 text-white/95 text-sm">
+                <CheckCircle2 className="h-5 w-5 flex-none text-white/85" />
+                <span style={{ color: "rgba(255, 255, 255, 0.95)" }}>{item}</span>
               </li>
             ))}
           </ul>
         </div>
 
-        <p className="relative text-sm text-white/60">© {new Date().getFullYear()} DUDOS</p>
+        <p
+          className="relative z-10 text-sm text-white/75"
+          style={{ color: "rgba(255, 255, 255, 0.75)" }}
+        >
+          © {new Date().getFullYear()} DUDOS
+        </p>
       </div>
 
       {/* Right — the actual sign-in / sign-up form */}
-      <div className="flex w-full flex-1 flex-col justify-center px-6 py-12 sm:px-12 md:w-1/2">
+      <div className="flex w-full flex-1 flex-col justify-center bg-white px-6 py-12 sm:px-12 md:w-1/2">
         <div className="mx-auto w-full max-w-sm">
           <a href="/" className="mb-8 flex items-center gap-2 text-lg font-semibold md:hidden">
-            <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-[var(--primary)] text-xl font-bold text-white">
+            <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-[#087f79] text-xl font-bold text-white">
               D
             </span>
-            <span>
-              DUDOS<span className="text-[var(--primary)]">.</span>
+            <span className="text-[#162c38]">
+              DUDOS<span className="text-[#087f79]">.</span>
             </span>
           </a>
 
-          <h2 className="text-2xl font-semibold tracking-tight">
+          <h2 className="text-2xl font-semibold tracking-tight text-[#162c38]">
             {mode === "signin" ? "Sign in to your workspace" : "Create your DUDOS account"}
           </h2>
-          <p className="mt-2 text-sm text-muted-foreground">
+          <p className="mt-2 text-sm text-[#5b6f7b]">
             {mode === "signin"
               ? "Use the email and password for your DUDOS account."
               : "Set up an account to save drafts and send requests."}
           </p>
 
-
           <form onSubmit={submit} className="mt-8 space-y-4">
             {mode === "signup" && (
               <div className="space-y-2">
-                <Label htmlFor="display-name">Full name</Label>
+                <Label htmlFor="display-name" className="text-[#162c38]">Full name</Label>
                 <Input
                   id="display-name"
                   value={displayName}
                   onChange={(e) => setDisplayName(e.target.value)}
                   required
                   maxLength={120}
+                  className="bg-white border-[#dce5e9] text-[#162c38] focus-visible:border-[#087f79] focus-visible:ring-[#087f79]/20"
                 />
               </div>
             )}
             <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
+              <Label htmlFor="email" className="text-[#162c38]">Email</Label>
               <Input
                 id="email"
                 type="email"
@@ -201,10 +209,11 @@ export function LoginClient({
                 required
                 maxLength={254}
                 autoComplete="email"
+                className="bg-white border-[#dce5e9] text-[#162c38] focus-visible:border-[#087f79] focus-visible:ring-[#087f79]/20"
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="password">Password</Label>
+              <Label htmlFor="password" className="text-[#162c38]">Password</Label>
               <Input
                 id="password"
                 type="password"
@@ -214,21 +223,26 @@ export function LoginClient({
                 minLength={8}
                 maxLength={200}
                 autoComplete={mode === "signin" ? "current-password" : "new-password"}
+                className="bg-white border-[#dce5e9] text-[#162c38] focus-visible:border-[#087f79] focus-visible:ring-[#087f79]/20"
               />
             </div>
             {error && <Notice tone="error">{error}</Notice>}
-            <Button disabled={busy} type="submit" className="w-full">
+            <Button
+              disabled={busy}
+              type="submit"
+              className="w-full bg-[#087f79] hover:bg-[#076e68] text-white font-medium shadow-sm transition-colors cursor-pointer"
+            >
               {busy ? "…" : mode === "signin" ? "Sign in" : "Create account"}
             </Button>
           </form>
 
-          <p className="mt-6 text-sm text-muted-foreground">
+          <p className="mt-6 text-sm text-[#5b6f7b]">
             {mode === "signin" ? (
               <>
                 No account yet?{" "}
                 <Link
                   href={returnTo && returnTo !== "/app" ? `/register?return_to=${encodeURIComponent(returnTo)}` : "/register"}
-                  className="font-medium text-[var(--primary)] hover:underline"
+                  className="font-medium text-[#087f79] hover:underline"
                   onClick={() => setMode("signup")}
                 >
                   Create one
@@ -239,7 +253,7 @@ export function LoginClient({
                 Already have an account?{" "}
                 <Link
                   href={returnTo && returnTo !== "/app" ? `/login?return_to=${encodeURIComponent(returnTo)}` : "/login"}
-                  className="font-medium text-[var(--primary)] hover:underline"
+                  className="font-medium text-[#087f79] hover:underline"
                   onClick={() => setMode("signin")}
                 >
                   Sign in
@@ -248,7 +262,7 @@ export function LoginClient({
             )}
           </p>
 
-          <a href="/" className="mt-10 inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
+          <a href="/" className="mt-10 inline-flex items-center gap-1 text-sm text-[#5b6f7b] hover:text-[#162c38] transition-colors">
             Back to DUDOS <ArrowUpRight className="h-3.5 w-3.5" />
           </a>
         </div>

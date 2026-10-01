@@ -63,7 +63,10 @@ export function AuthBrandPanel({ activeRole = "client" }: AuthBrandPanelProps) {
           <br />
           organized in one workspace.
         </h1>
-        <p className="mt-4 text-sm leading-relaxed text-dudos-text-on-dark-muted">
+        <p
+          className="mt-4 text-sm leading-relaxed text-white/90"
+          style={{ color: "rgba(255, 255, 255, 0.9)" }}
+        >
           Connect your organization, team, and projects to the Daffodil Family operational control plane.
         </p>
 
@@ -82,7 +85,10 @@ export function AuthBrandPanel({ activeRole = "client" }: AuthBrandPanelProps) {
               </div>
             </div>
           </div>
-          <p className="mt-2 text-xs text-dudos-text-on-dark-muted leading-relaxed">
+          <p
+            className="mt-2 text-xs text-white/80 leading-relaxed"
+            style={{ color: "rgba(255, 255, 255, 0.8)" }}
+          >
             {currentConfig.description}
           </p>
         </div>
@@ -92,14 +98,17 @@ export function AuthBrandPanel({ activeRole = "client" }: AuthBrandPanelProps) {
           {HIGHLIGHTS.map((item, idx) => (
             <li key={idx} className="flex items-start gap-3 text-xs text-white/90">
               <CheckCircle2 className="h-4 w-4 flex-none text-dudos-accent mt-0.5" />
-              <span className="leading-snug">{item}</span>
+              <span className="leading-snug text-white/95" style={{ color: "rgba(255, 255, 255, 0.95)" }}>{item}</span>
             </li>
           ))}
         </ul>
       </div>
 
       {/* Footer */}
-      <div className="relative z-10 flex items-center justify-between text-xs text-dudos-text-on-dark-muted border-t border-white/10 pt-4">
+      <div
+        className="relative z-10 flex items-center justify-between text-xs text-white/75 border-t border-white/10 pt-4"
+        style={{ color: "rgba(255, 255, 255, 0.75)" }}
+      >
         <span>© {new Date().getFullYear()} Daffodil Family & DUDOS</span>
         <span className="text-[11px] opacity-75">Enterprise Operations & AI Builder</span>
       </div>
