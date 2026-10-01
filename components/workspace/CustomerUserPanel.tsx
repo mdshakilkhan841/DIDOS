@@ -952,17 +952,9 @@ export function CustomerUserPanel({
                     : [];
                 if (Array.isArray(recordsList)) {
                     for (const rec of recordsList) {
-                        const recTitle = (rec.title || rec.name || "")
-                            .trim()
-                            .toLowerCase();
                         if (
                             !combined.some(
-                                (p: any) =>
-                                    p.id === rec.id ||
-                                    (recTitle &&
-                                        (p.title || p.name || "")
-                                            .trim()
-                                            .toLowerCase() === recTitle),
+                                (project: any) => project.id === rec.id,
                             )
                         ) {
                             combined.push(rec);
