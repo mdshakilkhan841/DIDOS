@@ -3,6 +3,7 @@
 import React, { useState } from "react";
 import { Server, Globe, ShieldCheck, Send, Check } from "lucide-react";
 import { useAuth } from "@/context/auth-context";
+import { getAuthToken } from "@/lib/dudos/assessment-sync";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -48,7 +49,15 @@ export function ManagedDeploymentModal({
 
     setIsSubmitting(true);
 
-    const token = typeof window !== "undefined" ? localStorage.getItem("dudos_auth_token") : null;
+    const token =
+      getAuthToken() ||
+      (typeof window !== "undefined"
+        ? localStorage.getItem("dudos_jwt_token") ||
+          localStorage.getItem("dudos_auth_token")
+        : null);
+
+    const apiBase =
+      process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8000/api/v1";
 
     const ticket = {
       id: "dep_" + Date.now().toString(36),
@@ -64,7 +73,7 @@ export function ManagedDeploymentModal({
     };
 
     // Submit ticket to FastAPI backend
-    fetch("http://localhost:8000/api/v1/deployments/request", {
+    fetch(`${apiBase}/deployments/request`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",

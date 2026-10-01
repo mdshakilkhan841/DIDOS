@@ -43,8 +43,10 @@ import {
   TableCell,
 } from "@/components/ui/table";
 import { AdminEstimationModal } from "@/components/projects/AdminEstimationModal";
+import { AdminSupportTickets } from "./AdminSupportTickets";
 import { DataTable, type DataTableColumn } from "@/components/ui/data-table";
 import { showToast } from "@/lib/toast";
+import { getAuthToken } from "@/lib/dudos/assessment-sync";
 
 export function AdminControlPanel({
   lang = "en",
@@ -102,12 +104,25 @@ export function AdminControlPanel({
   };
 
   const loadSupportTickets = () => {
-    fetch("http://localhost:8000/api/v1/admin/support/tickets")
-      .then((res) => res.json())
+    const token =
+      getAuthToken() ||
+      (typeof window !== "undefined"
+        ? localStorage.getItem("dudos_jwt_token") ||
+          localStorage.getItem("dudos_auth_token")
+        : null);
+    const apiBase =
+      process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8000/api/v1";
+
+    fetch(`${apiBase}/admin/support/tickets`, {
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    })
+      .then((res) => (res.ok ? res.json() : null))
       .then((data) => {
         if (Array.isArray(data)) {
           setSupportTickets(data);
-          localStorage.setItem("dudos_support_tickets_admin", JSON.stringify(data));
+          try {
+            localStorage.setItem("dudos_support_tickets_admin", JSON.stringify(data));
+          } catch {}
         }
       })
       .catch(() => {
@@ -1082,6 +1097,13 @@ export function AdminControlPanel({
             </div>
           )}
         </div>
+      )}
+
+      {/* Tab 5: Customer Support Tickets Queue */}
+      {activeTab === "support" && (
+        <AdminSupportTickets
+          clients={registrations.filter((r) => r.role !== "admin")}
+        />
       )}
 
       {/* Inspect Intake Modal */}

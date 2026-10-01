@@ -949,6 +949,14 @@ export function CustomerUserPanel({
                 setDeploymentTickets(JSON.parse(depStr));
             }
 
+            // 4b. Load cached support tickets from localStorage
+            try {
+                const supStr = localStorage.getItem("dudos_support_tickets");
+                if (supStr) {
+                    setSupportTickets(JSON.parse(supStr));
+                }
+            } catch {}
+
             // 5. Load projects & active draft from FastAPI PostgreSQL backend
             const token = getAuthToken();
             if (token) {
@@ -1134,17 +1142,22 @@ export function CustomerUserPanel({
                     );
 
                 // 6. Load support tickets from FastAPI backend
-                fetch("http://localhost:8000/api/v1/support/tickets/my", {
+                const apiBase =
+                    process.env.NEXT_PUBLIC_API_BASE_URL ||
+                    "http://localhost:8000/api/v1";
+                fetch(`${apiBase}/support/tickets/my`, {
                     headers: { Authorization: `Bearer ${token}` },
                 })
-                    .then((res) => res.json())
+                    .then((res) => (res.ok ? res.json() : null))
                     .then((data) => {
                         if (Array.isArray(data)) {
                             setSupportTickets(data);
-                            localStorage.setItem(
-                                "dudos_support_tickets",
-                                JSON.stringify(data),
-                            );
+                            try {
+                                localStorage.setItem(
+                                    "dudos_support_tickets",
+                                    JSON.stringify(data),
+                                );
+                            } catch {}
                         }
                     })
                     .catch(() => {

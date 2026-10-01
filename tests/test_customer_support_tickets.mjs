@@ -95,8 +95,23 @@ async function runSupportTests() {
   console.log(`  ✅ Passed: Customer retrieved 2 open support tickets.\n`);
 
   // Test 5: Admin Lists All Support Tickets
-  console.log('Test 5: Admin Queries All Support Tickets (GET /api/v1/admin/support/tickets)');
-  const adminListRes = await fetch(`${FASTAPI_BASE}/api/v1/admin/support/tickets`);
+  console.log('Test 5: Admin Logs In & Queries All Support Tickets (GET /api/v1/admin/support/tickets)');
+  const adminLoginRes = await fetch(`${FASTAPI_BASE}/api/v1/auth/login`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      email: 'admin@daffodil.family',
+      password: 'DudosPass2026!',
+    }),
+  });
+  assert.strictEqual(adminLoginRes.status, 200, 'Admin login must succeed');
+  const adminLoginData = await adminLoginRes.json();
+  const adminToken = adminLoginData.token;
+  assert(adminToken, 'Admin token must exist');
+
+  const adminListRes = await fetch(`${FASTAPI_BASE}/api/v1/admin/support/tickets`, {
+    headers: { Authorization: `Bearer ${adminToken}` },
+  });
   assert.strictEqual(adminListRes.status, 200);
   const allTickets = await adminListRes.json();
   assert(Array.isArray(allTickets));
@@ -109,7 +124,10 @@ async function runSupportTests() {
   console.log(`Test 6: Admin Triages Ticket 1 (PATCH /api/v1/admin/support/tickets/${ticket1.id})`);
   const adminPatch1 = await fetch(`${FASTAPI_BASE}/api/v1/admin/support/tickets/${ticket1.id}`, {
     method: 'PATCH',
-    headers: { 'Content-Type': 'application/json' },
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${adminToken}`,
+    },
     body: JSON.stringify({
       status: 'in_progress',
       adminResponse: 'Tech team is increasing PgBouncer connection limits to 250 connections.',
@@ -125,7 +143,10 @@ async function runSupportTests() {
   console.log(`Test 7: Admin Resolves Ticket 2 (PATCH /api/v1/admin/support/tickets/${ticket2.id})`);
   const adminPatch2 = await fetch(`${FASTAPI_BASE}/api/v1/admin/support/tickets/${ticket2.id}`, {
     method: 'PATCH',
-    headers: { 'Content-Type': 'application/json' },
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${adminToken}`,
+    },
     body: JSON.stringify({
       status: 'resolved',
       adminResponse: 'Mushak 6.3 VAT invoice #VAT-2026-8812 has been sent to your email.',

@@ -108,6 +108,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (!hasAuthCookie()) {
         localStorage.removeItem(STORAGE_KEY);
         localStorage.removeItem("dudos_jwt_token");
+        localStorage.removeItem("dudos_auth_token");
       }
       const stored = localStorage.getItem(STORAGE_KEY);
       if (stored) {
@@ -119,7 +120,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             }
             restoredUser = parsed.user;
             restoredRole = parsed.activeRole;
-            restoredToken = parsed.token || localStorage.getItem("dudos_jwt_token") || undefined;
+            restoredToken = parsed.token || localStorage.getItem("dudos_jwt_token") || localStorage.getItem("dudos_auth_token") || undefined;
           }
         } catch {}
       }
@@ -262,6 +263,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         localStorage.setItem(STORAGE_KEY, JSON.stringify({ user: cleanUser, activeRole: r, token: jwtToken }));
         if (jwtToken) {
           localStorage.setItem("dudos_jwt_token", jwtToken);
+          localStorage.setItem("dudos_auth_token", jwtToken);
         }
         try {
           document.cookie = `dudos_session=${encodeURIComponent(JSON.stringify({ userId: cleanUser.id, displayName: cleanUser.displayName, email: cleanUser.email, role: cleanUser.role, organizationName: cleanUser.organizationName || "" }))}; path=/; max-age=2592000; SameSite=Lax${domainAttr}`;
@@ -270,6 +272,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       } else {
         localStorage.removeItem(STORAGE_KEY);
         localStorage.removeItem("dudos_jwt_token");
+        localStorage.removeItem("dudos_auth_token");
         try {
           // Thoroughly delete cookies for host-only, domain-scoped, and localhost contexts
           const epoch = "expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax";
